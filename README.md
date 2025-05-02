@@ -17,7 +17,7 @@ This project is a full-stack mobile application built with the MERN stack (Mongo
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/your-repo-name.git
+   git clone https://github.com/DiAndyW/35LProj.git
    cd your-repo-name
    ```
 
