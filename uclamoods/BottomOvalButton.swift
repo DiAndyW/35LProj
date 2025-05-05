@@ -1,0 +1,58 @@
+import SwiftUI
+
+struct BottomOvalButton: View {
+    var buttonText: String
+    var action: () -> Void
+    var emotion: Emotion  // Pass the emotion directly
+    
+    var body: some View {
+        VStack {
+            Spacer() // Pushes the button to the bottom
+            
+            Button(action: action) {
+                Text(buttonText)
+                    .font(.custom("Georgia", size: 24))
+                    .foregroundColor(.white)
+                    .padding(.vertical, 30)
+                    .padding(.horizontal, 30)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        // This creates the half-oval shape with the emotion's color
+                        HalfOvalShape()
+                            .fill(emotion.color)  // Use the emotion color
+                            .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .edgesIgnoringSafeArea(.bottom) // Extends to the bottom edge of the screen
+    }
+}
+
+// Custom shape for the half-oval button
+struct HalfOvalShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        // Start from the bottom left corner
+        path.move(to: CGPoint(x: 0, y: rect.height))
+        
+        // Draw the left side straight up to the height where the oval starts
+        path.addLine(to: CGPoint(x: 0, y: rect.height * 0.5))
+        
+        // Draw the top semi-oval
+        path.addCurve(
+            to: CGPoint(x: rect.width, y: rect.height * 0.5),
+            control1: CGPoint(x: rect.width * 0.3, y: 0),
+            control2: CGPoint(x: rect.width * 0.7, y: 0)
+        )
+        
+        // Draw the right side straight down
+        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
+        
+        // Close the path
+        path.closeSubpath()
+        
+        return path
+    }
+}
