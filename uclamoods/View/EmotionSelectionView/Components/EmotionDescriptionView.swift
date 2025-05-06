@@ -29,19 +29,22 @@ struct EmotionDescriptionView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
             
-            ZStack{
+            ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 30)
                     .fill(Color(white: 0.15))
-                    .frame(height: 100)
-//                    .shadow(color: emotion.color.opacity(0.3), radius: 10, x: 0, y: 4)
+                    .frame(height: 90)
                 
-                Text(emotion.description)
-                    .padding(10)
-                    .padding(.horizontal, 15)
-                    .font(.custom("Georgia", size: 16))
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading) {
+                    Text(emotion.description)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .font(.custom("Georgia", size: 16))
+                        .foregroundColor(.white.opacity(0.9))
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             
         }

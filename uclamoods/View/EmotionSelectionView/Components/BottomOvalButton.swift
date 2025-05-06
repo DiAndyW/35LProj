@@ -11,9 +11,9 @@ struct BottomOvalButton: View {
             
             Button(action: action) {
                 Text(buttonText)
-                    .font(.custom("Georgia", size: 24))
+                    .font(.custom("Georgia", size: 72))
                     .foregroundColor(.white)
-                    .padding(.vertical, 30)
+                    .padding(.vertical, 10)
                     .padding(.horizontal, 30)
                     .frame(maxWidth: .infinity)
                     .background(
@@ -25,6 +25,7 @@ struct BottomOvalButton: View {
             }
             .buttonStyle(PlainButtonStyle())
         }
+        .padding(.top, -20)
         .edgesIgnoringSafeArea(.bottom) // Extends to the bottom edge of the screen
     }
 }
@@ -55,4 +56,8 @@ struct HalfOvalShape: Shape {
         
         return path
     }
+}
+
+#Preview {
+    BottomOvalButton(buttonText: "→", action: {()}, emotion: .init(name: "Happy", color: .green, description: "A happy face", pleasantness: 100, intensity: 50, control: 30, clarity: 40))
 }

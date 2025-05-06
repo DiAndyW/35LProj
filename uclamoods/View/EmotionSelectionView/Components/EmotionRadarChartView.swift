@@ -47,7 +47,7 @@ struct EmotionRadarChartView: View {
                 Text("Intensity")
                     .font(.caption)
                     .foregroundColor(.white)
-                    .position(x: center.x + radius + 15, y: center.y)
+                    .position(x: center.x + radius + 35, y: center.y)
                 
                 Text("Control")
                     .font(.caption)
@@ -57,7 +57,7 @@ struct EmotionRadarChartView: View {
                 Text("Clarity")
                     .font(.caption)
                     .foregroundColor(.white)
-                    .position(x: center.x - radius - 15, y: center.y)
+                    .position(x: center.x - radius - 35, y: center.y)
                 
                 // Data polygon
                 EmotionDataPolygon(

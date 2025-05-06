@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct EmotionScrollView: View {
+struct EmotionSelectionView: View {
     // State variable to track the ID of the currently centered emotion
     @State private var selectedEmotionID: Emotion.ID?
     @State private var navigateToNextScreen = false
@@ -28,7 +28,7 @@ struct EmotionScrollView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let dynamicCircleSize = min(geometry.size.width * 0.6, geometry.size.height * 0.3)
+            let dynamicCircleSize = min(geometry.size.width * 0.5, geometry.size.height * 0.3)
             
             ZStack {
 //                // Background
@@ -76,7 +76,7 @@ struct EmotionScrollView: View {
                                 .scrollTransition { effect, phase in
                                     effect
                                         .scaleEffect(phase.isIdentity ? 1 : 0.8)
-                                        .offset(y: EmotionScrollView.transitionOffset(for: phase))
+                                        .offset(y: EmotionSelectionView.transitionOffset(for: phase))
                                 }
                             }
                         }
@@ -86,7 +86,6 @@ struct EmotionScrollView: View {
                     .safeAreaPadding(.horizontal, (geometry.size.width - dynamicCircleSize) / 2)
                     .scrollPosition(id: $selectedEmotionID, anchor: .center)
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEmotionID)
-                    .padding(.bottom, -10)
                     
 //                    NavigationLink(
 //                        destination: EmotionDetailView(emotion: selectedEmotion),
@@ -96,7 +95,7 @@ struct EmotionScrollView: View {
                     
                     // Bottom oval button with the selected emotion's color
                     BottomOvalButton(
-                        buttonText: "Continue",
+                        buttonText: "→",
                         action: {
                             // Action when button is tapped
                             navigateToNextScreen = true
@@ -116,7 +115,7 @@ struct EmotionScrollView: View {
 
 struct EmotionScrollView_Previews: PreviewProvider {
     static var previews: some View {
-        EmotionScrollView()
+        EmotionSelectionView()
             .preferredColorScheme(.dark)
     }
 }
