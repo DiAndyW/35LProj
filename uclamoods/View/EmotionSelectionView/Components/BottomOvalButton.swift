@@ -1,36 +1,25 @@
 import SwiftUI
 
-struct BottomOvalButton: View {
-    var buttonText: String
-    var action: () -> Void
-    var emotion: Emotion  // Pass the emotion directly
+struct BottomOvalShape: View {
+    var emotion: Emotion
     
     var body: some View {
         VStack {
-            Spacer() // Pushes the button to the bottom
+            Spacer() // Pushes the shape to the bottom
             
-            Button(action: action) {
-                Text(buttonText)
-                    .font(.custom("Georgia", size: 72))
-                    .foregroundColor(.white)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 30)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        // This creates the half-oval shape with the emotion's color
-                        HalfOvalShape()
-                            .fill(emotion.color)  // Use the emotion color
-                            .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
+            // The shape itself without button functionality
+            HalfOvalShape()
+                .fill(emotion.color)
+                .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
+                .frame(height: 120) // Setting a specific height to preserve size
+                .frame(maxWidth: .infinity)
         }
         .padding(.top, -20)
         .edgesIgnoringSafeArea(.bottom) // Extends to the bottom edge of the screen
     }
 }
 
-// Custom shape for the half-oval button
+// Custom shape for the half-oval
 struct HalfOvalShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -56,8 +45,4 @@ struct HalfOvalShape: Shape {
         
         return path
     }
-}
-
-#Preview {
-    BottomOvalButton(buttonText: "→", action: {()}, emotion: .init(name: "Happy", color: .green, description: "A happy face", pleasantness: 100, intensity: 50, control: 30, clarity: 40))
 }

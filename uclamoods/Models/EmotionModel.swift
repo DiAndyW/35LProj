@@ -14,83 +14,106 @@ struct Emotion: Identifiable, Equatable, Hashable {
 
 // MARK: - Emotion Data Provider
 struct EmotionDataProvider {
-    // Provides a list of emotions with a color gradient from red (negative) to blue (positive)
+    // Helper function to interpolate between two colors based on pleasantness
+    private static func interpolateColor(pleasantness: Double, startColor: (r: Double, g: Double, b: Double), endColor: (r: Double, g: Double, b: Double)) -> Color {
+        let t = pleasantness // pleasantness is already 0.0 to 1.0
+        let r = startColor.r + (endColor.r - startColor.r) * t
+        let g = startColor.g + (endColor.g - startColor.g) * t
+        let b = startColor.b + (endColor.b - startColor.b) * t
+        return Color(red: r, green: g, blue: b)
+    }
+    
+    // Define start and end colors (converted from hex to RGB fractions)
+    private static let rageColor = (r: 208.0/255.0, g: 0.0/255.0, b: 0.0/255.0) // D00000
+    private static let euphoricColor = (r: 255.0/255.0, g: 186.0/255.0, b: 8.0/255.0) // FFBA08
+    
+    // Provides a list of emotions with a color gradient from D00000 (negative) to FFBA08 (positive)
     static let highEnergyEmotions: [Emotion] = [
+        // Shortened descriptions for each emotion
+        // Further shortened descriptions for each emotion
         Emotion(name: "Enraged",
-                color: .red,
-                description: "You feel consumed by intense anger and fury, as if your emotions are boiling over uncontrollably.",
-                pleasantness: 0.1,     // Highly negative
-                intensity: 0.9,   // Very strong
-                control: 0.2,     // Feels out of control
-                clarity: 0.9),    // Genuine and clear
+                color: interpolateColor(pleasantness: 0.05, startColor: rageColor, endColor: euphoricColor),
+                description: "Consumed by fiery anger, a raging storm of fury boiling over, barely contained, ready to explode.",
+                pleasantness: 0.05, intensity: 0.9, control: 0.2, clarity: 0.9),
+
+        Emotion(name: "Terrified",
+                color: interpolateColor(pleasantness: 0.1, startColor: rageColor, endColor: euphoricColor),
+                description: "Paralyzed by fear, heart pounding as danger looms, every nerve screaming in frozen panic.",
+                pleasantness: 0.1, intensity: 0.95, control: 0.1, clarity: 0.8),
+
+        Emotion(name: "Panicked",
+                color: interpolateColor(pleasantness: 0.15, startColor: rageColor, endColor: euphoricColor),
+                description: "Frantic, your heart races, mind spiraling in chaos, struggling for grip amid overwhelming turmoil.",
+                pleasantness: 0.15, intensity: 0.9, control: 0.2, clarity: 0.7),
 
         Emotion(name: "Frustrated",
-                color: Color(red: 0.95, green: 0.3, blue: 0.2),
-                description: "You feel irritated and impatient, struggling against obstacles that block your path forward.",
-                pleasantness: 0.2,     // Negative
-                intensity: 0.7,   // Moderately strong
-                control: 0.4,     // Somewhat out of control
-                clarity: 0.8),    // Fairly genuine
+                color: interpolateColor(pleasantness: 0.2, startColor: rageColor, endColor: euphoricColor),
+                description: "Irritated, you're stuck against obstacles, tension rising as efforts feel blocked by resistance.",
+                pleasantness: 0.2, intensity: 0.7, control: 0.4, clarity: 0.8),
 
         Emotion(name: "Anxious",
-                color: Color(red: 0.9, green: 0.4, blue: 0.3),
-                description: "You feel overwhelmed by worry and nervous tension, your mind racing with uneasy thoughts.",
-                pleasantness: 0.25,    // Negative
-                intensity: 0.8,   // Strong
-                control: 0.3,     // Mostly out of control
-                clarity: 0.7),    // Somewhat genuine
+                color: interpolateColor(pleasantness: 0.25, startColor: rageColor, endColor: euphoricColor),
+                description: "Worry floods your mind with uneasy thoughts, nerves frayed, anticipating threats that feel real.",
+                pleasantness: 0.25, intensity: 0.8, control: 0.3, clarity: 0.7),
+
+        Emotion(name: "Overwhelmed",
+                color: interpolateColor(pleasantness: 0.3, startColor: rageColor, endColor: euphoricColor),
+                description: "Swamped by emotions and demands, struggling to stay afloat, gasping for clarity amid strain.",
+                pleasantness: 0.3, intensity: 0.85, control: 0.3, clarity: 0.6),
 
         Emotion(name: "Shocked",
-                color: Color(red: 0.85, green: 0.5, blue: 0.4),
-                description: "You feel jolted by sudden surprise or alarm, your senses heightened by the unexpected.",
-                pleasantness: 0.4,     // Slightly negative to neutral
-                intensity: 0.9,   // Very strong
-                control: 0.3,     // Mostly out of control
-                clarity: 0.9),    // Genuine and clear
+                color: interpolateColor(pleasantness: 0.4, startColor: rageColor, endColor: euphoricColor),
+                description: "Jolted by alarm, senses spiking as the unexpected hits, leaving you reeling with awareness.",
+                pleasantness: 0.4, intensity: 0.9, control: 0.3, clarity: 0.9),
+
+        Emotion(name: "Surprised",
+                color: interpolateColor(pleasantness: 0.5, startColor: rageColor, endColor: euphoricColor),
+                description: "Startled by a twist, curiosity sparks, mind buzzing as the unexpected stirs your attention.",
+                pleasantness: 0.5, intensity: 0.75, control: 0.5, clarity: 0.8),
 
         Emotion(name: "Excited",
-                color: Color(red: 0.7, green: 0.6, blue: 0.5),
-                description: "You feel a surge of enthusiasm and eager anticipation, ready to dive into what lies ahead.",
-                pleasantness: 0.7,     // Positive
-                intensity: 0.85,  // Strong
-                control: 0.6,     // Moderately in control
-                clarity: 0.8),    // Fairly genuine
+                color: interpolateColor(pleasantness: 0.6, startColor: rageColor, endColor: euphoricColor),
+                description: "Surging enthusiasm, eager to leap forward, heart racing with anticipation for possibilities.",
+                pleasantness: 0.6, intensity: 0.85, control: 0.6, clarity: 0.8),
+
+        Emotion(name: "Motivated",
+                color: interpolateColor(pleasantness: 0.65, startColor: rageColor, endColor: euphoricColor),
+                description: "Driven by purpose, energized and focused, ready to tackle challenges with determination.",
+                pleasantness: 0.65, intensity: 0.8, control: 0.7, clarity: 0.9),
 
         Emotion(name: "Energized",
-                color: Color(red: 0.5, green: 0.6, blue: 0.7),
-                description: "You feel invigorated with vibrant energy, brimming with motivation to take on challenges.",
-                pleasantness: 0.8,     // Positive
-                intensity: 0.9,   // Very strong
-                control: 0.7,     // Mostly in control
-                clarity: 0.7),    // Somewhat genuine
+                color: interpolateColor(pleasantness: 0.7, startColor: rageColor, endColor: euphoricColor),
+                description: "Brimming with energy, invigorated and ready to conquer challenges with unstoppable momentum.",
+                pleasantness: 0.7, intensity: 0.9, control: 0.7, clarity: 0.7),
+
+        Emotion(name: "Hyper",
+                color: interpolateColor(pleasantness: 0.75, startColor: rageColor, endColor: euphoricColor),
+                description: "Buzzing with wild energy, too wired to focus, bouncing with excitement that might overflow.",
+                pleasantness: 0.75, intensity: 0.95, control: 0.4, clarity: 0.6),
+
+        Emotion(name: "Thrilled",
+                color: interpolateColor(pleasantness: 0.8, startColor: rageColor, endColor: euphoricColor),
+                description: "Rushing with joy, swept up in exciting moments, heart soaring with achievement's thrill.",
+                pleasantness: 0.8, intensity: 0.9, control: 0.6, clarity: 0.8),
 
         Emotion(name: "Inspired",
-                color: Color(red: 0.4, green: 0.5, blue: 0.8),
-                description: "You feel uplifted and motivated, sparked by a vision to create or achieve something meaningful.",
-                pleasantness: 0.85,    // Highly positive
-                intensity: 0.8,   // Strong
-                control: 0.6,     // Moderately in control
-                clarity: 0.9),    // Genuine and clear
+                color: interpolateColor(pleasantness: 0.85, startColor: rageColor, endColor: euphoricColor),
+                description: "Uplifted by vision, motivated to create, driven by deep purpose and creative energy.",
+                pleasantness: 0.85, intensity: 0.8, control: 0.6, clarity: 0.9),
 
         Emotion(name: "Exhilarated",
-                color: Color(red: 0.3, green: 0.4, blue: 0.9),
-                description: "You feel electrified with intense joy and liveliness, as if you’re soaring with boundless energy.",
-                pleasantness: 0.9,     // Highly positive
-                intensity: 0.95,  // Extremely strong
-                control: 0.7,     // Mostly in control
-                clarity: 0.8),    // Fairly genuine
+                color: interpolateColor(pleasantness: 0.9, startColor: rageColor, endColor: euphoricColor),
+                description: "Electrified with joy, soaring with energy, every moment alive with vibrant excitement.",
+                pleasantness: 0.9, intensity: 0.95, control: 0.7, clarity: 0.8),
 
         Emotion(name: "Euphoric",
-                color: .blue,
-                description: "You feel overwhelmed with profound happiness and elation, as if floating in a state of pure bliss.",
-                pleasantness: 0.95,    // Extremely positive
-                intensity: 1.0,   // Maximum strength
-                control: 0.8,     // Mostly in control
-                clarity: 0.9)     // Genuine and clear
+                color: interpolateColor(pleasantness: 0.95, startColor: rageColor, endColor: euphoricColor),
+                description: "Floating in happiness, filled with pure bliss, every sense alive with elation and joy.",
+                pleasantness: 0.95, intensity: 1.0, control: 0.8, clarity: 0.9)
     ]
     
     // Default emotion accessor
     static var defaultEmotion: Emotion {
-        highEnergyEmotions.first { $0.name == "Excited" } ?? highEnergyEmotions[4]
+        highEnergyEmotions.first { $0.name == "Excited" } ?? highEnergyEmotions[8]
     }
 }

@@ -40,22 +40,23 @@ struct EmotionRadarChartView: View {
                 
                 // Dimension labels
                 Text("Pleasantness")
-                    .font(.caption)
+                    .font(.custom("Georgia", size: 12))
+                    //.font(.caption)
                     .foregroundColor(.white)
                     .position(x: center.x, y: center.y - radius - 15)
                 
                 Text("Intensity")
-                    .font(.caption)
+                    .font(.custom("Georgia", size: 12))
                     .foregroundColor(.white)
                     .position(x: center.x + radius + 35, y: center.y)
                 
                 Text("Control")
-                    .font(.caption)
+                    .font(.custom("Georgia", size: 12))
                     .foregroundColor(.white)
                     .position(x: center.x, y: center.y + radius + 15)
                 
                 Text("Clarity")
-                    .font(.caption)
+                    .font(.custom("Georgia", size: 12))
                     .foregroundColor(.white)
                     .position(x: center.x - radius - 35, y: center.y)
                 
