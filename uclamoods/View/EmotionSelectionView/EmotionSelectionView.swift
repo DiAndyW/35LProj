@@ -65,7 +65,7 @@ struct EmotionSelectionView: View {
                     // Top section with flexible spacing
                     Spacer()
                         .frame(height: availableHeight * 0.10) // 5% of height as top spacing
-
+                    
                     // Description below the chart
                     EmotionDescriptionView(
                         emotion: selectedEmotion ?? EmotionDataProvider.defaultEmotion
@@ -86,7 +86,7 @@ struct EmotionSelectionView: View {
                     .frame(height: availableHeight * 0.3) // 30% of screen height
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     .id((selectedEmotion?.id ?? EmotionDataProvider.defaultEmotion.id).uuidString + "-chart")
-
+                    
                     
                     // Flexible spacing that grows/shrinks based on available space
                     Spacer(minLength: availableHeight * 0.02)
@@ -121,14 +121,16 @@ struct EmotionSelectionView: View {
                         }
                         .scrollTargetLayout()
                     }
+                    
                     .scrollTargetBehavior(.viewAligned)
+                    .defaultScrollAnchor(.center)
                     .safeAreaPadding(.horizontal, (geometry.size.width - dynamicCircleSize) / 2)
                     .scrollPosition(id: $selectedEmotionID, anchor: .center)
                     .onChange(of: selectedEmotionID) { _, newID in
                         // Add haptic feedback for scroll selection
                         generateHapticFeedback(for: newID)
                     }
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedEmotionID)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.9), value: selectedEmotionID)
                     .frame(height: dynamicCircleSize + 20)
                     
                     // Bottom section with flexible spacing
@@ -200,5 +202,17 @@ struct EmotionScrollView_Previews: PreviewProvider {
     static var previews: some View {
         EmotionSelectionView()
             .preferredColorScheme(.dark)
+    }
+}
+
+struct CustomScrollTargetBehavior: ScrollTargetBehavior {
+    // Lower values make it more sensitive
+    let sensitivityFactor: CGFloat
+    
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        ViewAlignedScrollTargetBehavior().updateTarget(&target, context: context)
+        // Make the scroll target reach its destination with less movement
+        let distance = target.rect.minX - context.originalTarget.rect.minX
+        target.rect.origin.x = context.originalTarget.rect.minX + (distance * sensitivityFactor)
     }
 }
