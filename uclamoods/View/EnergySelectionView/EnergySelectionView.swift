@@ -11,10 +11,10 @@ struct EnergySelectionView: View {
     @State private var navigateToEmotions = false
     @State private var selectedEnergy: String = ""
     // Sample energy levels with their colors
-    let energyOptions: [(word: String, color: Color)] = [
-        ("High", .red),
-        ("Medium", .orange),
-        ("Low", .blue)
+    let energyOptions: [(word: String, color: Color, speed: Double)] = [
+        ("High", .red, 1.0),
+        ("Medium", .orange, 2.0),
+        ("Low", .blue, 3.0)
     ]
     
     var body: some View {
@@ -28,7 +28,7 @@ struct EnergySelectionView: View {
                 
                 ForEach(energyOptions, id: \.word) { option in
                     EnergyCircleView(
-                        word: option.word,
+                        title: option.word,
                         color: option.color,
                         action: {
                             selectedEnergy = option.word
@@ -40,7 +40,8 @@ struct EnergySelectionView: View {
                             
                             // Navigate to EmotionSelectionView
                             navigateToEmotions = true
-                        }
+                        },
+                        animationDuration: option.speed
                     )
                     .frame(width: 150, height: 150)
                 }

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2FC3D98A2DCB4C920062D57C /* FluidGradient in Frameworks */ = {isa = PBXBuildFile; productRef = 2FC3D9892DCB4C920062D57C /* FluidGradient */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2FB1ACC72DC5F2570020E348 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2FC3D98A2DCB4C920062D57C /* FluidGradient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 				2FB1ACBB2DC5F2550020E348 /* uclamoods */,
 				2FB1ACC92DC5F2570020E348 /* uclamoodsTests */,
 				2FB1ACD32DC5F2570020E348 /* uclamoodsUITests */,
+				2FC3D9882DCB4C920062D57C /* Frameworks */,
 				2FB1ACBA2DC5F2550020E348 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +96,13 @@
 				2FB1ACD02DC5F2570020E348 /* uclamoodsUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		2FC3D9882DCB4C920062D57C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +125,7 @@
 			);
 			name = uclamoods;
 			packageProductDependencies = (
+				2FC3D9892DCB4C920062D57C /* FluidGradient */,
 			);
 			productName = uclamoods;
 			productReference = 2FB1ACB92DC5F2550020E348 /* uclamoods.app */;
@@ -195,6 +209,9 @@
 			);
 			mainGroup = 2FB1ACB02DC5F2550020E348;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2FB1ACBA2DC5F2550020E348 /* Products */;
 			projectDirPath = "";
@@ -558,6 +575,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Cindori/FluidGradient.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2FC3D9892DCB4C920062D57C /* FluidGradient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */;
+			productName = FluidGradient;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2FB1ACB12DC5F2550020E348 /* Project object */;
 }

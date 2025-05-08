@@ -174,13 +174,13 @@ struct EmotionSelectionView: View {
                     // Left side label - "less pleasant"
                     HStack(alignment: .bottom){
                         Text("← Unpleasant")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.custom("Georgia", size: 14))
                             .foregroundColor(.white.opacity(0.7))
                             .frame(width: 100)
                             .padding(.leading, 5)
                         Spacer()
                         Text("Pleasant →")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.custom("Georgia", size: 14))
                             .foregroundColor(.white.opacity(0.7))
                             .frame(width: 100)
                             .padding(.trailing, 5)

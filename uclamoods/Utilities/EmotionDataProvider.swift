@@ -12,8 +12,10 @@ struct EmotionDataProvider {
     }
     
     // Define start and end colors (converted from hex to RGB fractions)
-    private static let rageColor = (r: 208.0/255.0, g: 0.0/255.0, b: 0.0/255.0) // D00000
-    private static let euphoricColor = (r: 255.0/255.0, g: 186.0/255.0, b: 8.0/255.0) // FFBA08
+    public static let rageColor = (r: 208.0/255.0, g: 0.0/255.0, b: 0.0/255.0) // D00000
+    public static let euphoricColor = (r: 255.0/255.0, g: 186.0/255.0, b: 8.0/255.0) // FFBA08
+    public static let disgustedColor = (r: 111.0/255.0, g: 45.0/255.0, b: 189.0/255.0) // FFBA08
+    public static let blissfulColor = (r: 185.0/255.0, g: 250.0/255.0, b: 248.0/255.0) // FFBA08
     
     // Provides a list of emotions with a color gradient from D00000 (negative) to FFBA08 (positive)
     static let highEnergyEmotions: [Emotion] = [
@@ -104,4 +106,128 @@ struct EmotionDataProvider {
     static var defaultEmotion: Emotion {
         highEnergyEmotions.first { $0.name == "Excited" } ?? highEnergyEmotions[8]
     }
+    
+    static let mediumEnergyEmotions: [Emotion] = [
+        Emotion(name: "Disgusted",
+                color: interpolateColor(pleasantness: 0.1, startColor: rageColor, endColor: euphoricColor),
+                description: "Repulsed by something vile, stomach churning with distaste, urging you to turn away.",
+                pleasantness: 0.1, intensity: 0.6, control: 0.4, clarity: 0.7),
+
+        Emotion(name: "Envious",
+                color: interpolateColor(pleasantness: 0.2, startColor: rageColor, endColor: euphoricColor),
+                description: "Stung by others' success, a bitter longing for what they have gnaws at your peace.",
+                pleasantness: 0.2, intensity: 0.55, control: 0.5, clarity: 0.6),
+
+        Emotion(name: "Troubled",
+                color: interpolateColor(pleasantness: 0.3, startColor: rageColor, endColor: euphoricColor),
+                description: "Uneasy, your mind wrestles with nagging worries, a quiet storm clouding your calm.",
+                pleasantness: 0.3, intensity: 0.5, control: 0.5, clarity: 0.6),
+
+        Emotion(name: "Disappointed",
+                color: interpolateColor(pleasantness: 0.35, startColor: rageColor, endColor: euphoricColor),
+                description: "Let down by unmet hopes, a sinking feeling settles in, dimming your expectations.",
+                pleasantness: 0.35, intensity: 0.5, control: 0.6, clarity: 0.7),
+
+        Emotion(name: "Irritated",
+                color: interpolateColor(pleasantness: 0.4, startColor: rageColor, endColor: euphoricColor),
+                description: "Annoyed by small frustrations, a prickly edge sharpens your mood, testing patience.",
+                pleasantness: 0.4, intensity: 0.55, control: 0.5, clarity: 0.8),
+
+        Emotion(name: "Calm",
+                color: interpolateColor(pleasantness: 0.5, startColor: rageColor, endColor: euphoricColor),
+                description: "At ease, your mind is steady, a gentle balance holding you in quiet serenity.",
+                pleasantness: 0.5, intensity: 0.4, control: 0.8, clarity: 0.9),
+
+        Emotion(name: "Content",
+                color: interpolateColor(pleasantness: 0.55, startColor: rageColor, endColor: euphoricColor),
+                description: "Satisfied with the moment, a soft warmth of peace settles over you, untroubled.",
+                pleasantness: 0.55, intensity: 0.45, control: 0.7, clarity: 0.8),
+
+        Emotion(name: "Challenged",
+                color: interpolateColor(pleasantness: 0.6, startColor: rageColor, endColor: euphoricColor),
+                description: "Sparked by a test, your focus sharpens, eager to push your limits and grow.",
+                pleasantness: 0.6, intensity: 0.6, control: 0.6, clarity: 0.8),
+
+        Emotion(name: "Hopeful",
+                color: interpolateColor(pleasantness: 0.7, startColor: rageColor, endColor: euphoricColor),
+                description: "Lifted by possibility, your heart lightens with optimism for what lies ahead.",
+                pleasantness: 0.7, intensity: 0.5, control: 0.7, clarity: 0.8),
+
+        Emotion(name: "Accomplished",
+                color: interpolateColor(pleasantness: 0.75, startColor: rageColor, endColor: euphoricColor),
+                description: "Proud of your success, a glow of fulfillment warms you after reaching your goal.",
+                pleasantness: 0.75, intensity: 0.55, control: 0.8, clarity: 0.9),
+
+        Emotion(name: "Grateful",
+                color: interpolateColor(pleasantness: 0.85, startColor: rageColor, endColor: euphoricColor),
+                description: "Heart warmed by appreciation, a deep sense of thankfulness grounds you in joy.",
+                pleasantness: 0.85, intensity: 0.5, control: 0.8, clarity: 0.9),
+
+        Emotion(name: "Blissful",
+                color: interpolateColor(pleasantness: 0.9, startColor: rageColor, endColor: euphoricColor),
+                description: "Wrapped in pure joy, a radiant lightness fills you, every moment glowing with ease.",
+                pleasantness: 0.9, intensity: 0.55, control: 0.7, clarity: 0.8)
+    ]
+    
+    static let lowEnergyEmotions: [Emotion] = [
+        Emotion(name: "Miserable",
+                color: interpolateColor(pleasantness: 0.1, startColor: rageColor, endColor: euphoricColor),
+                description: "Sunk in deep sorrow, a heavy ache drains all light, leaving only despair.",
+                pleasantness: 0.1, intensity: 0.3, control: 0.3, clarity: 0.5),
+
+        Emotion(name: "Depressed",
+                color: interpolateColor(pleasantness: 0.15, startColor: rageColor, endColor: euphoricColor),
+                description: "Trapped in a fog of hopelessness, energy sapped, the world feels gray and distant.",
+                pleasantness: 0.15, intensity: 0.35, control: 0.4, clarity: 0.4),
+
+        Emotion(name: "Burned Out",
+                color: interpolateColor(pleasantness: 0.2, startColor: rageColor, endColor: euphoricColor),
+                description: "Exhausted and empty, motivation gone, every task feels like an insurmountable weight.",
+                pleasantness: 0.2, intensity: 0.3, control: 0.3, clarity: 0.5),
+
+        Emotion(name: "Apathetic",
+                color: interpolateColor(pleasantness: 0.25, startColor: rageColor, endColor: euphoricColor),
+                description: "Numb to the world, nothing sparks interest, a dull void where feelings should be.",
+                pleasantness: 0.25, intensity: 0.25, control: 0.5, clarity: 0.6),
+
+        Emotion(name: "Listless",
+                color: interpolateColor(pleasantness: 0.3, startColor: rageColor, endColor: euphoricColor),
+                description: "Drifting without purpose, energy low, a quiet disinterest cloaks your thoughts.",
+                pleasantness: 0.3, intensity: 0.3, control: 0.6, clarity: 0.6),
+
+        Emotion(name: "Bored",
+                color: interpolateColor(pleasantness: 0.35, startColor: rageColor, endColor: euphoricColor),
+                description: "Restless in monotony, craving something new, time drags in a haze of disengagement.",
+                pleasantness: 0.35, intensity: 0.35, control: 0.5, clarity: 0.7),
+
+        Emotion(name: "Carefree",
+                color: interpolateColor(pleasantness: 0.5, startColor: rageColor, endColor: euphoricColor),
+                description: "Light and unburdened, worries slip away, leaving a gentle ease in the moment.",
+                pleasantness: 0.5, intensity: 0.3, control: 0.7, clarity: 0.8),
+
+        Emotion(name: "Relaxed",
+                color: interpolateColor(pleasantness: 0.55, startColor: rageColor, endColor: euphoricColor),
+                description: "At peace, tension melts away, a soft calm settles over body and mind.",
+                pleasantness: 0.55, intensity: 0.3, control: 0.8, clarity: 0.8),
+
+        Emotion(name: "Secure",
+                color: interpolateColor(pleasantness: 0.65, startColor: rageColor, endColor: euphoricColor),
+                description: "Safe and steady, a quiet confidence anchors you in a sense of stability.",
+                pleasantness: 0.65, intensity: 0.35, control: 0.8, clarity: 0.9),
+
+        Emotion(name: "Satisfied",
+                color: interpolateColor(pleasantness: 0.75, startColor: rageColor, endColor: euphoricColor),
+                description: "Content with what is, a warm fulfillment glows, no need for more than this moment.",
+                pleasantness: 0.75, intensity: 0.35, control: 0.7, clarity: 0.8),
+
+        Emotion(name: "Serene",
+                color: interpolateColor(pleasantness: 0.85, startColor: rageColor, endColor: euphoricColor),
+                description: "Deeply tranquil, a still lake of calm reflects clarity and quiet joy within.",
+                pleasantness: 0.85, intensity: 0.3, control: 0.9, clarity: 0.9),
+
+        Emotion(name: "Blessed",
+                color: interpolateColor(pleasantness: 0.9, startColor: rageColor, endColor: euphoricColor),
+                description: "Filled with gratitude, a gentle warmth of fortune embraces you, heart full.",
+                pleasantness: 0.9, intensity: 0.35, control: 0.8, clarity: 0.9)
+    ]
 }
