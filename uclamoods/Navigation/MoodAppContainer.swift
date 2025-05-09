@@ -20,8 +20,6 @@ struct MoodAppContainer: View {
                     switch router.currentScreen {
                     case .energySelection:
                         EnergySelectionView()
-                            .opacity(1.0 - (router.transitionProgress * 0.8))
-                            .scaleEffect(1.0 - (0.1 * router.transitionProgress))
                             .mask(
                                 BubbleExpandMask(
                                     progress: router.transitionProgress,
@@ -29,11 +27,12 @@ struct MoodAppContainer: View {
                                     size: geometry.size
                                 )
                             )
-                    
+                            .opacity(1.0 - (router.transitionProgress * 0.8))
+                            .scaleEffect(1.0 - (0.1 * router.transitionProgress))
+                            
+                        
                     case .emotionSelection(let energyLevel):
                         EmotionSelectionView(energyLevel: energyLevel)
-                            .opacity(1.0 - (router.transitionProgress * 0.8))
-                            .scaleEffect(1.0 - (0.1 * router.transitionProgress))
                             .mask(
                                 BubbleExpandMask(
                                     progress: router.transitionProgress,
@@ -41,10 +40,20 @@ struct MoodAppContainer: View {
                                     size: geometry.size
                                 )
                             )
+                            .opacity(1.0 - (router.transitionProgress * 0.8))
+                            .scaleEffect(1.0 - (0.1 * router.transitionProgress))       
                     }
                 }
             }
             .environmentObject(router)
+            .onAppear {
+                // Pass the screen size to the router when the view appears
+                router.setScreenSize(geometry.size)
+            }
+            .onChange(of: geometry.size) { newSize in
+                // Update if size changes (e.g., rotation)
+                router.setScreenSize(newSize)
+            }
         }
     }
     private func getEmotionsList(for energyLevel: String?) -> [Emotion] {
@@ -78,10 +87,11 @@ struct BubbleExpandMask: View {
         
         // Default to center if no origin provided
         let center = origin == .zero ?
-            CGPoint(x: size.width / 2, y: size.height / 2) : origin
+        CGPoint(x: size.width / 2, y: size.height / 2) : origin
         
         return Circle()
             .frame(width: radius * 2, height: radius * 2)
             .position(x: center.x, y: center.y)
+            .blur(radius: 2)
     }
 }

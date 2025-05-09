@@ -88,15 +88,15 @@ struct FloatingBlobButton: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .blur(radius: blurRadius)
-                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                        //.blur(radius: blurRadius)
+                        .shadow(color: startColor.opacity(0.7), radius: 15, x: 0, y: 0)
                         .offset(offset)
                     
                     // Text overlay
                     Text(text)
-                        .font(.custom("Georgia", size: 24))
+                        .font(.custom("Georgia", size: 20))
                         //.blur(radius: 0.4)
-                        .fontWeight(.regular)
+                        .fontWeight(.medium)
                         .foregroundColor(.black)
                         
                 }

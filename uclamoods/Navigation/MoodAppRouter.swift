@@ -23,19 +23,57 @@ class MoodAppRouter: ObservableObject {
     // Origin point for transitions that need it (like bubbleExpand)
     @Published var transitionOrigin: CGPoint = .zero
     
+    // Screen size for calculating positions
+    private var screenSize: CGSize = .zero
+    
     // Customizable durations
     let fadeOutDuration: Double = 0.4
     let fadeInDuration: Double = 0.5
     let transitionStyle: TransitionStyle = .bubbleExpand
     
-    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, from originPoint: CGPoint = .zero) {
-        transitionOrigin = originPoint
+    // Set the screen size (call this from onAppear in your container view)
+    func setScreenSize(_ size: CGSize) {
+        screenSize = size
+    }
+    
+    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, from originPoint: CGPoint? = nil) {
+        // If a specific origin point is provided, use it
+        if let originPoint = originPoint {
+            transitionOrigin = originPoint
+        } else {
+            // Otherwise, calculate based on energy level
+            transitionOrigin = getTransitionOriginForEnergyLevel(energyLevel)
+        }
+        
         performTransition(to: .emotionSelection(energyLevel: energyLevel))
     }
     
-    func navigateBack(from originPoint: CGPoint = .zero) {
-        transitionOrigin = originPoint
+    func navigateBack(from originPoint: CGPoint? = CGPoint(x: 20, y: 20)) {
+        // You could also calculate this based on the current energy level if needed
+        if let originPoint = originPoint {
+            transitionOrigin = originPoint
+        }
         performTransition(to: .energySelection)
+    }
+    
+    private func getTransitionOriginForEnergyLevel(_ energyLevel: EmotionDataProvider.EnergyLevel) -> CGPoint {
+        // Make sure we have valid screen dimensions
+        guard screenSize.width > 0 && screenSize.height > 0 else {
+            return CGPoint(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2)
+        }
+        
+        // Calculate origin point based on energy level
+        switch energyLevel {
+        case .high:
+            // High energy: start from top of screen
+            return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.35)
+        case .medium:
+            // Medium energy: start from middle of screen
+            return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.6)
+        case .low:
+            // Low energy: start from bottom of screen
+            return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.8)
+        }
     }
     
     private func performTransition(to screen: MoodAppScreen) {
