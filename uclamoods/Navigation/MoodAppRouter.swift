@@ -133,34 +133,41 @@ class MoodAppRouter: ObservableObject {
         }
     }
     
+    // In MoodAppRouter.swift, modify the performTransition method:
+
     private func performTransition(to screen: MoodAppScreen) {
         guard !isAnimating else { return }
         
         isAnimating = true
         
-        // Lock UI interaction with isAnimating flag
+        // Store the current transition style to maintain consistency
         let currentTransitionStyle = transitionStyle
         
-        // Animate transition progress from 0 to 1
+        // 1. FADE OUT: Animate transition progress from 0 to 1
         withAnimation(.easeInOut(duration: fadeOutDuration)) {
             transitionProgress = 1
         }
         
-        // Change screen after first animation is complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration) {
+        // 2. CHANGE SCREEN: After first animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration + 0.05) { // Small delay added
+            // Change to the new screen
             self.currentScreen = screen
             
-            // Preserve the transition style throughout the complete transition
+            // Make sure we're still using the same transition style
             self.transitionStyle = currentTransitionStyle
             
-            // Animate transition progress from 1 to 0 for the new screen
-            withAnimation(.easeInOut(duration: self.fadeInDuration)) {
-                self.transitionProgress = 0
-            }
-            
-            // Reset animation state when completely finished
-            DispatchQueue.main.asyncAfter(deadline: .now() + self.fadeInDuration) {
-                self.isAnimating = false
+            // Important: Force layout update before starting the next animation
+            // by updating in the next runloop
+            DispatchQueue.main.async {
+                // 3. FADE IN: Animate transition progress from 1 to 0 for the new screen
+                withAnimation(.easeInOut(duration: self.fadeInDuration)) {
+                    self.transitionProgress = 0
+                }
+                
+                // 4. FINALIZE: Reset animation state when completely finished
+                DispatchQueue.main.asyncAfter(deadline: .now() + self.fadeInDuration + 0.1) {
+                    self.isAnimating = false
+                }
             }
         }
     }
