@@ -25,11 +25,12 @@ struct EmotionCircleView: View {
             // Text
             Text(emotion.name)
                 .font(.custom("Georgia", size: 24))
-                .foregroundColor(.white)
+                .foregroundColor(.black)
                 .multilineTextAlignment(.center)
                 .padding(4)
                 .scaleEffect(isSelected ? 1.0 : 0.9)
                 .opacity(isSelected ? 1.0 : 0.7)
+                //.shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isSelected)
         .onAppear {

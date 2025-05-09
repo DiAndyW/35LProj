@@ -34,7 +34,7 @@ struct FloatingBlobButton: View {
     
     init(
         text: String,
-        size: CGFloat = 200,
+        size: CGFloat = 180,
         blurRadius: CGFloat = 5,
         startColor: Color? = nil,
         endColor: Color? = nil,
@@ -94,10 +94,11 @@ struct FloatingBlobButton: View {
                     
                     // Text overlay
                     Text(text)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                        .font(.custom("Georgia", size: 24))
+                        //.blur(radius: 0.4)
+                        .fontWeight(.regular)
+                        .foregroundColor(.black)
+                        
                 }
                 .onAppear {
                     startAnimations(in: geometry.size)

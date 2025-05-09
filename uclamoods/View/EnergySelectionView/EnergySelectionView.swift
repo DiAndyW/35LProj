@@ -1,79 +1,105 @@
 //
-//  EnergySelectionView.swift
+//  FloatingBlobView.swift
 //  uclamoods
 //
-//  Created by Yang Gao on 5/6/25.
+//  Created by Yang Gao on 5/8/25.
 //
-
 import SwiftUI
 
 struct EnergySelectionView: View {
-    @State private var navigateToEmotions = false
-    @State private var selectedEnergy: String = ""
-    // Sample energy levels with their colors
-    let energyOptions: [(word: String, color: Color, speed: Double)] = [
-        ("High", .red, 1.0),
-        ("Medium", .orange, 2.0),
-        ("Low", .blue, 3.0)
-    ]
-    
+    @EnvironmentObject private var router: MoodAppRouter
+    // State variables for custom animation and navigation
+    @State private var animateElementsOut = false
+    @State private var navigateToEmotionView = false
+    @State private var selectedEnergyLevel: String? = nil // To know which emotion set to load
+
+    let blobSize = 180.0
+    let animationDuration = 0.5 // Duration for the zoom-out and fade-out animation
+
     var body: some View {
+        // NavigationStack is needed for .navigationDestination.
+        // Place it at the root of your navigation flow if it's not already there.
         NavigationStack {
-            VStack(spacing: 20) {
-                Text("Tap the color that best describes your energy level right now")
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 10)
-                    .font(.custom("Georgia", size: 24))
-                
-                
-                ForEach(energyOptions, id: \.word) { option in
-                    EnergyCircleView(
-                        title: option.word,
-                        color: option.color,
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all) // Assuming a dark background
+
+                VStack(spacing: 20) {
+                    Text("Tap on the color that best describes your energy level")
+                        .font(.custom("Georgia", size: 24))
+                        .fontWeight(.regular)
+                        .lineSpacing(1.5)
+                        .padding(.bottom, 20)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 10)
+                    // High Energy Blob Button
+                    // Replace 'FloatingBlobButtonPlaceholder' with your actual 'FloatingBlobButton'
+                    // Ensure your 'FloatingBlobButton' takes 'blobSize' and 'action' parameters.
+                    FloatingBlobButton(
+                        text: "High",
+                        startColor: Color("Rage"), // Ensure these colors are in your Assets.xcassets
+                        endColor: Color("Euphoric"),
+                        // Pass other parameters your FloatingBlobButton expects (morphSpeed, etc.)
+                        morphSpeed: 3.0, floatSpeed: 3.0, colorShiftSpeed: 3.0,
                         action: {
-                            selectedEnergy = option.word
-                            
-                            // Add haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
-                            impactFeedback.prepare()
-                            impactFeedback.impactOccurred()
-                            
-                            // Navigate to EmotionSelectionView
-                            navigateToEmotions = true
-                        },
-                        animationDuration: option.speed
+                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.high)
+                        }
                     )
-                    .frame(width: 150, height: 150)
+                    .frame(width: blobSize, height: blobSize) // As in your original layout
+
+                    // Medium Energy Blob Button
+                    FloatingBlobButton(
+                        text: "Medium",
+                        startColor: Color("Disgusted"),
+                        endColor: Color("Blissful"),
+                        morphSpeed: 2.0, floatSpeed: 2.0, colorShiftSpeed: 2.0,
+                        action: {
+                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.medium)
+                        }
+                    )
+                    .frame(width: blobSize, height: blobSize)
+
+                    // Low Energy Blob Button
+                    FloatingBlobButton(
+                        text: "Low",
+                        startColor: Color("Miserable"),
+                        endColor: Color("Blessed"),
+                        morphSpeed: 1.0, floatSpeed: 2.0, colorShiftSpeed: 1.0,
+                        action: {
+                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.low)
+
+                        }
+                    )
+                    .frame(width: blobSize, height: blobSize)
                 }
-            }
-            .padding()
-            .navigationDestination(isPresented: $navigateToEmotions) {
-                // Determine which emotions to show based on selected energy
-                let emotions = getEmotionsForEnergy(selectedEnergy)
-                
-                // Navigate to EmotionSelectionView
-                EmotionSelectionView(emotions: emotions)
-                    .navigationBarBackButtonHidden(true)
+                // These modifiers will apply to the entire VStack of blobs
+                .scaleEffect(animateElementsOut ? 0.5 : 1.0) // Zoom out effect
+                .opacity(animateElementsOut ? 0.0 : 1.0)    // Fade out effect
             }
         }
     }
-    private func getEmotionsForEnergy(_ energy: String) -> [Emotion] {
-        switch energy {
-        case "High":
-            return EmotionDataProvider.highEnergyEmotions
-            //        case "Medium":
-            //            return EmotionDataProvider.mediumEnergyEmotions
-            //        case "Low":
-            //            return EmotionDataProvider.lowEnergyEmotions
-        default:
-            return EmotionDataProvider.highEnergyEmotions
+
+    // This function is called when a blob button is pressed
+    private func triggerTransition(energyLevel: String) {
+        self.selectedEnergyLevel = energyLevel // Store the selected energy level
+
+        // Start the custom animation (zoom out, fade out)
+        withAnimation(.easeOut(duration: animationDuration)) {
+            animateElementsOut = true
+        }
+
+        // Delay the actual navigation until the animation is complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + animationDuration) {
+            navigateToEmotionView = true
         }
     }
 }
 
-struct EnergySelectionView_Previews: PreviewProvider {
+struct NewFloatingBlobView_Previews: PreviewProvider {
     static var previews: some View {
         EnergySelectionView()
+            //.background(Color.black.opacity(0.1))
+            .previewLayout(.sizeThatFits)
+            .padding()
             .preferredColorScheme(.dark)
     }
 }

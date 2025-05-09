@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct EmotionSelectionView: View {
+    @EnvironmentObject private var router: MoodAppRouter
     // State variable to track the ID of the currently centered emotion
     @State private var selectedEmotionID: Emotion.ID?
     @State private var navigateToNextScreen = false
@@ -11,6 +12,8 @@ struct EmotionSelectionView: View {
     // Environment variable to handle dismissal
     @Environment(\.dismiss) private var dismiss
     
+    let energyLevel: EmotionDataProvider.EnergyLevel
+    
     // List of emotions to display
     let emotions: [Emotion]
     
@@ -19,11 +22,17 @@ struct EmotionSelectionView: View {
     
     // Initializer with defaults
     init(
-        emotions: [Emotion] = EmotionDataProvider.highEnergyEmotions,
+        energyLevel: EmotionDataProvider.EnergyLevel = .high,
         horizontalSpacing: CGFloat = 0
     ) {
-        self.emotions = emotions
+        self.energyLevel = energyLevel
         self.horizontalSpacing = horizontalSpacing
+        
+        // Set the energy level in the provider
+        EmotionDataProvider.selectedEnergyLevel = energyLevel
+        
+        // Get appropriate emotions for the selected energy level
+        self.emotions = EmotionDataProvider.getEmotionsForCurrentEnergyLevel()
     }
     
     // Computed property to get the full selected emotion object
@@ -154,8 +163,7 @@ struct EmotionSelectionView: View {
                             impactFeedback.prepare()
                             impactFeedback.impactOccurred()
                             
-                            // Dismiss the view
-                            dismiss()
+                            router.navigateBack()
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 22, weight: .semibold))

@@ -11,7 +11,7 @@ import SwiftUI
 struct uclamoodsApp: App {
     var body: some Scene {
         WindowGroup {
-            EnergySelectionView()
+            MoodAppContainer()
         }
     }
 }
