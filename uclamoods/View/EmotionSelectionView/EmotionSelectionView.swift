@@ -9,6 +9,8 @@ struct EmotionSelectionView: View {
     @State private var previousEmotionID: Emotion.ID? = nil
     @State private var isInitialAppearance = true
     
+    @State private var pressingEmotionID: Emotion.ID? = nil
+    
     // Environment variable to handle dismissal
     @Environment(\.dismiss) private var dismiss
     
@@ -61,6 +63,32 @@ struct EmotionSelectionView: View {
         }
     }
     
+    private func navigateToCompleteCheckIn(with emotion: Emotion) {
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.prepare()
+        impactFeedback.impactOccurred()
+        
+        // Navigate to the complete check-in screen with the moodMorph transition
+        router.navigateToCompleteCheckIn(emotion: emotion)
+    }
+    
+    private func triggerPressAnimation(for emotionID: Emotion.ID, then action: @escaping () -> Void) {
+        // Set the pressing state
+        pressingEmotionID = emotionID
+        
+        // Reset after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            pressingEmotionID = nil
+            
+            // Execute the action after animation completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                action()
+            }
+        }
+    }
+    
+    
     var body: some View {
         GeometryReader { geometry in
             let availableHeight = geometry.size.height
@@ -106,7 +134,11 @@ struct EmotionSelectionView: View {
                             ForEach(emotions) { emotion in
                                 EmotionCircleView(
                                     emotion: emotion,
-                                    isSelected: selectedEmotionID == emotion.id
+                                    isSelected: selectedEmotionID == emotion.id,
+                                    isPressing: Binding(
+                                        get: { pressingEmotionID == emotion.id },
+                                        set: { _ in }
+                                    )
                                 )
                                 .frame(width: dynamicCircleSize, height: dynamicCircleSize)
                                 .padding(.vertical, 30)
@@ -117,8 +149,16 @@ struct EmotionSelectionView: View {
                                     impactFeedback.prepare()
                                     impactFeedback.impactOccurred()
                                     
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                        selectedEmotionID = emotion.id
+                                    triggerPressAnimation(for: emotion.id) {
+                                        if selectedEmotionID == emotion.id {
+                                            // If already selected, navigate to complete check-in
+                                            navigateToCompleteCheckIn(with: emotion)
+                                        } else {
+                                            // Otherwise, select this emotion
+                                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                                selectedEmotionID = emotion.id
+                                            }
+                                        }
                                     }
                                 }
                                 .scrollTransition { effect, phase in
@@ -163,7 +203,7 @@ struct EmotionSelectionView: View {
                             impactFeedback.prepare()
                             impactFeedback.impactOccurred()
                             
-                            router.navigateBack()
+                            router.navigateBack(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.1))
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 22, weight: .semibold))

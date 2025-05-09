@@ -12,6 +12,7 @@ struct uclamoodsApp: App {
     var body: some Scene {
         WindowGroup {
             MoodAppContainer()
+                .preferredColorScheme(.dark)
         }
     }
 }

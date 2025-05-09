@@ -52,11 +52,12 @@ struct EnergySelectionView: View {
                     Text("Tap on the color that best describes your energy level")
                         .font(.custom("Georgia", size: 24))
                         .fontWeight(.regular)
+                        .foregroundColor(.white)
                         .lineSpacing(1.5)
                         .padding(.top, -10)
                         .padding(.bottom, 20)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 20)
 
                     // High Energy Blob Button
                     // Replace 'FloatingBlobButtonPlaceholder' with your actual 'FloatingBlobButton'

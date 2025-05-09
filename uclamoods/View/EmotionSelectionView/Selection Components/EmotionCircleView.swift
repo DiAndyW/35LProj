@@ -1,9 +1,18 @@
 import SwiftUI
 
+// Updated EmotionCircleView
 struct EmotionCircleView: View {
     let emotion: Emotion
     let isSelected: Bool
+    @Binding var isPressing: Bool  // New binding for press animation
     @State private var glowOpacity: Double = 0.0
+    
+    // For preview only
+    init(emotion: Emotion, isSelected: Bool, isPressing: Binding<Bool> = .constant(false)) {
+        self.emotion = emotion
+        self.isSelected = isSelected
+        self._isPressing = isPressing
+    }
     
     var body: some View {
         ZStack {
@@ -11,7 +20,7 @@ struct EmotionCircleView: View {
             if isSelected {
                 Circle()
                     .fill(emotion.color)
-                    .scaleEffect(1.2)
+                    .scaleEffect(1.2 * (isPressing ? 0.95 : 1.0))
                     .opacity(glowOpacity)
                     .blur(radius: 10)
             }
@@ -20,7 +29,7 @@ struct EmotionCircleView: View {
             Circle()
                 .fill(emotion.color)
                 .shadow(color: emotion.color.opacity(0.6), radius: isSelected ? 10 : 3, x: 0, y: isSelected ? 5 : 2)
-                .scaleEffect(isSelected ? 1.0 : 0.8)
+                .scaleEffect((isSelected ? 1.0 : 0.8) * (isPressing ? 0.95 : 1.0))
             
             // Text
             Text(emotion.name)
@@ -28,11 +37,11 @@ struct EmotionCircleView: View {
                 .foregroundColor(.black)
                 .multilineTextAlignment(.center)
                 .padding(4)
-                .scaleEffect(isSelected ? 1.0 : 0.9)
+                .scaleEffect((isSelected ? 1.0 : 0.9) * (isPressing ? 0.95 : 1.0))
                 .opacity(isSelected ? 1.0 : 0.7)
-                //.shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isSelected)
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressing)
         .onAppear {
             if isSelected {
                 startGlowAnimation()
