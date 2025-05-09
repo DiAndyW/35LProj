@@ -1,18 +1,32 @@
 {
-  "name": "mern-project",
+  "name": "35lproj",
   "version": "1.0.0",
-  "private": true,
-  "workspaces": [
-    "client",
-    "server",
-    "shared"
-  ],
+  "description": "Backend for S25CS35L Proj",
+  "main": "src/app.js",
   "scripts": {
-    "client": "yarn workspace client start",
-    "server": "yarn workspace server dev",
-    "dev": "concurrently \"yarn server\" \"yarn client\""
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js"
   },
+<<<<<<< Updated upstream
   "devDependencies": {
     "concurrently": "^8.2.2"
+=======
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DiAndyW/35LProj.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DiAndyW/35LProj/issues"
+  },
+  "homepage": "https://github.com/DiAndyW/35LProj#readme",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "mongodb": "^6.16.0",
+    "mongoose": "^8.14.2",
+    "nodemon": "^3.1.10"
+>>>>>>> Stashed changes
   }
 }
