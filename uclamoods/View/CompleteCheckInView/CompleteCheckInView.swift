@@ -80,3 +80,7 @@ struct CompleteCheckInView: View {
         }
     }
 }
+
+#Preview {
+    CompleteCheckInView(emotion: EmotionDataProvider.highEnergyEmotions[0])
+}

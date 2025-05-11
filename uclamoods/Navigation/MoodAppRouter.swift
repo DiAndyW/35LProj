@@ -76,6 +76,10 @@ class MoodAppRouter: ObservableObject {
         performTransition(to: .emotionSelection(energyLevel: energyLevel))
     }
     
+//    func navigateToHome(from originPoint: CGPoint? = nil) {
+//        
+//    }
+//    
     func navigateBack(from originPoint: CGPoint? = nil) {
         if let originPoint = originPoint {
             transitionOrigin = originPoint
