@@ -41,32 +41,28 @@ struct MoodAppContainer: View {
                             .opacity(1.0 - (router.transitionProgress * 1.0))
                         
                     case .completeCheckIn(let emotion):
-                        CompleteCheckInView(emotion: emotion)
-                            .moodTransition(
-                                style: .bubbleExpand,
-                                progress: router.transitionProgress,
-                                origin: router.transitionOrigin,
-                                size: geometry.size
-                            )
-                            .scaleEffect(1.0 + (0.2 * router.transitionProgress))
-                            .opacity(1.0 - (router.transitionProgress * 0.8))
+                        if case .blobToTop = router.transitionStyle {
+                            // Use the blob transition for this screen
+                            CompleteCheckInView(emotion: emotion)
+                                .moodTransition(
+                                    style: router.transitionStyle,
+                                    progress: router.transitionProgress,
+                                    origin: router.transitionOrigin,
+                                    size: geometry.size
+                                )
+                        } else {
+                            // Use default transition
+                            CompleteCheckInView(emotion: emotion)
+                                .moodTransition(
+                                    style: .bubbleExpand,
+                                    progress: router.transitionProgress,
+                                    origin: router.transitionOrigin,
+                                    size: geometry.size
+                                )
+                        }
+                        
                     }
                 }
-#if DEBUG
-                // Debug overlay - only visible in debug builds
-                VStack {
-                    Spacer()
-                    HStack {
-                        Text("Progress: \(router.transitionProgress, specifier: "%.2f")")
-                        Text("Animating: \(router.isAnimating ? "Yes" : "No")")
-                    }
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.black.opacity(0.7))
-                    .cornerRadius(8)
-                    .padding(.bottom, 20)
-                }
-#endif
             }
             .environmentObject(router)
             .onAppear {

@@ -14,12 +14,12 @@ struct ContentView: View {
     
     @State var speed = 1.0
     
-    let colorPool: [Color] = [.blue, .green, .yellow, .orange, .red, .pink, .purple, .teal, .indigo]
+    let colorPool: [Color] = [.red, .orange]
     
     var body: some View {
         VStack {
             gradient
-                .backgroundStyle(.quaternary)
+                .backgroundStyle(.black)
                 .cornerRadius(16)
                 .padding(4)
             
@@ -31,6 +31,7 @@ struct ContentView: View {
         .padding(16)
         .navigationTitle("FluidGradient")
         .onAppear(perform: setColors)
+        .background(.black)
     }
     
     func setColors() {

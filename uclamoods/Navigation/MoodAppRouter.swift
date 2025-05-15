@@ -12,6 +12,7 @@ enum TransitionStyle {
     case bubbleExpand
     case revealMask
     case moodMorph
+    case blobToTop(emotion: Emotion)
     case custom((Bool) -> AnyTransition) // For truly custom transitions
 }
 
@@ -40,7 +41,11 @@ class MoodAppRouter: ObservableObject {
         screenSize = size
     }
     
-    func navigateToCompleteCheckIn(emotion: Emotion, from originPoint: CGPoint? = nil) {
+    func setTransitionStyle(_ style: TransitionStyle) {
+        self.transitionStyle = style
+    }
+    
+    func navigateToCompleteCheckIn(emotion: Emotion = EmotionDataProvider.defaultEmotion, from originPoint: CGPoint? = nil) {
         // Store current screen for back navigation
         storePreviousScreen()
         

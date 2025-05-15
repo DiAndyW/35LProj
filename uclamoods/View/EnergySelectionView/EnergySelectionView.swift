@@ -13,7 +13,7 @@ struct EnergySelectionView: View {
     @State private var navigateToEmotionView = false
     @State private var selectedEnergyLevel: String? = nil // To know which emotion set to load
     
-    let blobSize = 180.0
+    let blobSize = 200.0
     let animationDuration = 0.5 // Duration for the zoom-out and fade-out animation
     
     var body: some View {
@@ -23,7 +23,7 @@ struct EnergySelectionView: View {
             ZStack(alignment: .top) {
                 Color.black.edgesIgnoringSafeArea(.all) // Assuming a dark background
                 
-                VStack(spacing: 20) {
+                VStack(spacing: 0) {
                     HStack {
                         Button(action: {
                             // Handle back/dismiss action
@@ -47,6 +47,7 @@ struct EnergySelectionView: View {
                                 .frame(width: 44, height: 44)
                         }
                     }
+                    .padding(.bottom, 20)
                     .padding(.horizontal)
                     
                     Text("Tap on the color that best describes your energy level")
@@ -64,39 +65,47 @@ struct EnergySelectionView: View {
                     // Ensure your 'FloatingBlobButton' takes 'blobSize' and 'action' parameters.
                     FloatingBlobButton(
                         text: "High",
+                        size: 220,
                         startColor: Color("Rage"), // Ensure these colors are in your Assets.xcassets
                         endColor: Color("Euphoric"),
                         // Pass other parameters your FloatingBlobButton expects (morphSpeed, etc.)
-                        morphSpeed: 3.0, floatSpeed: 3.0, colorShiftSpeed: 3.0,
+                        morphSpeed: 1.25, floatSpeed: 1.0, colorShiftSpeed: 3.0,
+                        colorPool: [Color("Rage"), Color("Euphoric")],
                         action: {
                             router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.high)
                         }
                     )
+                    
                     .frame(width: blobSize, height: blobSize) // As in your original layout
                     
                     // Medium Energy Blob Button
                     FloatingBlobButton(
                         text: "Medium",
+                        size: 220,
                         startColor: Color("Disgusted"),
                         endColor: Color("Blissful"),
-                        morphSpeed: 2.0, floatSpeed: 2.0, colorShiftSpeed: 2.0,
+                        morphSpeed: 1.0, floatSpeed: 0.75, colorShiftSpeed: 2.0,
+                        colorPool: [Color("Disgusted"), Color("Blissful")],
                         action: {
                             router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.medium)
                         }
                     )
+                    
                     .frame(width: blobSize, height: blobSize)
                     
                     // Low Energy Blob Button
                     FloatingBlobButton(
                         text: "Low",
+                        size: 220,
                         startColor: Color("Miserable"),
                         endColor: Color("Blessed"),
-                        morphSpeed: 1.0, floatSpeed: 2.0, colorShiftSpeed: 1.0,
+                        morphSpeed: 0.75, floatSpeed: 0.5, colorShiftSpeed: 1.0,
+                        colorPool: [Color("Miserable"), Color("Blessed")],
                         action: {
                             router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.low)
-                            
                         }
                     )
+                    
                     .frame(width: blobSize, height: blobSize)
                 }
                 // These modifiers will apply to the entire VStack of blobs

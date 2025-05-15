@@ -1,9 +1,10 @@
 import SwiftUI
+import FluidGradient
 
 // Define a custom type for animatable control points
 struct AnimatablePoints: VectorArithmetic {
     var points: [CGPoint]
-
+    
     // Required by VectorArithmetic
     var magnitudeSquared: Double {
         // A simple sum of squares of all coordinates.
@@ -13,13 +14,13 @@ struct AnimatablePoints: VectorArithmetic {
             sum + Double(point.x * point.x + point.y * point.y)
         }
     }
-
+    
     mutating func scale(by rhs: Double) {
         points = points.map { point in
             CGPoint(x: point.x * CGFloat(rhs), y: point.y * CGFloat(rhs))
         }
     }
-
+    
     // Required by VectorArithmetic.
     // Assumes a fixed number of control points (e.g., 8 as used in your views).
     // Adjust count if your number of control points varies and requires a different zero state.
@@ -27,7 +28,7 @@ struct AnimatablePoints: VectorArithmetic {
         // Your current implementation uses 8 control points.
         return AnimatablePoints(points: Array(repeating: CGPoint.zero, count: 8))
     }
-
+    
     // Required by VectorArithmetic
     static func + (lhs: AnimatablePoints, rhs: AnimatablePoints) -> AnimatablePoints {
         // Ensure point counts match, which SwiftUI should handle for animations
@@ -46,7 +47,7 @@ struct AnimatablePoints: VectorArithmetic {
         }
         return AnimatablePoints(points: resultPoints)
     }
-
+    
     // Required by VectorArithmetic
     static func - (lhs: AnimatablePoints, rhs: AnimatablePoints) -> AnimatablePoints {
         guard lhs.points.count == rhs.points.count else {
@@ -61,7 +62,7 @@ struct AnimatablePoints: VectorArithmetic {
         }
         return AnimatablePoints(points: resultPoints)
     }
-
+    
     // Initializer
     init(points: [CGPoint]) {
         self.points = points
@@ -70,7 +71,7 @@ struct AnimatablePoints: VectorArithmetic {
 
 struct BlobShape: Shape {
     var controlPoints: [CGPoint] // This remains your source of truth
-
+    
     // Modify animatableData to use the new AnimatablePoints struct
     var animatableData: AnimatablePoints {
         get { AnimatablePoints(points: controlPoints) }
@@ -135,26 +136,39 @@ struct FloatingBlobView: View {
     @State private var offset = CGSize.zero
     @State private var hueRotation = Angle.degrees(0)
     
+    // State for FluidGradient
+    @State private var colors: [Color] = []
+    @State private var highlights: [Color] = []
+    @State private var speed: Double = 1.0
+    
+    var gradient: some View {
+        FluidGradient(blobs: colors,
+                      highlights: highlights,
+                      speed: speed)
+    }
+    
+    let colorPool: [Color] = [Color("Rage"), Color("Euphoric")]
+    
     var body: some View {
         GeometryReader { geometry in
-            BlobShape(controlPoints: controlPoints)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(hue: 0.6, saturation: 0.8, brightness: 0.9),
-                            Color(hue: 0.8, saturation: 0.8, brightness: 0.9)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+            ZStack {
+                // First, create the FluidGradient
+                gradient
+                    .backgroundStyle(.quaternary)
+                .blur(radius: 5)
+                // Then mask it with the BlobShape
+                .mask(
+                    BlobShape(controlPoints: controlPoints)
                 )
-                .blur(radius: 10)
-                .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
-                .offset(offset)
-                .hueRotation(hueRotation)
-                .onAppear {
-                    startAnimations(in: geometry.size)
-                }
+                .blur(radius: 8)
+            }
+            .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+            .offset(offset)
+            //.hueRotation(hueRotation)
+            .onAppear {
+                startAnimations(in: geometry.size)
+                setColors() // Initialize FluidGradient colors
+            }
         }
         .frame(width: 200, height: 200)
     }
@@ -162,13 +176,13 @@ struct FloatingBlobView: View {
     private func startAnimations(in size: CGSize) {
         // Animate blob shape
         withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
-            controlPoints = (0..<8).map { _ in
+            controlPoints = (0..<6).map { _ in
                 CGPoint(x: CGFloat.random(in: 0...1), y: CGFloat.random(in: 0...1))
             }
         }
         
         // Animate floating motion
-        let maxX = size.width - 200 // Adjust based on blob size
+        let maxX = size.width - 200
         let maxY = size.height - 200
         withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
             offset = CGSize(
@@ -182,12 +196,23 @@ struct FloatingBlobView: View {
             hueRotation = Angle.degrees(360)
         }
     }
+    
+    func setColors() {
+        colors = []
+        highlights = []
+        for _ in 0...Int.random(in: 5...5) {
+            colors.append(colorPool.randomElement()!)
+        }
+        for _ in 0...Int.random(in: 5...5) {
+            highlights.append(colorPool.randomElement()!)
+        }
+    }
 }
 
 struct FloatingBlobView_Previews: PreviewProvider {
     static var previews: some View {
         FloatingBlobView()
-            //.background(Color.black.opacity(0.1))
+        //.background(Color.black.opacity(0.1))
             .previewLayout(.sizeThatFits)
             .padding()
             .preferredColorScheme(.dark)
