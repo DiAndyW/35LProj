@@ -61,7 +61,7 @@ struct CompleteCheckInView: View {
                         impactFeedback.impactOccurred()
                         
                         // Navigate back
-                        router.navigateBack()
+                        router.navigateToHome()
                     }) {
                         Text("Done")
                             .font(.system(size: 18, weight: .semibold))

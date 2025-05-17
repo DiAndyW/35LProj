@@ -9,6 +9,7 @@ import SwiftUI
 struct MoodAppContainer: View {
     @StateObject private var router = MoodAppRouter()
     
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -50,6 +51,20 @@ struct MoodAppContainer: View {
                             )
                             .scaleEffect(1.0 + (0.2 * router.transitionProgress))
                             .opacity(1.0 - (router.transitionProgress * 0.8))
+                    case .home:
+                        HomeView()
+                    
+                    case .settings:
+                        SettingsView()
+                    
+                    case .friends:
+                        FriendsView()
+                    
+                    case .stats:
+                        StatsView()
+                        
+                    case .signIn:
+                        SignInView()
                     }
                 }
             }
@@ -79,4 +94,8 @@ struct MoodAppContainer: View {
             return EmotionDataProvider.highEnergyEmotions
         }
     }
+}
+
+#Preview {
+    MoodAppContainer()
 }

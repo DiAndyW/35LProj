@@ -74,13 +74,14 @@ struct SignInView: View {
                         }
                     }
                     
-                    
+                    //need to add logic here to validate login info
+                    //call to backend
                     Button(action: {
                         let feedback = UIImpactFeedbackGenerator(style: .medium)
                         feedback.prepare()
                         feedback.impactOccurred()
                         
-//                        router.navigate(to: .home)
+                        router.navigateToHome()
                     }) {
                         Text("Log In")
                             .font(.custom("Georgia", size: 20))
@@ -99,11 +100,6 @@ struct SignInView: View {
         }
         
     }
-    
-//    Text("Check-in Complete")
-//        .font(.custom("Georgia", size: 28))
-//        .fontWeight(.bold)
-//        .foregroundColor(.white)
 }
 
 #Preview {

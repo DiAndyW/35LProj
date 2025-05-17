@@ -4,6 +4,11 @@ enum MoodAppScreen: Equatable {
     case energySelection
     case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel)
     case completeCheckIn(emotion: Emotion)
+    case home
+    case signIn
+    case settings
+    case friends
+    case stats
 }
 
 enum TransitionStyle {
@@ -16,7 +21,8 @@ enum TransitionStyle {
 }
 
 class MoodAppRouter: ObservableObject {
-    @Published private(set) var currentScreen: MoodAppScreen = .energySelection
+//    @Published private(set) var currentScreen: MoodAppScreen = .energySelection
+    @Published private(set) var currentScreen: MoodAppScreen = .signIn
     @Published private(set) var isAnimating = false
     @Published private(set) var transitionProgress: CGFloat = 0 // 0 to 1
     
@@ -76,10 +82,44 @@ class MoodAppRouter: ObservableObject {
         performTransition(to: .emotionSelection(energyLevel: energyLevel))
     }
     
-//    func navigateToHome(from originPoint: CGPoint? = nil) {
-//        
-//    }
-//    
+    func navigateToEnergySelection(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        
+        performTransition(to: .energySelection)
+    }
+    
+    func navigateToHome(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        
+        //Not needed for now, just for testing purposes
+//        transitionStyle = .revealMask
+        
+        // Perform the transition
+        performTransition(to: .home)
+    }
+    
+    func navigateToStats(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        performTransition(to: .stats)
+    }
+    
+    func navigateToFriends(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        performTransition(to: .friends)
+    }
+    
+    func navigateToSettings(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        performTransition(to: .settings)
+    }
+    
+    func navigateToSignIn(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        
+        //maybe need to add logic to make user not logged in anymore?
+        performTransition(to: .signIn)
+    }
+    
     func navigateBack(from originPoint: CGPoint? = nil) {
         if let originPoint = originPoint {
             transitionOrigin = originPoint
@@ -105,7 +145,29 @@ class MoodAppRouter: ObservableObject {
         case .energySelection:
             // Already at the root screen, do nothing or handle as needed
             break
+            
+        case .home:
+            // Root screen
+            break
+            
+        case .signIn:
+            // Root screen
+            break
+            
+        case .settings:
+            // Root screen
+            break
+            
+        case .friends:
+            // Root screen
+            break
+            
+        case .stats:
+            // Root Screen
+            break
         }
+    
+        
     }
     
     private func storePreviousScreen() {
