@@ -9,6 +9,8 @@ enum MoodAppScreen: Equatable {
     case settings
     case friends
     case stats
+    case signUp
+    case completeProfile
 }
 
 enum TransitionStyle {
@@ -120,6 +122,18 @@ class MoodAppRouter: ObservableObject {
         performTransition(to: .signIn)
     }
     
+    func navigateToSignUp(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        
+        //maybe need to add logic to make user not logged in anymore?
+        performTransition(to: .signUp)
+    }
+    
+    func navigateToCompleteProfile(from originPoint: CGPoint? = nil) {
+        storePreviousScreen()
+        performTransition(to: .completeProfile)
+    }
+    
     func navigateBack(from originPoint: CGPoint? = nil) {
         if let originPoint = originPoint {
             transitionOrigin = originPoint
@@ -164,6 +178,13 @@ class MoodAppRouter: ObservableObject {
             
         case .stats:
             // Root Screen
+            break
+            
+        case .signUp:
+            performTransition(to: .signIn)
+            
+        case .completeProfile:
+            //Root screen
             break
         }
     

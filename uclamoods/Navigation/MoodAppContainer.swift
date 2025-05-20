@@ -65,6 +65,12 @@ struct MoodAppContainer: View {
                         
                     case .signIn:
                         SignInView()
+                        
+                    case .signUp:
+                        SignUpView()
+                    
+                    case .completeProfile:
+                        CompleteProfileView()
                     }
                 }
             }

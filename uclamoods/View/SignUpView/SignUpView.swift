@@ -1,13 +1,13 @@
 //
-//  SignInView.swift
+//  SignUpView.swift
 //  uclamoods
 //
-//  Created by Di Xuan Wang on 5/10/25.
+//  Created by Di Xuan Wang on 5/19/25.
 //
 
 import SwiftUI
 
-struct SignInView: View {
+struct SignUpView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @State private var email: String = ""
     @State private var password: String = ""
@@ -24,7 +24,7 @@ struct SignInView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.white)
                         .frame(alignment: .center)
-                    Text("Log In")
+                    Text("Sign Up")
                         .font(.custom("Georgia", size: 40))
                         .fontWeight(.bold)
                         .foregroundColor(.white)
@@ -64,26 +64,18 @@ struct SignInView: View {
                             .font(.custom("Georgia", size: 20))
                             .frame(width: 300)
                         
-                        Button(action: {
-                            print("Forgot password tapped")
-                        }) {
-                            Text("Forgot Password?")
-                                .font(.custom("Georgia", size: 16))
-                                .foregroundColor(.white)
-                                .underline()
-                        }
                     }
                     
-                    //need to add logic here to validate login info
+                    //need to add logic here to create acc
                     //call to backend
                     Button(action: {
                         let feedback = UIImpactFeedbackGenerator(style: .medium)
                         feedback.prepare()
                         feedback.impactOccurred()
                         
-                        router.navigateToHome()
+                        router.navigateToCompleteProfile()
                     }) {
-                        Text("Log In")
+                        Text("Sign Up")
                             .font(.custom("Georgia", size: 20))
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -98,9 +90,9 @@ struct SignInView: View {
                         feedback.prepare()
                         feedback.impactOccurred()
                         
-                        router.navigateToSignUp()
+                        router.navigateToSignIn()
                     }) {
-                        Text("Sign Up")
+                        Text("Already have an account?")
                             .font(.custom("Georgia", size: 20))
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -120,6 +112,6 @@ struct SignInView: View {
 }
 
 #Preview {
-    SignInView()
+    SignUpView()
         .environmentObject(MoodAppRouter())
 }
