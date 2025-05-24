@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "backend",
   "main": "src/app.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js"
@@ -23,6 +24,7 @@
     "express": "^5.1.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.14.2",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "jsonwebtoken": "^9.0.2"
   }
 }

@@ -2,79 +2,58 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
+// Define the schema structure - think of this as the blueprint for your data
 const moodCheckInSchema = new Schema({
-  // Basic user information
+  // Who created this check-in (required field)
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
 
-  // Emotion data (from original Mood schema)
+  // The emotion they're feeling (required field)
   emotion: {
     name: {
       type: String,
       required: true,
     },
+    // Optional emotional attributes - these store as a flexible object
     attributes: {
-      pleasantness: {
-        type: Number,
-        default: 0,
-      },
-      intensity: {
-        type: Number,
-        default: 0,
-      },
-      clarity: {
-        type: Number,
-        default: 0,
-      },
-      control: {
-        type: Number,
-        default: 0,
-      },
+      type: Object,
+      default: {}
     }
   },
 
-  // User input content 
+  // Optional explanation of why they feel this way
   reason: {
     type: String,
     maxlength: 500,
   },
 
-  // Social context
+  // People they were with (optional array)
   people: [{
-    name: {
-      type: String,
-      required: true
-    },
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    }
+    type: String
   }],
 
-  // Activities
+  // Activities they were doing (optional array)
   activities: [{
-    name: {
-      type: String,
-      required: true
-    },
-    isCustom: {
-      type: Boolean,
-      default: false
-    }
+    type: String
   }],
 
-  // Location data
+  // Location information (optional)
   location: {
     name: {
       type: String,
       default: null
     },
     coordinates: {
-      type: [Number],
-      validate: v => v == null || v.length === 2,
+      type: [Number], // Array of exactly 2 numbers [longitude, latitude]
+      validate: {
+        validator: function (v) {
+          return v == null || v.length === 2;
+        },
+        message: 'Coordinates must be an array of exactly 2 numbers'
+      },
       default: null
     },
     isShared: {
@@ -83,49 +62,36 @@ const moodCheckInSchema = new Schema({
     }
   },
 
-  // Privacy settings
+  // Who can see this check-in
   privacy: {
     type: String,
-    enum: ['friends', 'public', 'private'],
+    enum: ['friends', 'public', 'private'], // Only these three values allowed
     default: 'private',
   },
 
-  // Timestamp
+  // When this check-in was created
   timestamp: {
     type: Date,
-    default: Date.now,
-  },
-
-  // Backwards compatibility fields that map to new structure
-  get isAnonymous() {
-    return this.privacy === 'private';
-  },
-
-  // Original Mood structure for complete backwards compatibility
-  get mood() {
-    return {
-      label: this.emotion.name,
-      attributes: this.emotion.attributes,
-      note: this.reason,
-      time: this.timestamp
-    };
-  },
-  set mood(value) {
-    if (value.label) this.emotion.name = value.label;
-    if (value.attributes) this.emotion.attributes = value.attributes;
-    if (value.note !== undefined) this.reason = value.note;
-    if (value.time) this.timestamp = value.time;
+    default: Date.now, // Automatically set to current time
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true, getters: true },
-  toObject: { virtuals: true, getters: true }
+  // Schema options - these control how the schema behaves
+  timestamps: true, // Automatically add createdAt and updatedAt fields
+  toJSON: { virtuals: true }, // Include virtual fields when converting to JSON
+  toObject: { virtuals: true } // Include virtual fields when converting to plain object
 });
 
-// Virtual fields for frontend consumption
-moodCheckInSchema.virtual('displayData').get(function() {
+// Virtual property - computed field that doesn't exist in the database
+// This calculates whether the check-in is anonymous based on privacy setting
+moodCheckInSchema.virtual('isAnonymous').get(function () {
+  return this.privacy === 'private';
+});
+
+// Virtual property that formats data for frontend consumption
+// This creates a clean, consistent format for your API responses
+moodCheckInSchema.virtual('displayData').get(function () {
   return {
-    id: this._id,
+    _id: this._id,
     userId: this.userId,
     emotion: {
       name: this.emotion.name,
@@ -135,22 +101,26 @@ moodCheckInSchema.virtual('displayData').get(function() {
     people: this.people,
     activities: this.activities,
     privacy: this.privacy,
-    location: this.location ? {
-      displayName: this.location.name,
+    location: this.location.name ? {
+      name: this.location.name,
       coordinates: this.location.coordinates,
       isShared: this.location.isShared
     } : null,
     timestamp: this.timestamp,
-    isAnonymous: this.isAnonymous
+    isAnonymous: this.isAnonymous, // Uses the virtual property we defined above
+    createdAt: this.createdAt,
+    updatedAt: this.updatedAt
   };
 });
 
-// Indexes for efficient querying
-moodCheckInSchema.index({ userId: 1, timestamp: -1 });
-moodCheckInSchema.index({ privacy: 1 });
-moodCheckInSchema.index({ 'people.userId': 1 });
-moodCheckInSchema.index({ 'location.coordinates': '2dsphere' });
+// Database indexes for faster queries
+// Think of these like bookmarks that help MongoDB find data quickly
+moodCheckInSchema.index({ userId: 1, timestamp: -1 }); // Find user's check-ins by date
+moodCheckInSchema.index({ privacy: 1 }); // Filter by privacy level
+moodCheckInSchema.index({ 'location.coordinates': '2dsphere' }); // Geographic queries
 
+// Create the model from the schema
+// This is like creating a factory that can make check-in objects
 const MoodCheckIn = mongoose.model('MoodCheckIn', moodCheckInSchema);
 
 export default MoodCheckIn;
