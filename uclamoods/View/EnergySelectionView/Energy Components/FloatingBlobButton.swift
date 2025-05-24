@@ -5,6 +5,7 @@
 //  Created by Yang Gao on 5/8/25.
 //
 import SwiftUI
+import FluidGradient
 
 struct FloatingBlobButton: View {
     @State private var controlPoints: [CGPoint]
@@ -17,6 +18,7 @@ struct FloatingBlobButton: View {
     
     // Size and appearance
     let size: CGFloat
+    let fontSize: CGFloat
     let blurRadius: CGFloat
     
     // Colors
@@ -32,10 +34,28 @@ struct FloatingBlobButton: View {
     // Movement range (0-1, where 1 = full container size)
     let movementRange: CGFloat
     
+    let isSelected: Bool
+    @State private var glowOpacity: Double = 0.0
+    @Binding var isPressing: Bool
+    
+    // State for FluidGradient
+    @State private var colors: [Color] = []
+    @State private var highlights: [Color] = []
+    @State private var speed: Double = 1.0
+    
+    var gradient: some View {
+        FluidGradient(blobs: colors,
+                      highlights: highlights,
+                      speed: speed)
+    }
+    
+    var colorPool: [Color] = [Color("Rage"), Color("Euphoric")]
+    
     init(
         text: String,
-        size: CGFloat = 180,
-        blurRadius: CGFloat = 5,
+        size: CGFloat = 200,
+        fontSize: CGFloat = 20,
+        blurRadius: CGFloat = 8,
         startColor: Color? = nil,
         endColor: Color? = nil,
         useColorAnimation: Bool = true,
@@ -43,11 +63,16 @@ struct FloatingBlobButton: View {
         floatSpeed: Double = 1.0,
         colorShiftSpeed: Double = 1.0,
         movementRange: CGFloat = 0.5,
+        colorPool: [Color] = [Color("Rage"), Color("Euphoric")],
+        isSelected: Bool = false,
+        isPressing: Binding<Bool> = .constant(false),
+        
         action: @escaping () -> Void
     ) {
         self.text = text
         self.action = action
         self.size = size
+        self.fontSize = fontSize
         self.blurRadius = blurRadius
         self.useColorAnimation = useColorAnimation
         self.morphSpeed = morphSpeed
@@ -66,47 +91,104 @@ struct FloatingBlobButton: View {
             self.endColor = Color(hue: baseHue + 0.2, saturation: 0.8, brightness: 0.9)
         }
         
+        self.colorPool = colorPool
+        
         // Initialize with random control points
         _controlPoints = State(initialValue: (0..<8).map { _ in
             CGPoint(x: CGFloat.random(in: 0...1), y: CGFloat.random(in: 0...1))
         })
+        self.isSelected = isSelected
+        self._isPressing = isPressing
     }
     
     var body: some View {
         Button(action: action) {
             GeometryReader { geometry in
                 ZStack {
-                    // Blob background
-                    BlobShape(controlPoints: controlPoints)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    interpolateColor(startColor: startColor, endColor: endColor, fraction: colorInterpolation),
-                                    interpolateColor(startColor: startColor, endColor: endColor, fraction: min(colorInterpolation + 0.3, 1.0))
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                    if isSelected {
+                        gradient
+                            .backgroundStyle(.quaternary)
+                            .mask(
+                                BlobShape(controlPoints: controlPoints)
+                                    .scaleEffect(1.4 * (isPressing ? 0.95 : 1.0))
                             )
-                        )
-                        //.blur(radius: blurRadius)
-                        .shadow(color: startColor.opacity(0.7), radius: 15, x: 0, y: 0)
-                        .offset(offset)
+                            .blur(radius: 20)
+                            .opacity(glowOpacity)
+                            .offset(y: 10) // Similar to padding top
+                    }
                     
+                    gradient
+                        .backgroundStyle(.quaternary)
+                        .blur(radius: 5)
+                        .mask(
+                            BlobShape(controlPoints: controlPoints)
+                        )
+                        .blur(radius: isSelected ? 8 : 8)
+                        .scaleEffect((isSelected ? 1.15 : 1.0) * (isPressing ? 0.95 : 1.0))
+                        .shadow(
+                            color: colorPool.first?.opacity(0.6) ?? Color.clear,
+                            radius: isSelected ? 10 : 3,
+                            x: 0,
+                            y: isSelected ? 5 : 2
+                        )
                     // Text overlay
                     Text(text)
-                        .font(.custom("Georgia", size: 20))
-                        //.blur(radius: 0.4)
-                        .fontWeight(.medium)
-                        .foregroundColor(.black)
-                        
+                        .font(.custom("Georgia", size: isSelected ? 24 : fontSize))
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(4)
+                        .scaleEffect((isSelected ? 1.0 : 0.9) * (isPressing ? 0.95 : 1.0))
+                        .opacity(isSelected ? 1.0 : 1.0)
+                        .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 1)
+                    
+                    
                 }
+                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isSelected)
+                .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressing)
                 .onAppear {
                     startAnimations(in: geometry.size)
+                    setColors()
+                    if isSelected {
+                        startGlowAnimation()
+                    }
+                }
+                .onChange(of: isSelected) { newValue in
+                    if newValue {
+                        startGlowAnimation()
+                    } else {
+                        glowOpacity = 0.0
+                    }
                 }
             }
         }
         .buttonStyle(PlainButtonStyle())
         .frame(width: size, height: size)
+    }
+    
+    private func startGlowAnimation() {
+        // Reset to start state
+        glowOpacity = 0.0
+        
+        // Start the continuous pulsing animation
+        withAnimation(
+            .easeInOut(duration: 1.5)
+            .repeatForever(autoreverses: true)
+        ) {
+            glowOpacity = 0.5
+        }
+    }
+    
+    
+    func setColors() {
+        colors = []
+        highlights = [.white]
+        for _ in 0...Int.random(in: 5...5) {
+            colors.append(colorPool.randomElement()!)
+        }
+        for _ in 0...Int.random(in: 5...5) {
+            highlights.append(colorPool.randomElement()!)
+        }
     }
     
     // Color interpolation function similar to EmotionDataProvider
@@ -150,7 +232,7 @@ struct FloatingBlobButton: View {
         
         // Animate blob shape
         withAnimation(.easeInOut(duration: morphDuration).repeatForever(autoreverses: true)) {
-            controlPoints = (0..<8).map { _ in
+            controlPoints = (0..<5).map { _ in
                 CGPoint(x: CGFloat.random(in: 0...1), y: CGFloat.random(in: 0...1))
             }
         }
@@ -181,9 +263,9 @@ struct FloatingBlobButton_Preview: PreviewProvider {
         FloatingBlobButton(text: "Test", action: {
             
         })
-            //.background(Color.black.opacity(0.1))
-            .previewLayout(.sizeThatFits)
-            .padding()
-            .preferredColorScheme(.dark)
+        //.background(Color.black.opacity(0.1))
+        .previewLayout(.sizeThatFits)
+        .padding()
+        .preferredColorScheme(.dark)
     }
 }

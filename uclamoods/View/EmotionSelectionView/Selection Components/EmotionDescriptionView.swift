@@ -46,6 +46,7 @@ struct EmotionDescriptionView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
                         .font(.custom("Roberto", size: 16))
+                        .shadow(color: .white.opacity(0.2), radius: 1, x: 0, y: 0)
                         .tracking(-0.3)
                         .foregroundColor(.white.opacity(1))
                         .lineLimit(3)

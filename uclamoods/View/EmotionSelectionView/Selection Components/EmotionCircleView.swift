@@ -22,7 +22,8 @@ struct EmotionCircleView: View {
                     .fill(emotion.color)
                     .scaleEffect(1.2 * (isPressing ? 0.95 : 1.0))
                     .opacity(glowOpacity)
-                    .blur(radius: 10)
+                    .blur(radius: 12)
+                    .padding(.top, 10)
             }
             
             // Main circle
@@ -30,6 +31,7 @@ struct EmotionCircleView: View {
                 .fill(emotion.color)
                 .shadow(color: emotion.color.opacity(0.6), radius: isSelected ? 10 : 3, x: 0, y: isSelected ? 5 : 2)
                 .scaleEffect((isSelected ? 1.0 : 0.8) * (isPressing ? 0.95 : 1.0))
+                .blur(radius: 8)
             
             // Text
             Text(emotion.name)
@@ -39,6 +41,7 @@ struct EmotionCircleView: View {
                 .padding(4)
                 .scaleEffect((isSelected ? 1.0 : 0.9) * (isPressing ? 0.95 : 1.0))
                 .opacity(isSelected ? 1.0 : 0.7)
+                .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 1)
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isSelected)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressing)
@@ -65,7 +68,7 @@ struct EmotionCircleView: View {
             .easeInOut(duration: 1.5)
             .repeatForever(autoreverses: true)
         ) {
-            glowOpacity = 0.2
+            glowOpacity = 0.5
         }
     }
 }

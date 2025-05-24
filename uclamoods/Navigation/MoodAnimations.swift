@@ -23,13 +23,13 @@ struct MoodAnimations {
                 content
                     .scaleEffect(1.0 - (0.2 * progress))
                     .opacity(1.0 - progress)
-            
+                
             case .zoomSlide:
                 content
                     .scaleEffect(1.0 - (0.15 * progress))
                     .opacity(1.0 - progress)
                     .offset(x: progress * 50, y: 0)
-            
+                
             case .bubbleExpand:
                 content
                     .mask(
@@ -63,6 +63,16 @@ struct MoodAnimations {
                     .blur(radius: progress * 10)
                     .modifier(BlobMaskModifier(progress: progress))
                 
+            case .blobToTop(let emotion):
+                content
+                    .modifier(BlobToTopTransition(
+                        emotion: emotion,
+                        progress: progress,
+                        originPoint: originPoint,
+                        screenSize: screenSize
+                    ))
+                
+                
             case .custom(let transitionFactory):
                 content
                     .transition(transitionFactory(progress > 0.5))
@@ -92,6 +102,59 @@ struct MoodAnimations {
                 .position(x: center.x, y: center.y)
                 .blur(radius: 15)
         }
+    }
+}
+
+struct BlobToTopTransition: ViewModifier {
+    let emotion: Emotion
+    let progress: CGFloat
+    let originPoint: CGPoint
+    let screenSize: CGSize
+    @Namespace private var namespace
+    
+    func body(content: Content) -> some View {
+        ZStack {
+            // The rest of the content fades out
+            content
+                .opacity(1.0 - progress)
+                .scaleEffect(1.0 - (0.1 * progress))
+                .blur(radius: progress * 5)
+            
+            // The blob that animates to top
+            if progress > 0 {
+                FloatingBlobButton(
+                    text: emotion.name,
+                    morphSpeed: 1.0,
+                    floatSpeed: 0.75,
+                    colorShiftSpeed: 2.0,
+                    colorPool: [emotion.color],
+                    isSelected: true,
+                    isPressing: .constant(false),
+                    action: {}
+                )
+                .frame(width: interpolatedSize, height: interpolatedSize)
+                .position(interpolatedPosition)
+                .zIndex(1000)
+            }
+        }
+    }
+    
+    private var interpolatedSize: CGFloat {
+        let startSize: CGFloat = 120 // Original blob size
+        let endSize: CGFloat = 100 // Final size at top
+        return startSize + (endSize - startSize) * progress
+    }
+    
+    private var interpolatedPosition: CGPoint {
+        let endPosition = CGPoint(x: screenSize.width / 2, y: 100)
+        return CGPoint(
+            x: originPoint.x + (endPosition.x - originPoint.x) * progress,
+            y: originPoint.y + (endPosition.y - originPoint.y) * easeInOut(progress)
+        )
+    }
+    
+    private func easeInOut(_ t: CGFloat) -> CGFloat {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
     }
 }
 

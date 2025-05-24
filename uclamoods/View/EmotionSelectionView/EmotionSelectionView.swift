@@ -4,6 +4,7 @@ import UIKit
 struct EmotionSelectionView: View {
     @EnvironmentObject private var router: MoodAppRouter
     // State variable to track the ID of the currently centered emotion
+    @State private var selectedBlobPosition: CGPoint = .zero
     @State private var selectedEmotionID: Emotion.ID?
     @State private var navigateToNextScreen = false
     @State private var previousEmotionID: Emotion.ID? = nil
@@ -64,13 +65,30 @@ struct EmotionSelectionView: View {
     }
     
     private func navigateToCompleteCheckIn(with emotion: Emotion) {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.prepare()
-        impactFeedback.impactOccurred()
-        
-        // Navigate to the complete check-in screen with the moodMorph transition
-        router.navigateToCompleteCheckIn(emotion: emotion)
+            // Capture the position of the selected blob
+            if let frame = getBlobFrame(for: emotion) {
+                selectedBlobPosition = CGPoint(
+                    x: frame.midX,
+                    y: frame.midY
+                )
+            }
+            
+            // Add haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.prepare()
+            impactFeedback.impactOccurred()
+            
+            // Navigate with the blob transition
+            router.setTransitionStyle(.blobToTop(emotion: emotion))
+                                  
+            router.navigateToCompleteCheckIn(emotion: emotion, from: selectedBlobPosition)
+        }
+    // Helper to get blob frame (you'll need to implement this)
+    private func getBlobFrame(for emotion: Emotion) -> CGRect? {
+        // This would require using GeometryReader or preference keys
+        // to capture the actual frame of the blob
+        // For now, return an approximate position
+        return nil
     }
     
     private func triggerPressAnimation(for emotionID: Emotion.ID, then action: @escaping () -> Void) {
@@ -87,7 +105,6 @@ struct EmotionSelectionView: View {
             }
         }
     }
-    
     
     var body: some View {
         GeometryReader { geometry in
@@ -132,34 +149,45 @@ struct EmotionSelectionView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: horizontalSpacing) {
                             ForEach(emotions) { emotion in
-                                EmotionCircleView(
-                                    emotion: emotion,
-                                    isSelected: selectedEmotionID == emotion.id,
-                                    isPressing: Binding(
-                                        get: { pressingEmotionID == emotion.id },
-                                        set: { _ in }
+                                ZStack {
+                                    FloatingBlobButton(
+                                        text: emotion.name,
+                                        morphSpeed: 1.0,
+                                        floatSpeed: 0.75,
+                                        colorShiftSpeed: 2.0,
+                                        colorPool: [emotion.color],
+                                        isSelected: selectedEmotionID == emotion.id,
+                                                isPressing: Binding(
+                                                    get: { pressingEmotionID == emotion.id },
+                                                    set: { _ in }
+                                                ),
+                                        action: {
+                                            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+                                            impactFeedback.prepare()
+                                            impactFeedback.impactOccurred()
+                                            
+                                            triggerPressAnimation(for: emotion.id) {
+                                                if selectedEmotionID == emotion.id {
+                                                    // If already selected, navigate to complete check-in
+                                                    navigateToCompleteCheckIn(with: emotion)
+                                                } else {
+                                                    // Otherwise, select this emotion
+                                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                                        selectedEmotionID = emotion.id
+                                                    }
+                                                }
+                                            }
+                                        }
                                     )
-                                )
+                                    .scaleEffect(pressingEmotionID == emotion.id ? 0.95 : 1.0)
+                                    .animation(.easeInOut(duration: 0.1), value: pressingEmotionID)
+                                }
                                 .frame(width: dynamicCircleSize, height: dynamicCircleSize)
-                                .padding(.vertical, 30)
+                                .padding(.vertical, 50)
                                 .id(emotion.id)
                                 .onTapGesture {
                                     // Add haptic feedback for tap selection
-                                    let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
-                                    impactFeedback.prepare()
-                                    impactFeedback.impactOccurred()
-                                    
-                                    triggerPressAnimation(for: emotion.id) {
-                                        if selectedEmotionID == emotion.id {
-                                            // If already selected, navigate to complete check-in
-                                            navigateToCompleteCheckIn(with: emotion)
-                                        } else {
-                                            // Otherwise, select this emotion
-                                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                                selectedEmotionID = emotion.id
-                                            }
-                                        }
-                                    }
+
                                 }
                                 .scrollTransition { effect, phase in
                                     effect
@@ -250,17 +278,5 @@ struct EmotionScrollView_Previews: PreviewProvider {
     static var previews: some View {
         EmotionSelectionView()
             .preferredColorScheme(.dark)
-    }
-}
-
-struct CustomScrollTargetBehavior: ScrollTargetBehavior {
-    // Lower values make it more sensitive
-    let sensitivityFactor: CGFloat
-    
-    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        ViewAlignedScrollTargetBehavior().updateTarget(&target, context: context)
-        // Make the scroll target reach its destination with less movement
-        let distance = target.rect.minX - context.originalTarget.rect.minX
-        target.rect.origin.x = context.originalTarget.rect.minX + (distance * sensitivityFactor)
     }
 }

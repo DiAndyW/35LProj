@@ -7,12 +7,24 @@ struct BottomOvalShape: View {
         VStack {
             Spacer() // Pushes the shape to the bottom
             
-            // The shape itself without button functionality
-            HalfOvalShape()
-                .fill(emotion.color)
-                .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
-                .frame(height: 120) // Setting a specific height to preserve size
-                .frame(maxWidth: .infinity)
+            ZStack{
+                // The shape itself without button functionality
+                HalfOvalShape()
+                    .fill(emotion.color)
+                    .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
+                    .frame(height: 120) // Setting a specific height to preserve size
+                    .frame(maxWidth: .infinity)
+                    .blur(radius: 5)
+//                HalfOvalShape()
+//                    .fill(emotion.color)
+//                    .scaleEffect(1.6)
+//                    .opacity(0.2)
+//                    .shadow(color: emotion.color.opacity(0.4), radius: 10, x: 0, y: -4)
+//                    .frame(height: 120) // Setting a specific height to preserve size
+//                    .frame(maxWidth: .infinity)
+//                    .blur(radius: 35)
+            }
+            
         }
         .padding(.top, -20)
         .edgesIgnoringSafeArea(.bottom) // Extends to the bottom edge of the screen
