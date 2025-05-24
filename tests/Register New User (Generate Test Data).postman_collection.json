@@ -1,0 +1,183 @@
+{
+	"info": {
+		"_postman_id": "91e2564d-507d-49c3-b373-b53c8bc18810",
+		"name": "Register New User (Generate Test Data)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45260822",
+		"_collection_link": "https://davidsun-853384.postman.co/workspace/David-Sun's-Workspace~1fa052ca-290c-4083-8030-cc8074bd5f04/collection/45260822-91e2564d-507d-49c3-b373-b53c8bc18810?action=share&source=collection_link&creator=45260822"
+	},
+	"item": [
+		{
+			"name": "Register New User",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Postman Pre-request Script",
+							"// Function to generate a random character from a given set",
+							"function getRandomChar(charSet) {",
+							"    return charSet.charAt(Math.floor(Math.random() * charSet.length));",
+							"}",
+							"",
+							"// Function to shuffle a string (or array of characters)",
+							"function shuffleString(str) {",
+							"    let array = str.split('');",
+							"    for (let i = array.length - 1; i > 0; i--) {",
+							"        let j = Math.floor(Math.random() * (i + 1));",
+							"        [array[i], array[j]] = [array[j], array[i]];",
+							"    }",
+							"    return array.join('');",
+							"}",
+							"",
+							"// Generate a strong password that matches the regex: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*\\W).{10,}$/",
+							"function generateStrongPassword() {",
+							"    const minLength = 10;",
+							"    const lowerCaseChars = 'abcdefghijklmnopqrstuvwxyz';",
+							"    const upperCaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';",
+							"    const digitChars = '0123456789';",
+							"    const specialChars = '!@#$%^&*()-_+=[]{}|;:,.<>?';",
+							"    const allChars = lowerCaseChars + upperCaseChars + digitChars + specialChars;",
+							"",
+							"    let password = '';",
+							"",
+							"    // Ensure at least one of each required type",
+							"    password += getRandomChar(lowerCaseChars);",
+							"    password += getRandomChar(upperCaseChars);",
+							"    password += getRandomChar(digitChars);",
+							"    password += getRandomChar(specialChars);",
+							"",
+							"    // Fill the rest of the password up to minLength",
+							"    while (password.length < minLength) {",
+							"        password += getRandomChar(allChars);",
+							"    }",
+							"",
+							"    // Shuffle the password to randomize character positions",
+							"    return shuffleString(password);",
+							"}",
+							"",
+							"// Generate unique username and email for each request",
+							"const timestamp = Date.now();",
+							"// Use a shorter unique identifier for the username, e.g., last few digits of timestamp or a shorter random hash",
+							"const uniqueId = Math.random().toString(36).substring(2, 8); // Generates 6 random alphanumeric characters",
+							"",
+							"// Ensure username is within 16 characters (e.g., \"user_\" + 6 chars = 11 chars)",
+							"const dynamicUsername = `user_${uniqueId}`;",
+							"",
+							"const dynamicEmail = `user_${uniqueId}@example.com`; // Email can be longer",
+							"const generatedPassword = generateStrongPassword();",
+							"",
+							"pm.environment.set(\"dynamic_email\", dynamicEmail);",
+							"pm.environment.set(\"dynamic_username\", dynamicUsername);",
+							"pm.environment.set(\"test_password\", generatedPassword);",
+							"",
+							"console.log(`Generated Email: ${dynamicEmail}`);",
+							"console.log(`Generated Username: ${dynamicUsername}`);",
+							"console.log(`Generated Password: ${generatedPassword}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response contains user ID, username, and email\", function () {",
+							"    const responseJson = pm.response.json();",
+							"    pm.expect(responseJson).to.have.property('id');",
+							"    pm.expect(responseJson).to.have.property('username');",
+							"    pm.expect(responseJson).to.have.property('email');",
+							"",
+							"    // Store the generated user ID and username as environment variables",
+							"    // Note: Your register endpoint does NOT return a token, so we're not setting it here.",
+							"    pm.environment.set(\"registered_userId\", responseJson.id);",
+							"    pm.environment.set(\"registered_username\", responseJson.username);",
+							"",
+							"    console.log(`Registered User ID: ${responseJson.id}`);",
+							"    console.log(`Registered Username: ${responseJson.username}`);",
+							"});",
+							"",
+							"pm.test(\"User email matches sent email\", function () {",
+							"    const responseJson = pm.response.json();",
+							"    const sentEmail = pm.environment.get(\"dynamic_email\");",
+							"    pm.expect(responseJson.email).to.eql(sentEmail);",
+							"});",
+							"",
+							"pm.test(\"User username matches sent username\", function () {",
+							"    const responseJson = pm.response.json();",
+							"    const sentUsername = pm.environment.get(\"dynamic_username\");",
+							"    pm.expect(responseJson.username).to.eql(sentUsername);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"{{dynamic_username}}\",\n    \"email\": \"{{dynamic_email}}\",\n    \"password\": \"{{test_password}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"register"
+					]
+				},
+				"description": "Registers a new user with dynamic username and email, and a randomly generated strong password, capturing the user ID and username for subsequent tests."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:4000",
+			"type": "string"
+		}
+	]
+}

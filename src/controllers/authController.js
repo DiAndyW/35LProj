@@ -7,16 +7,21 @@ const strongPwd = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{10,}$/;
 export const register = async (req, res) => {
   const { username, email, password } = req.body;
 
-  if (!strongPwd.test(password))
+  if (!strongPwd.test(password)) {
     return res.status(400).json({ msg: 'Weak password' });
+  }
 
   try {
+    console.log('Attempting to create user with:', { username, email }); // Log before create
     const user = await User.create({ username, email, password });
+    console.log('User created successfully:', user.id); // Log after successful create
     res.status(201).json({ id: user.id, username, email });
   } catch (err) {
-    if (err.code === 11000)
+    console.error('Registration error details:', err);
+    if (err.code === 11000) {
       return res.status(409).json({ msg: 'Email or username taken' });
-    res.status(500).json({ msg: 'Registration failed' });
+    }
+    res.status(500).json({ msg: 'Registration failed', details: err.message || 'Unknown error' });
   }
 };
 
