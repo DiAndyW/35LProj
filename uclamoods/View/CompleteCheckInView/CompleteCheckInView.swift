@@ -389,7 +389,7 @@ struct CompleteCheckInView: View {
 
                 // The ScrollView will handle content that might exceed screen height.
                 // The CheckInFormView contains all the input fields.
-                
+             
                     CheckInFormView(
                         reasonText: $reasonText,
                         isTextFieldFocused: $isTextFieldFocused,

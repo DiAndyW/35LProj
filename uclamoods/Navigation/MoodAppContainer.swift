@@ -9,6 +9,7 @@ import SwiftUI
 struct MoodAppContainer: View {
     @StateObject private var router = MoodAppRouter()
     
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -41,26 +42,35 @@ struct MoodAppContainer: View {
                             .opacity(1.0 - (router.transitionProgress * 1.0))
                         
                     case .completeCheckIn(let emotion):
-                        if case .blobToTop = router.transitionStyle {
-                            // Use the blob transition for this screen
-                            CompleteCheckInView(emotion: emotion)
-                                .moodTransition(
-                                    style: router.transitionStyle,
-                                    progress: router.transitionProgress,
-                                    origin: router.transitionOrigin,
-                                    size: geometry.size
-                                )
-                        } else {
-                            // Use default transition
-                            CompleteCheckInView(emotion: emotion)
-                                .moodTransition(
-                                    style: .bubbleExpand,
-                                    progress: router.transitionProgress,
-                                    origin: router.transitionOrigin,
-                                    size: geometry.size
-                                )
-                        }
+                        CompleteCheckInView(emotion: emotion)
+                            .moodTransition(
+                                style: .bubbleExpand,
+                                progress: router.transitionProgress,
+                                origin: router.transitionOrigin,
+                                size: geometry.size
+                            )
+                            .scaleEffect(1.0 + (0.2 * router.transitionProgress))
+                            .opacity(1.0 - (router.transitionProgress * 0.8))
+                    case .home:
+                        HomeView()
+                    
+                    case .settings:
+                        SettingsView()
+                    
+                    case .friends:
+                        FriendsView()
+                    
+                    case .stats:
+                        StatsView()
                         
+                    case .signIn:
+                        SignInView()
+                        
+                    case .signUp:
+                        SignUpView()
+                    
+                    case .completeProfile:
+                        CompleteProfileView()
                     }
                 }
             }
@@ -90,4 +100,8 @@ struct MoodAppContainer: View {
             return EmotionDataProvider.highEnergyEmotions
         }
     }
+}
+
+#Preview {
+    MoodAppContainer()
 }
