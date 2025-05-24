@@ -439,14 +439,14 @@ struct CompleteCheckInView: View {
         } else {
             print("- Location: Hidden")
         }
-        router.navigateBack()
+        router.navigateToHome()
     }
 
     private func skipToComplete() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
-        router.navigateBack()
+        router.navigateToHome()
     }
 }
 
