@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import checkInRouter from './routes/check-in.js';
-import authRouter from './routes/auth.js'; // Import the new auth router
+import authRouter from './routes/auth.js';
 
 const app = express();
 app.use(express.json());
@@ -15,7 +15,6 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   }
 });
 
-// Your existing database connection logic stays the same [cite: 3]
 const connectToDatabase = async () => {
   try {
     await client.connect();
@@ -36,17 +35,14 @@ const shutdown = async (server) => {
   });
 };
 
-// Your existing root route [cite: 7]
 app.get('/', (req, res) => {
   res.send('Hello, David');
 });
 
-// Mount your check-in routes [cite: 8]
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
-// Mount your authentication routes
-app.use('/auth', authRouter); // Mount the auth router at /auth
+app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
 
 const startServer = () => {

@@ -1,4 +1,4 @@
-import MoodCheckIn from '../models/CheckIn.js'; // Adjust path if your models directory is elsewhere
+import MoodCheckIn from '../models/CheckIn.js';
 
 // Helper function for common validation logic
 const validateObjectId = (id, fieldName) => {

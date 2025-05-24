@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { register, login } from '../controllers/authController.js'; // Assuming controller.js is one level up from routes
-import requireAuth from '../middleware/requireAuth.js'; // Assuming middleware is one level up from routes
-import User from '../models/user.js'; // Assuming User model is one level up from routes
+import { register, login } from '../controllers/authController.js';
+import requireAuth from '../middleware/requireAuth.js';
+import User from '../models/user.js';
 
 const authRouter = Router();
 
