@@ -1,135 +1,96 @@
-//
-//  FloatingBlobView.swift
-//  uclamoods
-//
-//  Created by Yang Gao on 5/8/25.
-//
 import SwiftUI
 
 struct EnergySelectionView: View {
     @EnvironmentObject private var router: MoodAppRouter
-    // State variables for custom animation and navigation
-    @State private var animateElementsOut = false
-    @State private var navigateToEmotionView = false
-    @State private var selectedEnergyLevel: String? = nil // To know which emotion set to load
     
     let blobSize = 200.0
-    let animationDuration = 0.5 // Duration for the zoom-out and fade-out animation
     
     var body: some View {
-        // NavigationStack is needed for .navigationDestination.
-        // Place it at the root of your navigation flow if it's not already there.
-        NavigationStack {
-            ZStack(alignment: .top) {
-                Color.black.edgesIgnoringSafeArea(.all) // Assuming a dark background
-                
-                VStack(spacing: 0) {
-                    HStack {
-                        Button(action: {
-                            // Handle back/dismiss action
-                            router.navigateBack() // Assuming you have a goBack method in your router
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            // TODO:
-                            //router.navigateToSearch()                                                // Handle search action
-                        }) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                        }
+        ZStack(alignment: .top) {
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: {
+                        // Use the new back navigation method
+                        router.navigateBackInMoodFlow(from: CGPoint(x: 50, y: 100))
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
                     }
-                    .padding(.bottom, 20)
-                    .padding(.horizontal)
                     
-                    Text("Tap on the color that best describes your energy level")
-                        .font(.custom("Georgia", size: 24))
-                        .fontWeight(.regular)
-                        .foregroundColor(.white)
-                        .lineSpacing(1.5)
-                        .padding(.top, -10)
-                        .padding(.bottom, 20)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 20)
-
-                    // High Energy Blob Button
-                    // Replace 'FloatingBlobButtonPlaceholder' with your actual 'FloatingBlobButton'
-                    // Ensure your 'FloatingBlobButton' takes 'blobSize' and 'action' parameters.
-                    FloatingBlobButton(
-                        text: "High",
-                        size: 220,
-                        startColor: Color("Rage"), // Ensure these colors are in your Assets.xcassets
-                        endColor: Color("Euphoric"),
-                        // Pass other parameters your FloatingBlobButton expects (morphSpeed, etc.)
-                        morphSpeed: 1.25, floatSpeed: 1.0, colorShiftSpeed: 3.0,
-                        colorPool: [Color("Rage"), Color("Euphoric")],
-                        action: {
-                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.high)
-                        }
-                    )
+                    Spacer()
                     
-                    .frame(width: blobSize, height: blobSize) // As in your original layout
-                    
-                    // Medium Energy Blob Button
-                    FloatingBlobButton(
-                        text: "Medium",
-                        size: 220,
-                        startColor: Color("Disgusted"),
-                        endColor: Color("Blissful"),
-                        morphSpeed: 1.0, floatSpeed: 0.75, colorShiftSpeed: 2.0,
-                        colorPool: [Color("Disgusted"), Color("Blissful")],
-                        action: {
-                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.medium)
-                        }
-                    )
-                    
-                    .frame(width: blobSize, height: blobSize)
-                    
-                    // Low Energy Blob Button
-                    FloatingBlobButton(
-                        text: "Low",
-                        size: 220,
-                        startColor: Color("Miserable"),
-                        endColor: Color("Blessed"),
-                        morphSpeed: 0.75, floatSpeed: 0.5, colorShiftSpeed: 1.0,
-                        colorPool: [Color("Miserable"), Color("Blessed")],
-                        action: {
-                            router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.low)
-                        }
-                    )
-                    
-                    .frame(width: blobSize, height: blobSize)
+                    Button(action: {
+                        // TODO: Search functionality
+                    }) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                    }
                 }
-                // These modifiers will apply to the entire VStack of blobs
-                .scaleEffect(animateElementsOut ? 0.5 : 1.0) // Zoom out effect
-                .opacity(animateElementsOut ? 0.0 : 1.0)    // Fade out effect
+                .padding(.bottom, 20)
+                .padding(.horizontal)
+                
+                Text("Tap on the color that best describes your energy level")
+                    .font(.custom("Georgia", size: 24))
+                    .fontWeight(.regular)
+                    .foregroundColor(.white)
+                    .lineSpacing(1.5)
+                    .padding(.top, -10)
+                    .padding(.bottom, 20)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                // High Energy Blob Button
+                FloatingBlobButton(
+                    text: "High",
+                    size: 220,
+                    startColor: Color("Rage"),
+                    endColor: Color("Euphoric"),
+                    morphSpeed: 1.25, floatSpeed: 1.0, colorShiftSpeed: 3.0,
+                    colorPool: [Color("Rage"), Color("Euphoric")],
+                    action: {
+                        router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.high)
+                    }
+                )
+                .frame(width: blobSize, height: blobSize)
+                
+                // Medium Energy Blob Button
+                FloatingBlobButton(
+                    text: "Medium",
+                    size: 220,
+                    startColor: Color("Disgusted"),
+                    endColor: Color("Blissful"),
+                    morphSpeed: 1.0, floatSpeed: 0.75, colorShiftSpeed: 2.0,
+                    colorPool: [Color("Disgusted"), Color("Blissful")],
+                    action: {
+                        router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.medium)
+                    }
+                )
+                .frame(width: blobSize, height: blobSize)
+                
+                // Low Energy Blob Button
+                FloatingBlobButton(
+                    text: "Low",
+                    size: 220,
+                    startColor: Color("Miserable"),
+                    endColor: Color("Blessed"),
+                    morphSpeed: 0.75, floatSpeed: 0.5, colorShiftSpeed: 1.0,
+                    colorPool: [Color("Miserable"), Color("Blessed")],
+                    action: {
+                        router.navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel.low)
+                    }
+                )
+                .frame(width: blobSize, height: blobSize)
             }
         }
     }
-    
-    // This function is called when a blob button is pressed
-    private func triggerTransition(energyLevel: String) {
-        self.selectedEnergyLevel = energyLevel // Store the selected energy level
-        
-        // Start the custom animation (zoom out, fade out)
-        withAnimation(.easeOut(duration: animationDuration)) {
-            animateElementsOut = true
-        }
-        
-        // Delay the actual navigation until the animation is complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + animationDuration) {
-            navigateToEmotionView = true
-        }
-    }
 }
+
 
 struct NewFloatingBlobView_Previews: PreviewProvider {
     static var previews: some View {

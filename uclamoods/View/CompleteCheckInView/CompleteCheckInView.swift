@@ -326,9 +326,9 @@ struct CheckInFormView: View {
 }
 
 
-// MARK: - Main View
+// MARK: - Updated CompleteCheckInView (only navigation changes)
 struct CompleteCheckInView: View {
-    @EnvironmentObject private var router: MoodAppRouter
+    @EnvironmentObject private var router: MoodAppRouter // UPDATED: Use new router
     @State private var reasonText: String = ""
     @FocusState private var isTextFieldFocused: Bool
 
@@ -365,7 +365,7 @@ struct CompleteCheckInView: View {
         return formatter
     }
 
-    private var dateFormatter: DateFormatter { // Not currently used in visible UI from snippet
+    private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMMM d"
         return formatter
@@ -373,50 +373,38 @@ struct CompleteCheckInView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            // This is the main VStack that receives the large, somewhat unusual offsets.
-            // We assume these offsets are intentional for the desired screen layout.
             VStack(spacing: 0) {
                 EmotionHeaderView(
                     emotion: emotion,
                     timeFormatter: timeFormatter,
-                    currentDisplayLocation: "@ Sproul Hall", // Using your hardcoded example
+                    currentDisplayLocation: "@ Sproul Hall",
                     geometry: geometry
                 )
-                .padding(.bottom, 30) // Original padding for the ZStack
-                 // Original offset for the ZStack containing the blob
+                .padding(.bottom, 30)
                 .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.4)
 
-
-                // The ScrollView will handle content that might exceed screen height.
-                // The CheckInFormView contains all the input fields.
-             
-                    CheckInFormView(
-                        reasonText: $reasonText,
-                        isTextFieldFocused: $isTextFieldFocused,
-                        selectedUsers: $selectedUsers,
-                        availableUsers: availableUsers,
-                        selectedActivities: $selectedActivities,
-                        predefinedActivities: predefinedActivities,
-                        customActivityText: $customActivityText,
-                        showingAddCustomActivityField: $showingAddCustomActivityField,
-                        selectedPrivacy: $selectedPrivacy,
-                        showLocation: $showLocation,
-                        currentLocation: $currentLocation,
-                        emotion: emotion,
-                        geometry: geometry,
-                        saveAction: saveCheckIn
-                    ).padding(.top, -geometry.size.height * 0.48)
-                
-                
-                //.offset(y: -geometry.size.width * 0.1)
+                CheckInFormView(
+                    reasonText: $reasonText,
+                    isTextFieldFocused: $isTextFieldFocused,
+                    selectedUsers: $selectedUsers,
+                    availableUsers: availableUsers,
+                    selectedActivities: $selectedActivities,
+                    predefinedActivities: predefinedActivities,
+                    customActivityText: $customActivityText,
+                    showingAddCustomActivityField: $showingAddCustomActivityField,
+                    selectedPrivacy: $selectedPrivacy,
+                    showLocation: $showLocation,
+                    currentLocation: $currentLocation,
+                    emotion: emotion,
+                    geometry: geometry,
+                    saveAction: saveCheckIn
+                ).padding(.top, -geometry.size.height * 0.48)
             }
-            //.background(Color.black) // Moved from GeometryReader to the VStack to be part of the offset content
             .ignoresSafeArea(edges: .top)
             .onTapGesture {
                 isTextFieldFocused = false
             }
-            // These are the original offsets applied to the outermost VStack in your code
-            .offset(y: -geometry.size.width * 0.0) // This is a very large Y offset, using width. Verify if intended.
+            .offset(y: -geometry.size.width * 0.0)
             .offset(x: -geometry.size.width * 0.25)
         }
     }
@@ -425,9 +413,8 @@ struct CompleteCheckInView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
+        
         // TODO: Collect all data:
-        // emotion, reasonText, selectedUsers, selectedActivities, selectedPrivacy,
-        // showLocation ? currentLocation : nil
         print("Saving Check-in:")
         print("- Emotion: \(emotion.name)")
         print("- Reason: \(reasonText)")
@@ -439,18 +426,22 @@ struct CompleteCheckInView: View {
         } else {
             print("- Location: Hidden")
         }
-        router.navigateBack()
+        
+        // UPDATED: Use new router back navigation for mood flow
+        router.navigateBackInMoodFlow()
     }
 
     private func skipToComplete() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
-        router.navigateBack()
+        
+        // UPDATED: Use new router back navigation for mood flow
+        router.navigateBackInMoodFlow()
     }
 }
 
-struct CompleteCheckInView_Previews: PreviewProvider {
+struct UpdatedCompleteCheckInView_Previews: PreviewProvider {
     static var previews: some View {
         CompleteCheckInView(emotion: EmotionDataProvider.highEnergyEmotions[3])
             .environmentObject(MoodAppRouter())

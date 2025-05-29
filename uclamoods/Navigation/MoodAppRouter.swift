@@ -23,242 +23,250 @@ enum TransitionStyle {
     case custom((Bool) -> AnyTransition) // For truly custom transitions
 }
 
+// MARK: - Screen Definitions
+enum AppSection {
+    case auth          // Sign in/up flows
+    case main          // Home, settings, friends, stats
+    case moodFlow      // Energy/emotion/checkin with custom transitions
+}
+
+enum AuthScreen: String, CaseIterable {
+    case signIn = "signIn"
+    case signUp = "signUp"
+    case completeProfile = "completeProfile"
+}
+
+enum MainScreen: String, CaseIterable, Hashable {
+    case home = "home"
+    case settings = "settings"
+    case friends = "friends"
+    case stats = "stats"
+}
+
+enum MoodFlowScreen: Equatable {
+    case energySelection
+    case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel)
+    case completeCheckIn(emotion: Emotion)
+}
+
+// MARK: - Updated Router for 3-Tab Navigation
 class MoodAppRouter: ObservableObject {
-//    @Published private(set) var currentScreen: MoodAppScreen = .energySelection
-    @Published private(set) var currentScreen: MoodAppScreen = .signIn
-    @Published private(set) var isAnimating = false
-    @Published private(set) var transitionProgress: CGFloat = 0 // 0 to 1
+    // MARK: - Published Properties
+    @Published var currentSection: AppSection = .auth
+    @Published var currentAuthScreen: AuthScreen = .signIn
+    @Published var selectedMainTab: MainTab = .home // NEW: 3-tab structure
+    @Published var currentMoodFlowScreen: MoodFlowScreen = .energySelection
     
-    // Origin point for transitions that need it (like bubbleExpand)
-    @Published var transitionOrigin: CGPoint = .zero
-    @Published private(set) var transitionStyle: TransitionStyle = .bubbleExpand
+    // MARK: - Custom Transition Properties (for mood flow only)
+    @Published var isAnimatingMoodFlow = false
+    @Published var moodFlowTransitionProgress: CGFloat = 0
+    @Published var moodFlowTransitionOrigin: CGPoint = .zero
+    @Published var moodFlowTransitionStyle: TransitionStyle = .bubbleExpand
     
-    // Screen size for calculating positions
+    // MARK: - Screen size for calculations
     private var screenSize: CGSize = .zero
     
-    // Previous screen tracking for seamless back navigation
-    private var previousScreen: MoodAppScreen?
-    private var previousEnergyLevel: EmotionDataProvider.EnergyLevel?
-    
-    // Customizable durations
+    // MARK: - Animation durations
     let fadeOutDuration: Double = 0.4
     let fadeInDuration: Double = 0.5
     
-    // Set the screen size (call this from onAppear in your container view)
+    // MARK: - 3-Tab Structure
+    enum MainTab: String, CaseIterable, Identifiable {
+        case home = "home"
+        case checkIn = "checkIn"
+        case profile = "profile"
+        
+        var id: String { self.rawValue }
+        
+        var title: String {
+            switch self {
+            case .home: return "Feed"
+            case .checkIn: return "Check In"
+            case .profile: return "Profile"
+            }
+        }
+        
+        var iconName: String {
+            switch self {
+            case .home: return "house"
+            case .checkIn: return "plus.circle"
+            case .profile: return "person.circle"
+            }
+        }
+        
+        var iconNameFilled: String {
+            switch self {
+            case .home: return "house.fill"
+            case .checkIn: return "plus.circle.fill"
+            case .profile: return "person.circle.fill"
+            }
+        }
+    }
+    
+    // MARK: - Setup
     func setScreenSize(_ size: CGSize) {
         screenSize = size
     }
     
-    func setTransitionStyle(_ style: TransitionStyle) {
-        self.transitionStyle = style
+    // MARK: - Auth Navigation (simple state changes)
+    func navigateToSignIn() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentAuthScreen = .signIn
+        }
     }
     
-    func navigateToCompleteCheckIn(emotion: Emotion = EmotionDataProvider.defaultEmotion, from originPoint: CGPoint? = nil) {
-        // Store current screen for back navigation
-        storePreviousScreen()
-        
-        if let originPoint = originPoint {
-            transitionOrigin = originPoint
-        } else {
-            // Default to the center if no origin provided
-            transitionOrigin = CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.75)
+    func navigateToSignUp() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentAuthScreen = .signUp
         }
-        
-        // Change transition style to moodMorph for this specific transition
-        transitionStyle = .revealMask
-        
-        // Perform the transition
-        performTransition(to: .completeCheckIn(emotion: emotion))
     }
     
-    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, from originPoint: CGPoint? = nil) {
-        // Store current screen for back navigation
-        storePreviousScreen()
-        previousEnergyLevel = energyLevel
-        
-        // If a specific origin point is provided, use it
-        if let originPoint = originPoint {
-            transitionOrigin = originPoint
-        } else {
-            // Otherwise, calculate based on energy level
-            transitionOrigin = getTransitionOriginForEnergyLevel(energyLevel)
+    func navigateToCompleteProfile() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentAuthScreen = .completeProfile
         }
-        
-        transitionStyle = .bubbleExpand
-        
-        performTransition(to: .emotionSelection(energyLevel: energyLevel))
+    }
+    
+    // MARK: - Section Navigation
+    func navigateToMainApp() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentSection = .main
+            selectedMainTab = .home // Reset to home when entering main app
+        }
+    }
+    
+    func navigateToMoodFlow() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentSection = .moodFlow
+            // Reset mood flow to beginning
+            currentMoodFlowScreen = .energySelection
+            moodFlowTransitionProgress = 0
+        }
+    }
+    
+    func signOut() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentSection = .auth
+            currentAuthScreen = .signIn
+            selectedMainTab = .home
+        }
+    }
+    
+    // MARK: - Main App Tab Navigation (swipe-based)
+    func selectTab(_ tab: MainTab) {
+        // Special handling for check-in button
+        if tab == .checkIn {
+            // Don't switch to check-in tab, instead navigate to mood flow
+            navigateToMoodFlow()
+        } else {
+            // Normal tab selection for home and profile
+            selectedMainTab = tab
+        }
+    }
+    
+    // Programmatic navigation to specific tabs
+    func navigateToHome() {
+        selectedMainTab = .home
+    }
+    
+    func navigateToProfile() {
+        selectedMainTab = .profile
+    }
+    
+    // MARK: - Mood Flow Navigation (custom transitions)
+    func setMoodFlowTransitionStyle(_ style: TransitionStyle) {
+        moodFlowTransitionStyle = style
     }
     
     func navigateToEnergySelection(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        
-        performTransition(to: .energySelection)
-    }
-    
-    func navigateToHome(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        
-        //Not needed for now, just for testing purposes
-//        transitionStyle = .revealMask
-        
-        // Perform the transition
-        performTransition(to: .home)
-    }
-    
-    func navigateToStats(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        performTransition(to: .stats)
-    }
-    
-    func navigateToFriends(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        performTransition(to: .friends)
-    }
-    
-    func navigateToSettings(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        performTransition(to: .settings)
-    }
-    
-    func navigateToSignIn(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        
-        //maybe need to add logic to make user not logged in anymore?
-        performTransition(to: .signIn)
-    }
-    
-    func navigateToSignUp(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        
-        //maybe need to add logic to make user not logged in anymore?
-        performTransition(to: .signUp)
-    }
-    
-    func navigateToCompleteProfile(from originPoint: CGPoint? = nil) {
-        storePreviousScreen()
-        performTransition(to: .completeProfile)
-    }
-    
-    func navigateBack(from originPoint: CGPoint? = nil) {
         if let originPoint = originPoint {
-            transitionOrigin = originPoint
+            moodFlowTransitionOrigin = originPoint
+        }
+        moodFlowTransitionStyle = .bubbleExpand
+        performMoodFlowTransition(to: .energySelection)
+    }
+    
+    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, from originPoint: CGPoint? = nil) {
+        if let originPoint = originPoint {
+            moodFlowTransitionOrigin = originPoint
+        } else {
+            moodFlowTransitionOrigin = getTransitionOriginForEnergyLevel(energyLevel)
         }
         
-        // Use bubble expand for back navigation
-        transitionStyle = .bubbleExpand
+        moodFlowTransitionStyle = .bubbleExpand
+        performMoodFlowTransition(to: .emotionSelection(energyLevel: energyLevel))
+    }
+    
+    func navigateToCompleteCheckIn(emotion: Emotion, from originPoint: CGPoint? = nil) {
+        if let originPoint = originPoint {
+            moodFlowTransitionOrigin = originPoint
+        } else {
+            moodFlowTransitionOrigin = CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.75)
+        }
         
-        // Navigate back using our previousScreen information
-        switch currentScreen {
+        moodFlowTransitionStyle = .revealMask
+        performMoodFlowTransition(to: .completeCheckIn(emotion: emotion))
+    }
+    
+    func navigateBackInMoodFlow(from originPoint: CGPoint? = nil) {
+        if let originPoint = originPoint {
+            moodFlowTransitionOrigin = originPoint
+        }
+        
+        moodFlowTransitionStyle = .bubbleExpand
+        
+        switch currentMoodFlowScreen {
         case .emotionSelection:
-            performTransition(to: .energySelection)
-            
+            performMoodFlowTransition(to: .energySelection)
         case .completeCheckIn:
-            // Go back to emotion selection with the stored energy level
-            if let energyLevel = previousEnergyLevel {
-                performTransition(to: .emotionSelection(energyLevel: energyLevel))
-            } else {
-                // Fallback
-                performTransition(to: .emotionSelection(energyLevel: .medium))
-            }
-            
+            performMoodFlowTransition(to: .energySelection)
         case .energySelection:
-            // Already at the root screen, do nothing or handle as needed
-            break
-            
-        case .home:
-            // Root screen
-            break
-            
-        case .signIn:
-            // Root screen
-            break
-            
-        case .settings:
-            // Root screen
-            break
-            
-        case .friends:
-            // Root screen
-            break
-            
-        case .stats:
-            // Root Screen
-            break
-            
-        case .signUp:
-            performTransition(to: .signIn)
-            
-        case .completeProfile:
-            //Root screen
-            break
-        }
-    
-        
-    }
-    
-    private func storePreviousScreen() {
-        previousScreen = currentScreen
-        
-        // Store energy level when appropriate
-        if case .emotionSelection(let energyLevel) = currentScreen {
-            previousEnergyLevel = energyLevel
+            // Exit mood flow and return to main app
+            withAnimation(.easeInOut(duration: 0.5)) {
+                currentSection = .main
+            }
         }
     }
     
+    // MARK: - Private Helpers
     private func getTransitionOriginForEnergyLevel(_ energyLevel: EmotionDataProvider.EnergyLevel) -> CGPoint {
-        // Make sure we have valid screen dimensions
         guard screenSize.width > 0 && screenSize.height > 0 else {
             return CGPoint(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2)
         }
         
-        // Calculate origin point based on energy level
         switch energyLevel {
         case .high:
-            // High energy: start from top of screen
             return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.35)
         case .medium:
-            // Medium energy: start from middle of screen
             return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.6)
         case .low:
-            // Low energy: start from bottom of screen
             return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.8)
         }
     }
     
-    // In MoodAppRouter.swift, modify the performTransition method:
-
-    private func performTransition(to screen: MoodAppScreen) {
-        guard !isAnimating else { return }
+    private func performMoodFlowTransition(to screen: MoodFlowScreen) {
+        guard !isAnimatingMoodFlow else { return }
         
-        isAnimating = true
+        isAnimatingMoodFlow = true
+        let currentTransitionStyle = moodFlowTransitionStyle
         
-        // Store the current transition style to maintain consistency
-        let currentTransitionStyle = transitionStyle
-        
-        // 1. FADE OUT: Animate transition progress from 0 to 1
+        // 1. Fade out current screen
         withAnimation(.easeInOut(duration: fadeOutDuration)) {
-            transitionProgress = 1
+            moodFlowTransitionProgress = 1
         }
         
-        // 2. CHANGE SCREEN: After first animation completes
-        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration + 0.05) { // Small delay added
-            // Change to the new screen
-            self.currentScreen = screen
+        // 2. Change screen and fade in
+        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration + 0.05) {
+            self.currentMoodFlowScreen = screen
+            self.moodFlowTransitionStyle = currentTransitionStyle
             
-            // Make sure we're still using the same transition style
-            self.transitionStyle = currentTransitionStyle
-            
-            // Important: Force layout update before starting the next animation
-            // by updating in the next runloop
             DispatchQueue.main.async {
-                // 3. FADE IN: Animate transition progress from 1 to 0 for the new screen
                 withAnimation(.easeInOut(duration: self.fadeInDuration)) {
-                    self.transitionProgress = 0
+                    self.moodFlowTransitionProgress = 0
                 }
                 
-                // 4. FINALIZE: Reset animation state when completely finished
                 DispatchQueue.main.asyncAfter(deadline: .now() + self.fadeInDuration + 0.1) {
-                    self.isAnimating = false
+                    self.isAnimatingMoodFlow = false
                 }
             }
         }

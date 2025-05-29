@@ -1,10 +1,3 @@
-//
-//  SignUpView.swift
-//  uclamoods
-//
-//  Created by Di Xuan Wang on 5/19/25.
-//
-
 import SwiftUI
 
 struct SignUpView: View {

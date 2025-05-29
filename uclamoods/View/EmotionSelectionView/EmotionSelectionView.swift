@@ -12,9 +12,6 @@ struct EmotionSelectionView: View {
     
     @State private var pressingEmotionID: Emotion.ID? = nil
     
-    // Environment variable to handle dismissal
-    @Environment(\.dismiss) private var dismiss
-    
     let energyLevel: EmotionDataProvider.EnergyLevel
     
     // List of emotions to display
@@ -65,24 +62,24 @@ struct EmotionSelectionView: View {
     }
     
     private func navigateToCompleteCheckIn(with emotion: Emotion) {
-            // Capture the position of the selected blob
-            if let frame = getBlobFrame(for: emotion) {
-                selectedBlobPosition = CGPoint(
-                    x: frame.midX,
-                    y: frame.midY
-                )
-            }
-            
-            // Add haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.prepare()
-            impactFeedback.impactOccurred()
-            
-            // Navigate with the blob transition
-            router.setTransitionStyle(.blobToTop(emotion: emotion))
-                                  
-            router.navigateToCompleteCheckIn(emotion: emotion, from: selectedBlobPosition)
+        // Capture the position of the selected blob
+        if let frame = getBlobFrame(for: emotion) {
+            selectedBlobPosition = CGPoint(
+                x: frame.midX,
+                y: frame.midY
+            )
         }
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.prepare()
+        impactFeedback.impactOccurred()
+        
+        // Navigate with the blob transition using the new router
+        router.setMoodFlowTransitionStyle(.blobToTop(emotion: emotion))
+        router.navigateToCompleteCheckIn(emotion: emotion, from: selectedBlobPosition)
+    }
+    
     // Helper to get blob frame (you'll need to implement this)
     private func getBlobFrame(for emotion: Emotion) -> CGRect? {
         // This would require using GeometryReader or preference keys
@@ -157,10 +154,10 @@ struct EmotionSelectionView: View {
                                         colorShiftSpeed: 2.0,
                                         colorPool: [emotion.color],
                                         isSelected: selectedEmotionID == emotion.id,
-                                                isPressing: Binding(
-                                                    get: { pressingEmotionID == emotion.id },
-                                                    set: { _ in }
-                                                ),
+                                        isPressing: Binding(
+                                            get: { pressingEmotionID == emotion.id },
+                                            set: { _ in }
+                                        ),
                                         action: {
                                             let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
                                             impactFeedback.prepare()
@@ -222,7 +219,7 @@ struct EmotionSelectionView: View {
                 }
                 .padding(.bottom, geometry.safeAreaInsets.bottom)
                 
-                // Back button with absolute positioning
+                // Back button with absolute positioning - UPDATED FOR NEW ROUTER
                 VStack {
                     HStack {
                         Button(action: {
@@ -231,7 +228,8 @@ struct EmotionSelectionView: View {
                             impactFeedback.prepare()
                             impactFeedback.impactOccurred()
                             
-                            router.navigateBack(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.1))
+                            // Use the new mood flow back navigation
+                            router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.1))
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 22, weight: .semibold))
@@ -272,11 +270,24 @@ struct EmotionSelectionView: View {
             }
         }
     }
+    
+    // Static helper for transition offset calculation
+    static func transitionOffset(for phase: ScrollTransitionPhase) -> Double {
+        switch phase {
+        case .topLeading:
+            return 50
+        case .identity:
+            return 0
+        case .bottomTrailing:
+            return 50
+        }
+    }
 }
 
-struct EmotionScrollView_Previews: PreviewProvider {
+struct UpdatedEmotionSelectionView_Previews: PreviewProvider {
     static var previews: some View {
         EmotionSelectionView()
             .preferredColorScheme(.dark)
+            .environmentObject(MoodAppRouter())
     }
 }

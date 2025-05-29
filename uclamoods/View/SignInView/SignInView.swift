@@ -81,7 +81,8 @@ struct SignInView: View {
                         feedback.prepare()
                         feedback.impactOccurred()
                         
-                        router.navigateToHome()
+                        // Navigate to main app instead of home directly
+                        router.navigateToMainApp()
                     }) {
                         Text("Log In")
                             .font(.custom("Georgia", size: 20))
@@ -109,13 +110,9 @@ struct SignInView: View {
                             .cornerRadius(20)
                             .shadow(radius: 5)
                     }
-                    
-                
                 }
-            
             }
         }
-        
     }
 }
 
