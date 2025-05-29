@@ -62,24 +62,26 @@ struct MainAppView: View {
     @EnvironmentObject private var router: MoodAppRouter
     
     var body: some View {
-        TabView(selection: $router.selectedMainTab) {
-            // Home/Feed Tab
-            HomeFeedView()
-                .tag(MoodAppRouter.MainTab.home)
+        ZStack {
+            TabView(selection: $router.selectedMainTab) {
+                // Home/Feed Tab
+                HomeFeedView()
+                    .tag(MoodAppRouter.MainTab.home)
+                
+                // Profile Tab (includes settings and analytics)
+                ProfileView()
+                    .tag(MoodAppRouter.MainTab.profile)
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default dots
+            .ignoresSafeArea(.all) // CHANGED: Ignore all safe areas for full screen
             
-            // Profile Tab (includes settings and analytics)
-            ProfileView()
-                .tag(MoodAppRouter.MainTab.profile)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default dots
-        .edgesIgnoringSafeArea(.bottom)
-        .overlay(
-            // Custom 3-tab bar overlay
+            // Custom tab bar overlay
             VStack {
                 Spacer()
                 ThreeTabBar()
             }
-        )
+            .ignoresSafeArea(edges: .bottom) // Don't ignore keyboard
+        }
     }
 }
 
@@ -124,7 +126,7 @@ struct ThreeTabBar: View {
         }
         .padding(.horizontal, 30)
         .padding(.top, 12)
-        .padding(.bottom, 20) // Account for safe area
+        .padding(.bottom, 20) // CHANGED: Remove bottom padding
         .background(
             // Glassmorphism effect
             Rectangle()
@@ -139,6 +141,7 @@ struct ThreeTabBar: View {
             bottomTrailing: 0, topTrailing: 25
         )))
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -5)
+        .ignoresSafeArea(edges: .bottom) // ADDED: Extend into safe area
     }
 }
 
