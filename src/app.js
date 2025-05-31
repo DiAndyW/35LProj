@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
+import profileRouter from './routes/profile.js';
 
 const app = express();
 app.use(express.json());
@@ -14,7 +15,7 @@ const connectMongoose = async () => {
       serverSelectionTimeoutMS: 10000, // Keep trying to connect for 10 seconds
       socketTimeoutMS: 45000,         // Close sockets after 45 seconds of inactivity
       connectTimeoutMS: 10000         // Give up initial connection after 10 seconds
-    });
+    }); 
     console.log('Connected to MongoDB via Mongoose!');
   } catch (err) {
     console.error('Error connecting to MongoDB via Mongoose:', err);
@@ -35,18 +36,22 @@ const shutdown = async (server) => {
   });
 };
 
-// Your existing root route
+// Mounting root route
 app.get('/', (req, res) => {
   res.send('Hello, David');
 });
 
-// Mounting your check-in routes
+// Mounting check-in routes
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
-// Mounting your authentication routes
+// Mounting authentication routes
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
+
+// Mounting profile routes
+app.use('/profile', profileRouter);
+console.log('Profile routes mounted at /profile');
 
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
