@@ -94,7 +94,8 @@ struct HomeFeedView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(posts) { post in
-                                MoodPostCard(post: post)
+                                let feed = post.toFeedItem()
+                                MoodPostCard(post: feed)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -107,23 +108,44 @@ struct HomeFeedView: View {
             loadFeed()
         }
         .refreshable {
-            await refreshFeed()
+            loadFeed()
         }
     }
     
     private func loadFeed() {
-        isLoading = true
-        // Simulate API call
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            // Load sample posts for now
-            posts = MoodPost.samplePosts
-            isLoading = false
+        MoodPostService.fetchMoodPosts { result in
+            DispatchQueue.main.async {
+                switch result {
+                    case .success(let posts):
+                        self.posts = posts
+                        print("Successfully fetched \(posts.count) posts.")
+                        for post in posts {
+                            print("Post ID: \(post.id), Emotion: \(post.emotion.name)")
+                        }
+                    case .failure(let error):
+                        print("Error fetching posts: \(error)")
+                        switch error {
+                            case .invalidURL:
+                                print("Error Detail: The URL was invalid.")
+                            case .networkError(let underlyingError):
+                                print("Error Detail: Network issue - \(underlyingError.localizedDescription)")
+                            case .invalidResponse:
+                                print("Error Detail: The server response was not a valid HTTP response.")
+                            case .noData:
+                                print("Error Detail: No data was returned from the server.")
+                            case .decodingError(let underlyingError):
+                                print("Error Detail: Failed to decode the JSON - \(underlyingError.localizedDescription)")
+                            case .serverError(let statusCode, let message):
+                                print("Error Detail: Server returned status \(statusCode) with message: \(message ?? "N/A")")
+                        }
+                }
+            }
         }
     }
     
     private func refreshFeed() async {
         // Simulate refresh
         try? await Task.sleep(nanoseconds: 1_000_000_000)
-        posts = MoodPost.samplePosts.shuffled()
+        //posts = MoodPost.samplePosts.shuffled()
     }
 }

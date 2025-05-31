@@ -1,61 +1,85 @@
 import SwiftUI
 
+enum MoodPostServiceError: Error {
+    case invalidURL
+    case networkError(Error)
+    case invalidResponse
+    case noData
+    case decodingError(Error)
+    case serverError(statusCode: Int, message: String?)
+}
+
 class MoodPostService {
-    // MARK: - Properties
     private var posts: [MoodPost] = []
+    private static let baseURLString = "http://localhost:4000"
     
-    // MARK: - Public Methods
-    
-    /// Fetches posts for the feed
-    /// - Returns: Array of mood posts
-    func fetchPosts() async throws -> [MoodPost] {
-        // TODO: Implement actual API call
-        // For now, return sample data
-        return MoodPost.samplePosts
-    }
-    
-    /// Creates a new mood post
-    /// - Parameters:
-    ///   - emotion: The emotion being posted
-    ///   - content: The post content
-    /// - Returns: The created post
-    func createPost(emotion: String, emotionColor: Color, content: String) async throws -> MoodPost {
-        // TODO: Implement actual API call
-        let newPost = MoodPost(
-            username: "Current User", // TODO: Get from user service
-            timeAgo: "Just now",
-            emotion: emotion,
-            emotionColor: emotionColor,
-            content: content,
-            likes: 0,
-            comments: 0
-        )
-        return newPost
-    }
-    
-    /// Likes or unlikes a post
-    /// - Parameter postId: The ID of the post to like/unlike
-    /// - Returns: The updated post
-    func toggleLike(postId: UUID) async throws -> MoodPost {
-        // TODO: Implement actual API call
-        // For now, just return the original post
-        guard let post = posts.first(where: { $0.id == postId }) else {
-            throw NSError(domain: "MoodPostService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Post not found"])
+    static func fetchMoodPosts(completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
+        let endpoint = "/api/feed"
+        guard let url = URL(string: baseURLString + endpoint) else {
+            print("Error: Could not create URL from string: \(baseURLString + endpoint)")
+            completion(.failure(.invalidURL))
+            return
         }
-        return post
+        
+        print("MoodPostService: Fetching posts from \(url.absoluteString)")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            
+            if let error = error {
+                print("MoodPostService: Network request error - \(error.localizedDescription)")
+                completion(.failure(.networkError(error)))
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("MoodPostService: Invalid response object received.")
+                completion(.failure(.invalidResponse))
+                return
+            }
+            
+            print("MoodPostService: Received HTTP status code \(httpResponse.statusCode)")
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                var serverMessage: String? = "Unknown server error."
+                if let responseData = data, let errorMessage = String(data: responseData, encoding: .utf8) {
+                    serverMessage = errorMessage
+                    print("MoodPostService: Server error message - \(errorMessage)")
+                }
+                completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
+                return
+            }
+            
+            guard let data = data else {
+                print("MoodPostService: No data received from server.")
+                completion(.failure(.noData))
+                return
+            }
+            do {
+                let decoder = JSONDecoder()
+                let moodPosts = try decoder.decode([MoodPost].self, from: data)
+                print("MoodPostService: Successfully decoded \(moodPosts.count) mood posts.")
+                completion(.success(moodPosts))
+            } catch let decodingError {
+                print("MoodPostService: JSON decoding error - \(decodingError.localizedDescription)")
+                if let decodingError = decodingError as? DecodingError {
+                    switch decodingError {
+                        case .typeMismatch(let type, let context):
+                            print("  Type mismatch for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                        case .valueNotFound(let type, let context):
+                            print("  Value not found for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                        case .keyNotFound(let key, let context):
+                            print("  Key not found: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                        case .dataCorrupted(let context):
+                            print("  Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                        @unknown default:
+                            print("  Unknown decoding error.")
+                    }
+                }
+                completion(.failure(.decodingError(decodingError)))
+            }
+        }.resume()
     }
-    
-    /// Adds a comment to a post
-    /// - Parameters:
-    ///   - postId: The ID of the post to comment on
-    ///   - comment: The comment content
-    /// - Returns: The updated post
-    func addComment(postId: UUID, comment: String) async throws -> MoodPost {
-        // TODO: Implement actual API call
-        // For now, just return the original post
-        guard let post = posts.first(where: { $0.id == postId }) else {
-            throw NSError(domain: "MoodPostService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Post not found"])
-        }
-        return post
-    }
-} 
+}
