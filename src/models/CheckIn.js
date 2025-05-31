@@ -68,6 +68,26 @@ const moodCheckInSchema = new Schema({
   likes: { 
     type: [Schema.Types.ObjectId],
     default: [], 
+  }, 
+
+  comments: {
+    type: [{
+      userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      content: {
+        type: String,
+        required: true,
+        maxlength: 500
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      }
+    }], 
+    default: []
   }
 }, {
   timestamps: true, // Automatically add createdAt and updatedAt fields
@@ -101,6 +121,7 @@ moodCheckInSchema.virtual('displayData').get(function () {
     createdAt: this.createdAt,
     updatedAt: this.updatedAt, 
     likes: this.likes,
+    comments: this.comments,
   };
 });
 
