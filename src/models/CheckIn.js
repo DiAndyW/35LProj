@@ -120,8 +120,18 @@ moodCheckInSchema.virtual('displayData').get(function () {
     isAnonymous: this.isAnonymous, // Uses the virtual property we defined above
     createdAt: this.createdAt,
     updatedAt: this.updatedAt, 
-    likes: this.likes,
-    comments: this.comments,
+    likes: {
+      count: this.likes.length,
+      userIds: this.likes
+    },
+    comments: {
+      count: this.comments.length,
+      data: this.comments.map(comment => ({
+        userId: comment.userId,
+        content: comment.content,
+        timestamp: comment.timestamp
+      }))
+    }
   };
 });
 

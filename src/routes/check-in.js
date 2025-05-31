@@ -6,6 +6,7 @@ import {
   updateCheckIn,
   deleteCheckIn,
   updateLikes,
+  addComment
 } from '../controllers/checkInController.js';
 
 const checkInRouter = Router();
@@ -27,5 +28,8 @@ checkInRouter.delete('/checkin/:id', deleteCheckIn);
 
 // PATCH - Add/delete likes on a check-in
 checkInRouter.patch('/checkin/:id/like', updateLikes);
+
+// PATH - Add a comment on a check-in
+checkInRouter.patch('/checkin/:id/comment', addComment);
 
 export default checkInRouter;

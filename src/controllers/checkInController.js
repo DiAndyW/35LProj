@@ -384,43 +384,100 @@ export const deleteCheckIn = async (req, res) => {
 export const updateLikes = async (req, res) => {
   try {
     
-  const { id } = req.params;
-  const { userId } = req.body; // Assuming userId of person adding the like is sent in body
+    const { id } = req.params;
+    const { userId } = req.body; // Assuming userId of person adding the like is sent in body
 
-  // validation
-  const idValidation = validateObjectId(id, 'check-in ID');
-  if (!idValidation.isValid) {
-    return res.status(400).json({ error: idValidation.error });
+    // validation
+    const idValidation = validateObjectId(id, 'check-in ID');
+    if (!idValidation.isValid) {
+      return res.status(400).json({ error: idValidation.error });
+    }
+
+    const userIdValidation = validateObjectId(userId, 'userId');
+    if (!userIdValidation.isValid) {
+      return res.status(400).json({ error: userIdValidation.error });
+    }
+
+    const checkIn = await MoodCheckIn.findById(id);
+
+    if (!checkIn) {
+      return res.status(404).json({ error: 'Check-in not found' });
+    }
+
+    // update likes
+    if (checkIn.likes.includes(userId)) {
+      // Remove the like if it already exists
+      checkIn.likes.pop(userId); 
+      await checkIn.save();
+    } else {
+      // Else, add the like
+      checkIn.likes.push(userId);
+      await checkIn.save();
+    }
+
+    res.json({
+      message: 'Like updated successfully',
+      checkInId: id,
+      likesCount: checkIn.likes.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch {
+    console.error('Error adding like:', error);
+    res.status(500).json({
+      error: 'Failed to add like',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
+}
 
-  const userIdValidation = validateObjectId(userId, 'userId');
-  if (!userIdValidation.isValid) {
-    return res.status(400).json({ error: userIdValidation.error });
-  }
+export const addComment = async (req, res) => {
+  try {
+    
+    const { id } = req.params;
+    const { userId, content } = req.body; // Assuming userId & content is sent in body
 
-  const checkIn = await MoodCheckIn.findById(id);
+    // validation
+    const idValidation = validateObjectId(id, 'check-in ID');
+    if (!idValidation.isValid) {
+      return res.status(400).json({ error: idValidation.error });
+    }
 
-  if (!checkIn) {
-    return res.status(404).json({ error: 'Check-in not found' });
-  }
+    const userIdValidation = validateObjectId(userId, 'userId');
+    if (!userIdValidation.isValid) {
+      return res.status(400).json({ error: userIdValidation.error });
+    }
 
-  // update likes
-  if (checkIn.likes.includes(userId)) {
-    // Remove the like if it already exists
-    checkIn.likes.pop(userId); 
+    const checkIn = await MoodCheckIn.findById(id);
+
+    if (!checkIn) {
+      return res.status(404).json({ error: 'Check-in not found' });
+    }
+
+    if (!content || content.length > 500) {
+      return res.status(400).json({
+        error: 'Comment content is required and must not exceed 500 characters',
+        currentLength: content ? content.length : 0
+      });
+    } 
+
+    // update comments
+    const newComment = {
+      userId,
+      content,
+      timestamp: new Date()
+    };  
+
+    checkIn.comments.push(newComment);
     await checkIn.save();
-  } else {
-    // Else, add the like
-    checkIn.likes.push(userId);
-    await checkIn.save();
-  }
+    
+    res.json({
+      message: 'Comment added successfully',
+      checkInId: id,
+      comment: newComment,
+      commentsCount: checkIn.comments.length,
+      timestamp: new Date().toISOString()
+    });
 
-  res.json({
-    message: 'Like updated successfully',
-    checkInId: id,
-    likesCount: checkIn.likes.length,
-    timestamp: new Date().toISOString()
-  });
   } catch {
     console.error('Error adding like:', error);
     res.status(500).json({

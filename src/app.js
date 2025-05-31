@@ -67,6 +67,7 @@ const startServer = () => {
     console.log('  GET  /api/checkin/detail/:id - Get specific check-in');
     console.log('  DELETE /api/checkin/:id - Delete check-in');
     console.log('  PATCH /api/checkin/:id/like - Update likes on check-in');
+    console.log('  PATCH /api/checkin/:id/comment - Add comment to check-in');
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
