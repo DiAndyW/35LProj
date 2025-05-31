@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
+import feedRouter from './routes/feed.js';
 
 const app = express();
 app.use(express.json());
@@ -44,6 +45,10 @@ app.get('/', (req, res) => {
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
+// Mounting your feed routes
+app.use('/api', feedRouter);
+console.log('Feed routes mounted at /api');
+
 // Mounting your authentication routes
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
@@ -61,6 +66,7 @@ const startServer = () => {
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
+    console.log(' GET /api/feed - Get global feed check-ins');
   });
 
   process.on('SIGINT', () => shutdown(server));
