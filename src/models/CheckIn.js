@@ -70,12 +70,10 @@ const moodCheckInSchema = new Schema({
   toObject: { virtuals: true } // Include virtual fields when converting to plain object
 });
 
-// This calculates whether the check-in is anonymous based on privacy setting
 moodCheckInSchema.virtual('isAnonymous').get(function () {
   return this.privacy === 'private';
 });
 
-// This creates a clean, consistent format for your API responses
 moodCheckInSchema.virtual('displayData').get(function () {
   return {
     _id: this._id,
