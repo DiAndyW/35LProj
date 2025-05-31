@@ -38,10 +38,8 @@ enum FetchUserError: Error, LocalizedError {
 }
 
 func fetchUsername(for userId: String, completion: @escaping (Result<String, FetchUserError>) -> Void) {
-    guard let url = URL(string: "http://localhost:4000/api/users/\(userId)/username") else {
-        completion(.failure(.invalidURL))
-        return
-    }
+    let endpoint = "/api/users/\(userId)/username"
+    let url = Config.apiURL(for: endpoint)
     
     URLSession.shared.dataTask(with: url) { data, response, error in
         DispatchQueue.main.async {

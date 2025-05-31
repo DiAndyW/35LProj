@@ -11,15 +11,10 @@ enum MoodPostServiceError: Error {
 
 class MoodPostService {
     private var posts: [MoodPost] = []
-    private static let baseURLString = "http://localhost:4000"
     
     static func fetchMoodPosts(completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
         let endpoint = "/api/feed"
-        guard let url = URL(string: baseURLString + endpoint) else {
-            print("Error: Could not create URL from string: \(baseURLString + endpoint)")
-            completion(.failure(.invalidURL))
-            return
-        }
+        let url = Config.apiURL(for: endpoint)
         
         print("MoodPostService: Fetching posts from \(url.absoluteString)")
         

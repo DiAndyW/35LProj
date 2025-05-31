@@ -12,6 +12,10 @@ struct ProfileView: View {
     @State private var userStats = UserStats.sample
     @State private var selectedProfileTab: ProfileTab = .overview
     
+    @State private var displayUsername: String = ""
+    @State private var isLoadingUsername: Bool = false
+    @State private var usernameFetchFailed: Bool = false
+    
     enum ProfileTab: String, CaseIterable {
         case overview = "Overview"
         case analytics = "Analytics"

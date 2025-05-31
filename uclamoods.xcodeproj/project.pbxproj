@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2FC3D98A2DCB4C920062D57C /* FluidGradient in Frameworks */ = {isa = PBXBuildFile; productRef = 2FC3D9892DCB4C920062D57C /* FluidGradient */; };
+		972E013E2DEAC94C00E4E3B4 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972E013D2DEAC94900E4E3B4 /* Config.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,7 @@
 		2FB1ACB92DC5F2550020E348 /* uclamoods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = uclamoods.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FB1ACC62DC5F2570020E348 /* uclamoodsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = uclamoodsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FB1ACD02DC5F2570020E348 /* uclamoodsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = uclamoodsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		972E013D2DEAC94900E4E3B4 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -93,6 +95,7 @@
 		2FB1ACB02DC5F2550020E348 = {
 			isa = PBXGroup;
 			children = (
+				972E013D2DEAC94900E4E3B4 /* Config.swift */,
 				2FB1ACBB2DC5F2550020E348 /* uclamoods */,
 				2FB1ACC92DC5F2570020E348 /* uclamoodsTests */,
 				2FB1ACD32DC5F2570020E348 /* uclamoodsUITests */,
@@ -266,6 +269,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				972E013E2DEAC94C00E4E3B4 /* Config.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

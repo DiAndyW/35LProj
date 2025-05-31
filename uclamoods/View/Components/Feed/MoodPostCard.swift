@@ -90,6 +90,7 @@ struct MoodPostCard: View {
                             .font(.custom("Georgia", size: 16))
                             .fontWeight(.semibold)
                             .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white)
+                            .lineLimit(1).truncationMode(.tail)
                     }
                     
                     if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: post.timestamp) {

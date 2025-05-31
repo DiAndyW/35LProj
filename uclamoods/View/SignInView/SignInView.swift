@@ -27,14 +27,11 @@ struct SignInView: View {
     
     func attemptLogin() {
         isLoading = true
-        feedbackMessage = "" 
+        feedbackMessage = ""
         
-        guard let url = URL(string: "http://localhost:4000/auth/login") else {
-            feedbackMessage = "Invalid server URL"
-            isLoading = false
-            return
-        }
-        
+        let endpoint = "/auth/login"
+        let url = Config.apiURL(for: endpoint)
+
         let credentials = LoginCredentials(email: email, password: password)
         
         guard let encodedCredentials = try? JSONEncoder().encode(credentials) else {
