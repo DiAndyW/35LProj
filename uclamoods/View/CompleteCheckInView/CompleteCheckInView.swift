@@ -373,39 +373,68 @@ struct CompleteCheckInView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
-                EmotionHeaderView(
-                    emotion: emotion,
-                    timeFormatter: timeFormatter,
-                    currentDisplayLocation: "@ Sproul Hall",
-                    geometry: geometry
-                )
-                .padding(.bottom, 30)
-                .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.4)
+            ZStack{
+                VStack(spacing: 0) {
+                    EmotionHeaderView(
+                        emotion: emotion,
+                        timeFormatter: timeFormatter,
+                        currentDisplayLocation: "@ Sproul Hall",
+                        geometry: geometry
+                    )
+                    .padding(.bottom, 30)
+                    .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.4)
 
-                CheckInFormView(
-                    reasonText: $reasonText,
-                    isTextFieldFocused: $isTextFieldFocused,
-                    selectedUsers: $selectedUsers,
-                    availableUsers: availableUsers,
-                    selectedActivities: $selectedActivities,
-                    predefinedActivities: predefinedActivities,
-                    customActivityText: $customActivityText,
-                    showingAddCustomActivityField: $showingAddCustomActivityField,
-                    selectedPrivacy: $selectedPrivacy,
-                    showLocation: $showLocation,
-                    currentLocation: $currentLocation,
-                    emotion: emotion,
-                    geometry: geometry,
-                    saveAction: saveCheckIn
-                ).padding(.top, -geometry.size.height * 0.48)
+                    CheckInFormView(
+                        reasonText: $reasonText,
+                        isTextFieldFocused: $isTextFieldFocused,
+                        selectedUsers: $selectedUsers,
+                        availableUsers: availableUsers,
+                        selectedActivities: $selectedActivities,
+                        predefinedActivities: predefinedActivities,
+                        customActivityText: $customActivityText,
+                        showingAddCustomActivityField: $showingAddCustomActivityField,
+                        selectedPrivacy: $selectedPrivacy,
+                        showLocation: $showLocation,
+                        currentLocation: $currentLocation,
+                        emotion: emotion,
+                        geometry: geometry,
+                        saveAction: saveCheckIn
+                    ).padding(.top, -geometry.size.height * 0.48)
+
+                }
+                .ignoresSafeArea(edges: .top)
+                .onTapGesture {
+                    isTextFieldFocused = false
+                }
+                .offset(y: -geometry.size.width * 0.0)
+                .offset(x: -geometry.size.width * 0.25)
             }
-            .ignoresSafeArea(edges: .top)
-            .onTapGesture {
-                isTextFieldFocused = false
-            }
-            .offset(y: -geometry.size.width * 0.0)
-            .offset(x: -geometry.size.width * 0.25)
+            VStack {
+                                HStack {
+                                    Button(action: {
+                                        // Add haptic feedback for back button press
+                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                        impactFeedback.prepare()
+                                        impactFeedback.impactOccurred()
+                                        
+                                        // Use the new mood flow back navigation
+                                        router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
+                                    }) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 22, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .frame(width: 44, height: 44)
+                                            
+                                            .clipShape(Circle())
+                                    }
+                                    .padding(.leading, 25)
+                                    .padding(.top, -geometry.size.height * 0.02)
+                                    
+                                    Spacer()
+                                }
+                                
+                                Spacer()
+                            }
         }
     }
 
@@ -428,7 +457,7 @@ struct CompleteCheckInView: View {
         }
         
         // UPDATED: Use new router back navigation for mood flow
-        router.navigateBackInMoodFlow()
+        router.navigateToMainApp()
     }
 
     private func skipToComplete() {
@@ -437,7 +466,7 @@ struct CompleteCheckInView: View {
         impactFeedback.impactOccurred()
         
         // UPDATED: Use new router back navigation for mood flow
-        router.navigateBackInMoodFlow()
+        router.navigateToMainApp()
     }
 }
 

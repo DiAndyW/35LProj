@@ -64,7 +64,7 @@ struct EmotionDataProvider {
                 color: interpolateColor(pleasantness: 0.15, startColor: rageColor, endColor: euphoricColor),
                 description: "Frantic, your heart races, mind spiraling in chaos, struggling for grip amid overwhelming turmoil.",
                 pleasantness: 0.15, intensity: 0.9, control: 0.2, clarity: 0.7),
-        Emotion(name: "Stressed (High)", // New
+        Emotion(name: "Stressed", // New
                 color: interpolateColor(pleasantness: 0.18, startColor: rageColor, endColor: euphoricColor),
                 description: "Under intense pressure, feeling overwhelmed by demands and finding it hard to cope, mind racing.",
                 pleasantness: 0.18, intensity: 0.85, control: 0.25, clarity: 0.5),
@@ -108,7 +108,7 @@ struct EmotionDataProvider {
                 color: interpolateColor(pleasantness: 0.8, startColor: rageColor, endColor: euphoricColor),
                 description: "Rushing with joy, swept up in exciting moments, heart soaring with achievement's thrill.",
                 pleasantness: 0.8, intensity: 0.9, control: 0.6, clarity: 0.8),
-        Emotion(name: "Proud (High)", // New
+        Emotion(name: "Proud", // New
                 color: interpolateColor(pleasantness: 0.82, startColor: rageColor, endColor: euphoricColor),
                 description: "Feeling a surge of elation and deep satisfaction from significant achievements or qualities.",
                 pleasantness: 0.82, intensity: 0.85, control: 0.7, clarity: 0.85),

@@ -229,7 +229,7 @@ struct EmotionSelectionView: View {
                             impactFeedback.impactOccurred()
                             
                             // Use the new mood flow back navigation
-                            router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.1))
+                            router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
                         }) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 22, weight: .semibold))
@@ -239,7 +239,7 @@ struct EmotionSelectionView: View {
                                 .clipShape(Circle())
                         }
                         .padding(.leading, 25)
-                        .padding(.top, availableHeight * 0.03)
+                        .padding(.top, -availableHeight * 0.02)
                         
                         Spacer()
                     }
