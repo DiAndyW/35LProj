@@ -100,7 +100,7 @@ export const createCheckIn = async (req, res) => {
     const newCheckIn = new MoodCheckIn({
       userId,
       emotion: {
-        name: emotion.name.toLowerCase(),
+        name: emotion.name,
         attributes: emotion.attributes || {}
       },
       reason: reason || null,

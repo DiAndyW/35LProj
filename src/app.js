@@ -4,9 +4,13 @@ import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
 import feedRouter from './routes/feed.js';
+import userRouter from './routes/userRoutes.js';
+import cors from 'cors';
 
 const app = express();
+app.use(cors());
 app.use(express.json());
+
 
 // Mongoose connection setup
 const connectMongoose = async () => {
@@ -36,22 +40,21 @@ const shutdown = async (server) => {
   });
 };
 
-// Your existing root route
 app.get('/', (req, res) => {
   res.send('Hello, David');
 });
 
-// Mounting your check-in routes
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
-// Mounting your feed routes
 app.use('/api', feedRouter);
 console.log('Feed routes mounted at /api');
 
-// Mounting your authentication routes
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
+
+app.use('/api/users', userRouter);
+console.log('User routes mounted at /api/users');
 
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
@@ -66,7 +69,8 @@ const startServer = () => {
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
-    console.log(' GET /api/feed - Get global feed check-ins');
+    console.log('  GET /api/feed - Get global feed check-ins');
+    console.log('  GET  /api/users/:userId/username - Get username by userId');
   });
 
   process.on('SIGINT', () => shutdown(server));
