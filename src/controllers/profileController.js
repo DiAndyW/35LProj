@@ -2,18 +2,14 @@ import UserModel from "../models/UserModel.js";
 import MoodCheckIn from "../models/CheckIn.js";
 import mongoose from "mongoose";
 
-
-// /profile/emotion-trends
-// /profile/recent-public-checkins
-// TODO: Combine these into the summary
-
 // GET /profile/summary
 // req auth
 export const getProfileSummary = async (req, res) => {
  try {
     const userId = req.user.sub;
     // basic user info (including email, excluding password)
-    const user = await UserModel.findById(userId).select('username email profilePicture');
+    const user = await UserModel.findById(userId)
+      .select('username email profilePicture');
 
     if (!user) {
       return res.status(404).json({
@@ -28,6 +24,14 @@ export const getProfileSummary = async (req, res) => {
     const topMood = await getTopMood(userId);
     // Calculate check-in streak (consecutive days with at least one check-in)
     const checkinStreak = await calculateCheckinStreak(userId);
+    // Get the 3 most recent checkins
+    const recentCheckins = await MoodCheckIn.find({ userId })
+      .select('emotion.name emotion.attributes timestamp')
+      .sort({timestamp: -1})
+      .limit(3)
+      .lean();
+    // Get weekly summary data
+    const weeklySummary = await getWeeklySummary(userId);
 
     // Compile simplified profile summary
     const profileSummary = {
@@ -37,6 +41,8 @@ export const getProfileSummary = async (req, res) => {
       totalCheckins,
       checkinStreak,
       topMood,
+      recentCheckins,
+      weeklySummary,
     };
 
     console.log(profileSummary);
@@ -53,6 +59,19 @@ export const getProfileSummary = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
+};
+
+// GET /profile/analytics
+// for stats
+// average mood over past week, month, 3 months, year,
+// avergae mood on each day of the week,
+// average mood when doing each logged activity,
+// average mood when with each logged person.,
+// distribution of mood types (by attributes),
+// distribution of mood for 1-4
+
+export const getMoodAnalytics = async( req, res ) => {
+  res.sendStatus(205);
 };
 
 //Helper Get Top Mood Function
@@ -83,11 +102,6 @@ const getTopMood = async (userId) => {
     console.error('Error getting top mood:', error);
     return null;
   }
-};
-
-// GET /profile/analytics
-export const getMoodAnalytics = async( req, res ) => {
-  res.sendStatus(205);
 };
 
 //Helper Check in Streak calculator
@@ -136,5 +150,76 @@ const calculateCheckinStreak = async (userId) => {
   } catch (error) {
     console.error('Error calculating check-in streak:', error);
     return 0;
+  }
+};
+
+const getWeeklySummary = async (userId) => {
+  try {
+    //determine when the start of the week was
+    const currentDate = new Date();
+    const currentDay = currentDate.getDay();
+    //if currentday is 0, then its sunday, return 6, otherwise return currenday-1
+    const daysSinceMonday = (currentDay === 0 ? 6 : currentDay - 1);
+  
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - daysSinceMonday);
+    startOfWeek.setHours(0, 0, 0, 0); // Start of this Monday
+  
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7); // next monday
+    endOfWeek.setHours(0, 0, 0, 0);
+
+    // Use aggregation pipeline to get both count and top mood for week
+    const weeklyCheckins = await MoodCheckIn.aggregate([
+      { $match: { 
+          userId: new mongoose.Types.ObjectId(userId),
+          timestamp: {
+            $gte: startOfWeek,
+            $lt: endOfWeek
+          }
+        }
+      },
+      {
+        $facet: {
+          // Get total count
+          totalCount: [ { $count: "count" } ],
+          // Get top emotion
+          topEmotion: [
+            {
+              $group: {
+                _id: '$emotion.name',
+                count: { $sum: 1 },
+              }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 1 }
+          ]
+        }
+      }
+    ]);
+
+    const weeklyCheckinsCount = weeklyCheckins[0].totalCount[0]?.count || 0;
+    const topEmotionResult = weeklyCheckins[0].topEmotion;
+
+    if (topEmotionResult.length === 0) {
+      return {
+        weeklyCheckinsCount,
+        weeklyTopMood: null
+      };
+    }
+
+    return {
+      weeklyCheckinsCount,
+      weeklyTopMood: {
+        name: topEmotionResult[0]._id,
+        count: topEmotionResult[0].count,
+      }
+    };
+  } catch (error) {
+    console.error('Error getting weekly stats:', error);
+    return {
+      weeklyCheckinsCount: 0,
+      weeklyTopMood: null
+    };
   }
 };
