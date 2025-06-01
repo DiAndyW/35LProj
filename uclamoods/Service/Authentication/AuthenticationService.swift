@@ -1,12 +1,3 @@
-
-//
-//  RegisterRequest.swift
-//  uclamoods
-//
-//  Created by Yang Gao on 6/1/25.
-//
-
-
 import Foundation
 import SwiftUI
 
@@ -86,7 +77,9 @@ class AuthenticationService: ObservableObject {
     
     private var accessToken: String? {
         didSet {
-            isAuthenticated = accessToken != nil
+            DispatchQueue.main.async {
+                self.isAuthenticated = self.accessToken != nil
+            }
             // Save to keychain when set
             if let token = accessToken {
                 KeychainManager.shared.saveTokens(
@@ -218,10 +211,12 @@ class AuthenticationService: ObservableObject {
     
     // MARK: - Logout
     func logout() {
-        accessToken = nil
-        refreshToken = nil
-        currentUserId = nil
-        isAuthenticated = false
+        DispatchQueue.main.async {
+            self.accessToken = nil
+            self.refreshToken = nil
+            self.currentUserId = nil
+            self.isAuthenticated = false
+        }
         // Clear from keychain
         KeychainManager.shared.clearTokens()
     }
@@ -237,18 +232,20 @@ class AuthenticationService: ObservableObject {
         if let access = access, let refresh = refresh {
             // Validate token isn't expired before using
             if !isTokenExpired(access) {
-                self.accessToken = access
-                self.refreshToken = refresh
-                
-                // Load user ID
-                if let userId = KeychainManager.shared.retrieveUserId() {
-                    self.currentUserId = userId
-                } else if let userId = extractUserIdFromToken(access) {
-                    self.currentUserId = userId
-                    KeychainManager.shared.saveUserId(userId)
+                DispatchQueue.main.async {
+                    self.accessToken = access
+                    self.refreshToken = refresh
+                    
+                    // Load user ID
+                    if let userId = KeychainManager.shared.retrieveUserId() {
+                        self.currentUserId = userId
+                    } else if let userId = self.extractUserIdFromToken(access) {
+                        self.currentUserId = userId
+                        KeychainManager.shared.saveUserId(userId)
+                    }
+                    
+                    self.isAuthenticated = true
                 }
-                
-                self.isAuthenticated = true
             } else {
                 // Token expired, try to refresh
                 Task {
