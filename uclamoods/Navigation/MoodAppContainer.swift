@@ -33,6 +33,16 @@ struct MoodAppContainer: View {
     }
 }
 
+extension AnyTransition {
+    static var scaleAndCrossFade: AnyTransition {
+        // Symmetrical: new view scales up from 0.97 & fades in, old view scales down to 0.97 & fades out.
+        // The `anchor: .center` ensures scaling is from the center.
+        let transition = AnyTransition.opacity.combined(with: .scale(scale: 0.97, anchor: .center))
+        // Adjust duration for smoothness. 0.3s to 0.4s is usually good.
+        return transition.animation(.easeInOut(duration: 0.35))
+    }
+}
+
 // MARK: - Auth Flow (Same as before)
 struct AuthFlowView: View {
     @EnvironmentObject private var router: MoodAppRouter
@@ -42,18 +52,16 @@ struct AuthFlowView: View {
             switch router.currentAuthScreen {
             case .signIn:
                 SignInView()
-                    .transition(.slide)
                 
             case .signUp:
                 SignUpView()
-                    .transition(.slide)
                 
             case .completeProfile:
                 CompleteProfileView()
-                    .transition(.slide)
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: router.currentAuthScreen)
+        .transition(.scaleAndCrossFade)
+        .id(router.currentAuthScreen)
     }
 }
 
@@ -241,7 +249,7 @@ struct MoodFlowContainer: View {
                             origin: router.moodFlowTransitionOrigin,
                             size: geometry.size
                         )
-                        
+                    
                 case .emotionSelection(let energyLevel):
                     EmotionSelectionView(energyLevel: energyLevel)
                         .moodTransition(
@@ -250,7 +258,7 @@ struct MoodFlowContainer: View {
                             origin: router.moodFlowTransitionOrigin,
                             size: geometry.size
                         )
-                        
+                    
                 case .completeCheckIn(let emotion):
                     CompleteCheckInView(emotion: emotion)
                         .moodTransition(
