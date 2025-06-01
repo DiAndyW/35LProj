@@ -25,11 +25,60 @@ struct MoodAppContainer: View {
             .environmentObject(router)
             .onAppear {
                 router.setScreenSize(geometry.size)
+                // Check authentication status on app launch
+                AuthenticationService.shared.checkAuthenticationStatus()
             }
             .onChange(of: geometry.size) { _, newSize in
                 router.setScreenSize(newSize)
             }
+            .onReceive(AuthenticationService.shared.$isAuthenticated) { isAuthenticated in
+                // Handle authentication state changes
+                if isAuthenticated && router.currentSection == .auth {
+                    // User just logged in, navigate to main app
+                    router.navigateToMainApp()
+                } else if !isAuthenticated && router.currentSection != .auth {
+                    // User logged out or token expired, go to auth
+                    router.currentSection = .auth
+                    router.currentAuthScreen = .signIn
+                }
+            }
         }
+    }
+}
+
+// MARK: - Network Request Interceptor for Token Refresh
+class AuthenticatedURLSession {
+    static let shared = AuthenticatedURLSession()
+    
+    private init() {}
+    
+    func dataTask(with request: URLRequest) async throws -> (Data, URLResponse) {
+        var authenticatedRequest = request
+        
+        // Add auth token
+        if let token = AuthenticationService.shared.getAccessToken() {
+            authenticatedRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: authenticatedRequest)
+        
+        // Check if we got a 401 (unauthorized)
+        if let httpResponse = response as? HTTPURLResponse,
+           httpResponse.statusCode == 401 {
+            // Try to refresh the token
+            await AuthenticationService.shared.refreshAccessToken()
+            
+            // Retry the request with new token
+            if let newToken = AuthenticationService.shared.getAccessToken() {
+                authenticatedRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+                return try await URLSession.shared.data(for: authenticatedRequest)
+            } else {
+                // Refresh failed, throw error
+                throw AuthenticationError.invalidCredentials
+            }
+        }
+        
+        return (data, response)
     }
 }
 

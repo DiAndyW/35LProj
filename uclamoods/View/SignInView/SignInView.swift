@@ -1,128 +1,88 @@
 import SwiftUI
 
-// MARK: - Network & Data Models
-
-struct LoginCredentials: Codable {
-    let email: String
-    let password: String
-}
-
-struct SuccessfulLoginResponse: Codable {
-    let access: String
-    let refresh: String
-}
-
-struct ErrorLoginResponse: Codable {
-    let msg: String
-}
-
-
-// MARK: - Modern Sign In View
-
 struct SignInView: View {
     @EnvironmentObject private var router: MoodAppRouter
+    @StateObject private var authService = AuthenticationService.shared
     
     @State private var email = ""
     @State private var password = ""
     
     @State private var isLoading = false
     @State private var feedbackMessage = ""
-    @State private var isLoggedIn = false // In a real app, this would likely be managed by a global auth state
-
+    @State private var showBiometricOption = false
+    
     // Styling constants
     private let primaryButtonHeight: CGFloat = 52
     private let formHorizontalPadding: CGFloat = 24
     private let mainStackSpacing: CGFloat = 25
-
+    
     // MARK: - Login Logic
     func attemptLogin() {
+        guard !email.isEmpty && !password.isEmpty else {
+            feedbackMessage = "Please enter both email and password"
+            return
+        }
+        
         isLoading = true
         feedbackMessage = ""
         performHapticFeedback()
         
-        let url = Config.apiURL(for: "/auth/login") // Use your actual endpoint
-        let credentials = LoginCredentials(email: email, password: password)
-        
-        guard let encodedCredentials = try? JSONEncoder().encode(credentials) else {
-            feedbackMessage = "Could not prepare login data."
-            isLoading = false
+        Task {
+            do {
+                let response = try await authService.login(email: email, password: password)
+                
+                await MainActor.run {
+                    isLoading = false
+                    // Navigation is handled by the authentication state observer in MoodAppContainer
+                    // Enable biometric auth option after successful login
+                    if BiometricAuthManager.shared.isBiometricsAvailable() {
+                        UserDefaults.standard.isBiometricAuthEnabled = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    feedbackMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func attemptBiometricLogin() {
+        guard UserDefaults.standard.isBiometricAuthEnabled,
+              BiometricAuthManager.shared.isBiometricsAvailable() else {
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = encodedCredentials
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                isLoading = false
-                if let error = error {
-                    feedbackMessage = "Network error: \(error.localizedDescription)"
-                    isLoggedIn = false
-                    return
-                }
-                
-                guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                    feedbackMessage = "Invalid response from server."
-                    isLoggedIn = false
-                    return
-                }
-                
-                if httpResponse.statusCode == 200 {
-                    do {
-                        let successResponse = try JSONDecoder().decode(SuccessfulLoginResponse.self, from: data)
-                        // Handle successful login: store tokens, update auth state
-                        print("Access Token: \(successResponse.access)")
-                        print("Refresh Token: \(successResponse.refresh)")
-                        
-                        feedbackMessage = "Login Successful!" // May not be seen if navigating immediately
-                        isLoggedIn = true
-                        // IMPORTANT: In a real app, navigate away after successful login
-                        // For example, by changing a global state that ContentView observes,
-                        // or by calling a router method that updates the main view.
-                        router.navigateToMainApp()
-                    } catch {
-                        feedbackMessage = "Login successful, but token parsing failed: \(error.localizedDescription)"
-                        // Depending on app logic, isLoggedIn might be true or false here.
-                        // If tokens are critical for the app to function, set isLoggedIn = false.
-                        isLoggedIn = false // Or true, if partial success is acceptable
-                    }
+        BiometricAuthManager.shared.authenticateWithBiometrics { success, error in
+            if success {
+                // Check if we have stored credentials
+                if AuthenticationService.shared.isAuthenticated {
+                    router.navigateToMainApp()
                 } else {
-                    do {
-                        let errorResponse = try JSONDecoder().decode(ErrorLoginResponse.self, from: data)
-                        feedbackMessage = errorResponse.msg
-                    } catch {
-                        feedbackMessage = "Login failed (Status: \(httpResponse.statusCode)). Could not parse error."
-                    }
-                    isLoggedIn = false
+                    feedbackMessage = "Please sign in with your credentials first"
                 }
+            } else if let error = error {
+                feedbackMessage = "Biometric authentication failed: \(error.localizedDescription)"
             }
-        }.resume()
+        }
     }
-
+    
     private func performHapticFeedback(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
         let feedback = UIImpactFeedbackGenerator(style: style)
         feedback.prepare()
         feedback.impactOccurred()
     }
-
+    
     // MARK: - Body
     var body: some View {
         ZStack {
             Color.black
                         .edgesIgnoringSafeArea(.all)
-
+            
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: mainStackSpacing) {
-                    // This conditional rendering of "Welcome" vs Login Form might be handled
-                    // by navigating to a different view in a real app upon successful login.
-                    // For this example, we keep it within SignInView as per original structure.
-                    if isLoggedIn && feedbackMessage.contains("Successful") { // Show welcome only on explicit success
-                        loggedInView
-                    } else {
-                        loginFormView
-                    }
+                    loginFormView
                 }
                 .padding(.bottom, 30)
             }
@@ -130,25 +90,71 @@ struct SignInView: View {
         .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.65, blendDuration: 0.2), value: email)
         .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.65, blendDuration: 0.2), value: password)
         .animation(.easeInOut(duration: 0.3), value: isLoading)
-        .animation(.easeInOut(duration: 0.3), value: isLoggedIn)
-        // .navigationBarHidden(true) // Uncomment if used within a NavigationView
+        .onAppear {
+            // Check if biometric auth is available and enabled
+            showBiometricOption = UserDefaults.standard.isBiometricAuthEnabled &&
+                                 BiometricAuthManager.shared.isBiometricsAvailable()
+            
+            // Attempt biometric login on appear if enabled
+            if showBiometricOption {
+                attemptBiometricLogin()
+            }
+        }
     }
-
-    // MARK: - Subviews for Readability
+    
+    // MARK: - Subviews
     @ViewBuilder
     private var loginFormView: some View {
-        Spacer().frame(height: UIScreen.main.bounds.height * 0.05) // Top spacing
-
-        Text("Morii") // App Title
+        Spacer().frame(height: UIScreen.main.bounds.height * 0.05)
+        
+        Text("Morii")
             .font(.system(size: 48, weight: .bold, design: .rounded))
             .foregroundColor(.white)
         
-        Text("Welcome Back") // Subtitle
+        Text("Welcome Back")
             .font(.system(size: 26, weight: .semibold))
             .foregroundColor(Color.white.opacity(0.85))
             .padding(.bottom, mainStackSpacing / 2)
-
-        VStack(alignment: .center, spacing: 18) { // Form fields
+        
+        // Biometric login button (if available)
+        if showBiometricOption {
+            Button(action: attemptBiometricLogin) {
+                HStack {
+                    Image(systemName: "faceid")
+                        .font(.system(size: 24))
+                    Text("Sign in with Face ID")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(22)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                )
+            }
+            .padding(.horizontal, formHorizontalPadding)
+            .padding(.bottom, 10)
+            
+            HStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(height: 1)
+                Text("OR")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color.white.opacity(0.5))
+                    .padding(.horizontal, 10)
+                Rectangle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(height: 1)
+            }
+            .padding(.horizontal, formHorizontalPadding)
+            .padding(.bottom, 10)
+        }
+        
+        VStack(alignment: .center, spacing: 18) {
             FormField(
                 title: "Email Address",
                 placeholder: "you@example.com",
@@ -160,15 +166,15 @@ struct SignInView: View {
                 title: "Password",
                 placeholder: "Enter your password",
                 text: $password,
-                textContentType: .password // For existing passwords
+                textContentType: .password
             )
             
-            HStack { // Forgot Password link
+            HStack {
                 Spacer()
                 Button(action: {
                     performHapticFeedback(style: .light)
                     print("Forgot Password Tapped")
-                    // TODO: Implement forgot password navigation/logic
+                    // TODO: Implement forgot password
                 }) {
                     Text("Forgot Password?")
                         .font(.system(size: 14, weight: .medium))
@@ -176,48 +182,47 @@ struct SignInView: View {
                         .underline()
                 }
             }
-            .padding(.top, -5) // Adjust to be closer to the password field
+            .padding(.top, -5)
         }
         .padding(.horizontal, formHorizontalPadding)
-
-        // Feedback Message for errors
-        if !feedbackMessage.isEmpty && !isLoggedIn { // Show only if error and not in a "successful login" state
+        
+        // Error message
+        if !feedbackMessage.isEmpty {
             Text(feedbackMessage)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color.red) // Error messages in red
+                .foregroundColor(Color.red)
                 .multilineTextAlignment(.center)
                 .padding(.vertical, 10)
                 .padding(.horizontal, formHorizontalPadding)
                 .frame(maxWidth: .infinity, alignment: .center)
         } else {
-            // Maintain space if no error message, for consistent button positioning
-            Spacer().frame(height: (mainStackSpacing / 1.5) + (feedbackMessage.isEmpty ? 24 : 0) ) // Adjust height to be similar to with error
+            Spacer().frame(height: (mainStackSpacing / 1.5) + 24)
         }
-
-        // Loading Indicator or Log In Button
+        
+        // Login button or loading indicator
         if isLoading {
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(1.5) // Slightly larger indicator
+                .scaleEffect(1.5)
                 .frame(height: primaryButtonHeight)
-                .padding(.top, feedbackMessage.isEmpty || isLoggedIn ? mainStackSpacing / 2 : 0) // Dynamic top padding
+                .padding(.top, feedbackMessage.isEmpty ? mainStackSpacing / 2 : 0)
         } else {
-            Button(action: attemptLogin) { // Primary Log In button
+            Button(action: attemptLogin) {
                 Text("Log In")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black) // Dark text on light button
+                    .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .frame(height: primaryButtonHeight)
-                    .background(Color.white) // Prominent white button
-                    .cornerRadius(primaryButtonHeight / 3) // Responsive corner radius
-                    .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4) // Subtle shadow
+                    .background(Color.white)
+                    .cornerRadius(primaryButtonHeight / 3)
+                    .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
             }
-            .disabled(email.isEmpty || password.isEmpty || isLoading) // Disable if fields empty or loading
+            .disabled(email.isEmpty || password.isEmpty || isLoading)
             .padding(.horizontal, formHorizontalPadding)
-            .padding(.top, feedbackMessage.isEmpty || isLoggedIn ? mainStackSpacing / 2 : 0)
+            .padding(.top, feedbackMessage.isEmpty ? mainStackSpacing / 2 : 0)
         }
         
-        // Navigation to Sign Up Screen (Secondary Action)
+        // Sign up navigation
         Button(action: {
             performHapticFeedback(style: .light)
             router.navigateToSignUp()
@@ -228,60 +233,117 @@ struct SignInView: View {
                     .foregroundColor(Color.white.opacity(0.6))
                 Text("Sign Up")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Color.white.opacity(0.9)) // Make "Sign Up" stand out
+                    .foregroundColor(Color.white.opacity(0.9))
             }
         }
         .padding(.top, mainStackSpacing / 1.5)
-        Spacer() // Pushes content up if screen is tall
-    }
-    
-    @ViewBuilder
-    private var loggedInView: some View {
-        Spacer().frame(height: UIScreen.main.bounds.height * 0.2) // Center content
-
-        Image(systemName: "checkmark.circle.fill") // Success icon
-            .font(.system(size: 60, weight: .semibold))
-            .foregroundColor(Color.green) // Green for success
-            .padding(.bottom, 10)
-
-        Text("Login Successful!")
-            .font(.system(size: 28, weight: .bold, design: .rounded))
-            .foregroundColor(.white)
         
-        Text("Welcome back to Morii.") // Additional welcome message
-            .font(.system(size: 18))
-            .foregroundColor(Color.white.opacity(0.8))
-            .padding(.top, 5)
+        Spacer()
+    }
+}
 
-        Spacer().frame(height: 30)
-
-        Button(action: { // Log Out Button
-            performHapticFeedback(style: .light)
-            isLoggedIn = false // Reset state
-            feedbackMessage = "" // Clear feedback
-            email = "" // Clear fields
-            password = ""
-            // TODO: Implement actual logout logic (clear tokens, etc.)
-            print("User Logged Out")
-        }) {
-            Text("Log Out")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color.white.opacity(0.9))
-                .frame(maxWidth: .infinity)
-                .frame(height: primaryButtonHeight)
-                .background(Color.white.opacity(0.15)) // Subtle background for logout
-                .cornerRadius(primaryButtonHeight / 3)
+// MARK: - Form Components (keep your existing design)
+struct FormField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var autocapitalization: UITextAutocapitalizationType = .none
+    var disableAutocorrection: Bool = true
+    
+    private let fieldHeight: CGFloat = 50
+    private let fieldCornerRadius: CGFloat = 10
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(Color.white.opacity(0.7))
+            
+            TextField(placeholder, text: $text)
+                .font(.system(size: 16))
+                .frame(height: fieldHeight)
+                .padding(.horizontal)
+                .foregroundColor(.white)
+                .background(Color.white.opacity(0.08))
+                .cornerRadius(fieldCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: fieldCornerRadius)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                )
+                .keyboardType(keyboardType)
+                .textContentType(textContentType)
+                .autocapitalization(autocapitalization)
+                .disableAutocorrection(disableAutocorrection)
         }
-        .padding(.horizontal, formHorizontalPadding)
-        Spacer() // Push content to center
+    }
+}
+
+struct SecureFormField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    var textContentType: UITextContentType? = .newPassword
+    
+    private let fieldHeight: CGFloat = 50
+    private let fieldCornerRadius: CGFloat = 10
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(Color.white.opacity(0.7))
+            
+            SecureField(placeholder, text: $text)
+                .font(.system(size: 16))
+                .frame(height: fieldHeight)
+                .padding(.horizontal)
+                .foregroundColor(.white)
+                .background(Color.white.opacity(0.08))
+                .cornerRadius(fieldCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: fieldCornerRadius)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                )
+                .textContentType(textContentType)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+        }
+    }
+}
+
+// MARK: - Color Extension
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (0, 0, 0, 0)
+        }
+        
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
 
 // MARK: - Preview
-
-struct ModernSignInView_Previews: PreviewProvider {
+struct SignInView_Previews: PreviewProvider {
     static var previews: some View {
-        // Ensure dummy MoodAppRouter and other dependencies are available for preview
         SignInView()
             .environmentObject(MoodAppRouter())
     }
