@@ -66,11 +66,28 @@ export const createCheckIn = async (req, res) => {
     }
 
     // Process location data
-    const locationResult = processLocationData(location);
-    if (locationResult.error) {
-      return res.status(400).json({ error: locationResult.error });
+    let processedLocation = null;
+    if (location && location.coordinates) { // If location and coordinates are provided
+      if (typeof location.coordinates.latitude !== 'number' || typeof location.coordinates.longitude !== 'number') {
+        return res.status(400).json({ error: 'Invalid location coordinates: latitude and longitude must be numbers.' });
+      }
+      processedLocation = {
+        coordinates: {
+          type: 'Point',
+          coordinates: [location.coordinates.longitude, location.coordinates.latitude] // GeoJSON: [longitude, latitude]
+        },
+        landmarkName: (location.landmarkName && typeof location.landmarkName === 'string') ? location.landmarkName.trim() : null
+      };
+    } else if (location && location.landmarkName && !location.coordinates) {
+      // Optional: Allow landmarkName even if coordinates are missing (e.g. user typed it)
+      // processedLocation = {
+      //   landmarkName: typeof location.landmarkName === 'string' ? location.landmarkName.trim() : null,
+      //   coordinates: undefined // Explicitly undefined or handled by schema default
+      // };
+      // For now, let's assume if location object is present, coordinates are expected.
+      // If you want to allow only landmarkName, this logic needs adjustment and frontend needs to support sending it.
+       return res.status(400).json({ error: 'Location coordinates are required if location object is provided.' });
     }
-    const processedLocation = locationResult.data;
 
     // Validate privacy setting
     const validPrivacySettings = ['friends', 'public', 'private'];
