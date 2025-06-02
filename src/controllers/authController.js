@@ -177,7 +177,7 @@ export const resetPasswordWithCode = async (req, res) => {
     }
 
     // Validate password strength
-    if (!strongPwdRegex.test(newPassword)) {
+    if (!strongPwd.test(newPassword)) {
       console.log('[Reset PW] Weak password attempt.');
       return res.status(400).json({ msg: 'Weak password. Password must be at least 10 characters long and include uppercase, lowercase, digit, and special character.' });
     }
