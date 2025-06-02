@@ -65,8 +65,8 @@ export const getProfileSummary = async (req, res) => {
 // for stats
 // average mood over past week, month, 3 months, year (DONE)
 // avergae mood on each day of the week, (DONE)
-// average mood when doing each logged activity,
-// average mood when with each logged person.,
+// average mood when doing each logged activity, (DONE)
+// average mood when with each logged person., (DONE)
 // distribution of mood types (by attributes), (LATER)
 // distribution of mood for 1-4 (LATER)
 // there might be possible redundancy in the code, will overlook for now.
@@ -89,6 +89,10 @@ export const getMoodAnalytics = async (req, res) => {
     const averageMoodForPeriod = await getAverageMoodForPeriod(userId, period, dateRange);
     // Get average mood for each day of week
     const averageMoodByDayOfWeek = await getAverageMoodByDayOfWeek(userId, period, dateRange);
+    // Get average mood based on each tagged activity
+    const averageMoodByActivity = await getAverageMoodByContext(userId, period, dateRange, 'activity');
+    // Get average mood based on each tagged person
+    const averageMoodByPeople = await getAverageMoodByContext(userId, period, dateRange, 'people');    
 
     res.status(200).json({
       success: true,
@@ -100,6 +104,8 @@ export const getMoodAnalytics = async (req, res) => {
         },
         averageMoodForPeriod,
         averageMoodByDayOfWeek,
+        averageMoodByActivity,
+        averageMoodByPeople,
       }
     });
 
@@ -401,6 +407,80 @@ const getAverageMoodByDayOfWeek = async (userId, period, dateRange) => {
   });
 
   return result;
+};
+
+// Get average mood based on context (activities or people)
+const getAverageMoodByContext = async (userId, period, dateRange, contextType) => {
+  const contextField = contextType === 'activity' ? 'activities' : 'people';
+  
+  const match = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(dateRange.start && { timestamp: { $gte: dateRange.start, $lt: dateRange.end } }),
+    [contextField]: { $exists: true, $ne: [], $not: { $size: 0 } }
+  };
+
+  // Get context-specific data
+  const contextMoodData = await MoodCheckIn.aggregate([
+    { $match: match },
+    { $unwind: `$${contextField}` },
+    {
+      $group: {
+        _id: `$${contextField}`,
+        avgPleasantness: { $avg: '$emotion.attributes.pleasantness' },
+        avgIntensity: { $avg: '$emotion.attributes.intensity' },
+        avgControl: { $avg: '$emotion.attributes.control' },
+        avgClarity: { $avg: '$emotion.attributes.clarity' },
+        totalCheckins: { $sum: 1 },
+        emotions: { $push: '$emotion.name' }
+      }
+    },
+    { $sort: { totalCheckins: -1 } }
+  ]);
+
+  // Get overall statistics for comparison
+  const overallStats = await MoodCheckIn.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId), ...match } },
+    {
+      $group: {
+        _id: null,
+        totalCheckinsWithContext: { $sum: 1 },
+        uniqueContexts: { $addToSet: `$${contextField}` }
+      }
+    }
+  ]);
+
+  const processedData = contextMoodData.map(contextData => {
+    const emotionCounts = {};
+    contextData.emotions.forEach(emotion => {
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    
+    const topEmotion = Object.entries(emotionCounts)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    return {
+      [contextType]: contextData._id,
+      averageAttributes: {
+        pleasantness: Math.round((contextData.avgPleasantness || 0) * 100) / 100,
+        intensity: Math.round((contextData.avgIntensity || 0) * 100) / 100,
+        control: Math.round((contextData.avgControl || 0) * 100) / 100,
+        clarity: Math.round((contextData.avgClarity || 0) * 100) / 100
+      },
+      totalCheckins: contextData.totalCheckins,
+      topEmotion: topEmotion ? topEmotion[0] : null,
+      topEmotionCount: topEmotion ? topEmotion[1] : 0,
+      percentageOfTotal: overallStats[0] ? 
+        Math.round((contextData.totalCheckins / overallStats[0].totalCheckinsWithContext) * 10000) / 100 : 0
+    };
+  });
+
+  return {
+    contexts: processedData,
+    summary: {
+      totalUniqueContexts: overallStats[0] ? overallStats[0].uniqueContexts.flat().length : 0,
+      totalCheckinsWithContext: overallStats[0] ? overallStats[0].totalCheckinsWithContext : 0
+    }
+  };
 };
 
 // Helper function to calculate date ranges

@@ -7,9 +7,9 @@ const profileRouter = Router();
 
 profileRouter.use(requireAuth);
 
+// GET - get the user summary
 profileRouter.get('/summary', getProfileSummary);
-// profileRouter.get('/emotion-trends', getEmotionTrends);
-// profileRouter.get('/recent-public-checkins', getRecentPublicCheckins);
+// GET - get details user stats, optional parameter for time period
 profileRouter.get('/analytics', getMoodAnalytics);
 
 export default profileRouter;
