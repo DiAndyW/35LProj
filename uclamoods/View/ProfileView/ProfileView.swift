@@ -6,13 +6,12 @@
 //
 import SwiftUI
 
-// MARK: - Profile View (includes settings and analytics)
-
 struct ProfileView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @State private var selectedProfileTab: ProfileTab = .overview
-    
     @StateObject private var userDataProvider = UserDataProvider.shared
+    
+    @State private var overviewRefreshID = UUID()
     
     enum ProfileTab: String, CaseIterable {
         case overview = "Overview"
@@ -28,9 +27,7 @@ struct ProfileView: View {
             VStack(spacing: 0) {
                 // Profile Header
                 VStack(spacing: 20) {
-                    // Profile info
                     VStack(spacing: 12) {
-                        // Avatar
                         Circle()
                             .fill(Color.gray.opacity(0.3))
                             .frame(width: 80, height: 80)
@@ -40,7 +37,6 @@ struct ProfileView: View {
                                     .foregroundColor(.white.opacity(0.8))
                             )
                         
-                        // Name and username
                         VStack(spacing: 4) {
                             Text(userDataProvider.currentUser?.username ?? "Username")
                                 .fontWeight(.bold)
@@ -49,10 +45,7 @@ struct ProfileView: View {
                             Text("@\(userDataProvider.currentUser?.email ?? "Email")")
                                 .foregroundColor(.white.opacity(0.6))
                         }
-                        
-                        // Quick stats
-                        HStack(spacing: 30) {
-                        }
+                        HStack(spacing: 30) { /* For stats if any */ }
                     }
                     
                     // Tab selector
@@ -87,16 +80,27 @@ struct ProfileView: View {
                 ScrollView {
                     Group {
                         switch selectedProfileTab {
-                        case .overview:
-                            ProfileOverviewView()
-                        case .analytics:
-                            ProfileAnalyticsView()
-                        case .settings:
-                            ProfileSettingsView()
+                            case .overview:
+                                ProfileOverviewView(refreshID: overviewRefreshID)
+                            case .analytics:
+                                ProfileAnalyticsView()
+                            case .settings:
+                                ProfileSettingsView()
                         }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, max(100, UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) + 70)
+                    .refreshable {
+                        if selectedProfileTab == .overview {
+                            print("ProfileView: Refresh triggered for Overview tab.")
+                            overviewRefreshID = UUID()
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                Task {
+                    await userDataProvider.refreshUserData()
                 }
             }
         }
