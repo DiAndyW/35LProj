@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login } from '../controllers/authController.js';
+import { register, login, refreshToken, logout } from '../controllers/authController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import User from '../models/user.js';
 
@@ -12,5 +12,7 @@ authRouter.get('/profile', requireAuth, async (req, res) => {
   if (!me) return res.sendStatus(404);
   res.json(me);
 });
+authRouter.post('/refresh', refreshToken);
+authRouter.post('/logout', requireAuth, logout); // requireAuth is your auth middleware
 
 export default authRouter;
