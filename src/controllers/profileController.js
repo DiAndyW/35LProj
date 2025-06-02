@@ -64,9 +64,9 @@ export const getProfileSummary = async (req, res) => {
 // GET /profile/analytics
 // for stats
 // average mood over past week, month, 3 months, year (DONE)
-// avergae mood on each day of the week,
-// average mood when doing each logged activity,
-// average mood when with each logged person.,
+// avergae mood on each day of the week, (DONE)
+// average mood when doing each logged activity, (DONE)
+// average mood when with each logged person., (DONE)
 // distribution of mood types (by attributes), (LATER)
 // distribution of mood for 1-4 (LATER)
 // there might be possible redundancy in the code, will overlook for now.
@@ -87,6 +87,12 @@ export const getMoodAnalytics = async (req, res) => {
 
     // Get average mood for the specific time period
     const averageMoodForPeriod = await getAverageMoodForPeriod(userId, period, dateRange);
+    // Get average mood for each day of week
+    const averageMoodByDayOfWeek = await getAverageMoodByDayOfWeek(userId, period, dateRange);
+    // Get average mood based on each tagged activity
+    const averageMoodByActivity = await getAverageMoodByContext(userId, period, dateRange, 'activity');
+    // Get average mood based on each tagged person
+    const averageMoodByPeople = await getAverageMoodByContext(userId, period, dateRange, 'people');    
 
     res.status(200).json({
       success: true,
@@ -96,7 +102,10 @@ export const getMoodAnalytics = async (req, res) => {
           start: dateRange.start,
           end: dateRange.end
         },
-        averageMoodForPeriod
+        averageMoodForPeriod,
+        averageMoodByDayOfWeek,
+        averageMoodByActivity,
+        averageMoodByPeople,
       }
     });
 
@@ -189,8 +198,19 @@ const calculateCheckinStreak = async (userId) => {
   }
 };
 
+//Helper function to get weekly summary
 const getWeeklySummary = async (userId) => {
   try {
+    const period = 'week'; //hard coded to week
+    // Calculate date range for the requested period
+    const dateRange = getDateRange(period);
+    if (!dateRange) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid period. Valid options: week, month, 3months, year, all'
+      });
+    }
+
     //determine when the start of the week was
     const currentDate = new Date();
     const currentDay = currentDate.getDay();
@@ -234,6 +254,8 @@ const getWeeklySummary = async (userId) => {
       }
     ]);
 
+    const averageMoodForWeek = await getAverageMoodForPeriod(userId, period, dateRange);
+
     const weeklyCheckinsCount = weeklyCheckins[0].totalCount[0]?.count || 0;
     const topEmotionResult = weeklyCheckins[0].topEmotion;
 
@@ -249,7 +271,8 @@ const getWeeklySummary = async (userId) => {
       weeklyTopMood: {
         name: topEmotionResult[0]._id,
         count: topEmotionResult[0].count,
-      }
+      },
+      averageMoodForWeek
     };
   } catch (error) {
     console.error('Error getting weekly stats:', error);
@@ -317,6 +340,159 @@ const getAverageMoodForPeriod = async (userId, period, dateRange) => {
     totalCheckins: avgMood[0].totalCheckins,
     topEmotion: topEmotion ? topEmotion[0] : null,
     topEmotionCount: topEmotion ? topEmotion[1] : 0
+  };
+};
+
+// Get average mood for each day of the week within a time period
+const getAverageMoodByDayOfWeek = async (userId, period, dateRange) => {
+  const match = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(dateRange.start && { timestamp: { $gte: dateRange.start, $lt: dateRange.end } })
+  };
+
+  const weeklyMoodData = await MoodCheckIn.aggregate([
+    { $match: match },
+    {
+      $addFields: {
+        dayOfWeek: { $dayOfWeek: '$timestamp' } //1=Sun, 2=Mon, etc.
+      }
+    },
+    {
+      $group: {
+        _id: '$dayOfWeek',
+        avgPleasantness: { $avg: '$emotion.attributes.pleasantness' },
+        avgIntensity: { $avg: '$emotion.attributes.intensity' },
+        avgControl: { $avg: '$emotion.attributes.control' },
+        avgClarity: { $avg: '$emotion.attributes.clarity' },
+        totalCheckins: { $sum: 1 },
+        emotions: { $push: '$emotion.name' }
+      }
+    },
+    {
+      $sort: { _id: 1 } //Sort by day of week, sunday first
+    }
+  ]);
+
+  // Map day numbers to day names
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  
+  // Initialize result with all days having null values
+  const result = dayNames.map((dayName, index) => ({
+    dayOfWeek: dayName,
+    dayNumber: index + 1,
+    averageAttributes: {
+      pleasantness: null,
+      intensity: null,
+      control: null,
+      clarity: null
+    },
+    totalCheckins: 0,
+    topEmotion: null,
+    topEmotionCount: 0
+  }));
+
+  // Fill in actual data where available
+  weeklyMoodData.forEach(dayData => {
+    const dayIndex = dayData._id - 1; // Convert 1-7 -> 0-6 for array indexing
+    
+    // Calculate most common emotion for this day
+    const emotionCounts = {};
+    dayData.emotions.forEach(emotion => {
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    
+    const topEmotion = Object.entries(emotionCounts)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    result[dayIndex] = {
+      dayOfWeek: dayNames[dayIndex],
+      dayNumber: dayData._id,
+      averageAttributes: {
+        pleasantness: Math.round((dayData.avgPleasantness || 0) * 100) / 100,
+        intensity: Math.round((dayData.avgIntensity || 0) * 100) / 100,
+        control: Math.round((dayData.avgControl || 0) * 100) / 100,
+        clarity: Math.round((dayData.avgClarity || 0) * 100) / 100
+      },
+      totalCheckins: dayData.totalCheckins,
+      topEmotion: topEmotion ? topEmotion[0] : null,
+      topEmotionCount: topEmotion ? topEmotion[1] : 0
+    };
+  });
+
+  return result;
+};
+
+// Get average mood based on context (activities or people)
+const getAverageMoodByContext = async (userId, period, dateRange, contextType) => {
+  const contextField = contextType === 'activity' ? 'activities' : 'people';
+  
+  const match = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(dateRange.start && { timestamp: { $gte: dateRange.start, $lt: dateRange.end } }),
+    [contextField]: { $exists: true, $ne: [], $not: { $size: 0 } }
+  };
+
+  // Get context-specific data
+  const contextMoodData = await MoodCheckIn.aggregate([
+    { $match: match },
+    { $unwind: `$${contextField}` },
+    {
+      $group: {
+        _id: `$${contextField}`,
+        avgPleasantness: { $avg: '$emotion.attributes.pleasantness' },
+        avgIntensity: { $avg: '$emotion.attributes.intensity' },
+        avgControl: { $avg: '$emotion.attributes.control' },
+        avgClarity: { $avg: '$emotion.attributes.clarity' },
+        totalCheckins: { $sum: 1 },
+        emotions: { $push: '$emotion.name' }
+      }
+    },
+    { $sort: { totalCheckins: -1 } }
+  ]);
+
+  // Get overall statistics for comparison
+  const overallStats = await MoodCheckIn.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId), ...match } },
+    {
+      $group: {
+        _id: null,
+        totalCheckinsWithContext: { $sum: 1 },
+        uniqueContexts: { $addToSet: `$${contextField}` }
+      }
+    }
+  ]);
+
+  const processedData = contextMoodData.map(contextData => {
+    const emotionCounts = {};
+    contextData.emotions.forEach(emotion => {
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    
+    const topEmotion = Object.entries(emotionCounts)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    return {
+      [contextType]: contextData._id,
+      averageAttributes: {
+        pleasantness: Math.round((contextData.avgPleasantness || 0) * 100) / 100,
+        intensity: Math.round((contextData.avgIntensity || 0) * 100) / 100,
+        control: Math.round((contextData.avgControl || 0) * 100) / 100,
+        clarity: Math.round((contextData.avgClarity || 0) * 100) / 100
+      },
+      totalCheckins: contextData.totalCheckins,
+      topEmotion: topEmotion ? topEmotion[0] : null,
+      topEmotionCount: topEmotion ? topEmotion[1] : 0,
+      percentageOfTotal: overallStats[0] ? 
+        Math.round((contextData.totalCheckins / overallStats[0].totalCheckinsWithContext) * 10000) / 100 : 0
+    };
+  });
+
+  return {
+    contexts: processedData,
+    summary: {
+      totalUniqueContexts: overallStats[0] ? overallStats[0].uniqueContexts.flat().length : 0,
+      totalCheckinsWithContext: overallStats[0] ? overallStats[0].totalCheckinsWithContext : 0
+    }
   };
 };
 
