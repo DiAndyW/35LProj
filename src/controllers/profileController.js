@@ -201,6 +201,16 @@ const calculateCheckinStreak = async (userId) => {
 //Helper function to get weekly summary
 const getWeeklySummary = async (userId) => {
   try {
+    const period = 'week'; //hard coded to week
+    // Calculate date range for the requested period
+    const dateRange = getDateRange(period);
+    if (!dateRange) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid period. Valid options: week, month, 3months, year, all'
+      });
+    }
+
     //determine when the start of the week was
     const currentDate = new Date();
     const currentDay = currentDate.getDay();
@@ -244,6 +254,8 @@ const getWeeklySummary = async (userId) => {
       }
     ]);
 
+    const averageMoodForWeek = await getAverageMoodForPeriod(userId, period, dateRange);
+
     const weeklyCheckinsCount = weeklyCheckins[0].totalCount[0]?.count || 0;
     const topEmotionResult = weeklyCheckins[0].topEmotion;
 
@@ -259,7 +271,8 @@ const getWeeklySummary = async (userId) => {
       weeklyTopMood: {
         name: topEmotionResult[0]._id,
         count: topEmotionResult[0].count,
-      }
+      },
+      averageMoodForWeek
     };
   } catch (error) {
     console.error('Error getting weekly stats:', error);
