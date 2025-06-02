@@ -105,11 +105,9 @@ const userSchema = new mongoose.Schema({
   }],
   passwordResetToken: {
     type: String
-    // You might want to add 'default: undefined' or 'select: false' if needed
   },
   passwordResetExpires: {
-    type: Date // Storing as a Date is standard for expiration timestamps
-    // You might want to add 'default: undefined' or 'select: false' if needed
+    type: Date
   },
 }, {
   timestamps: true
