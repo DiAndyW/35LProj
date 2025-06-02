@@ -7,6 +7,7 @@ import profileRouter from './routes/profile.js';
 import feedRouter from './routes/feed.js';
 import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
+import mapRouter from './routes/mapRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -63,6 +64,9 @@ console.log('Profile routes mounted at /profile');
 app.use('/api/users', userRouter);
 console.log('User routes mounted at /api/users');
 
+app.use('/api/map', mapRouter);
+console.log('Map routes mounted at /api/map');
+
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
   const server = app.listen(PORT, () => {
@@ -80,6 +84,11 @@ const startServer = () => {
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
     console.log('  GET /api/feed - Get global feed check-ins');
     console.log('  GET  /api/users/:userId/username - Get username by userId');
+    console.log('  GET  /api/map/locations - Get all locations');
+    console.log('  POST /api/map/locations - Add new location');
+    console.log('  GET  /api/map/locations/nearby/:lat/:lng - Find nearby locations');
+    console.log('  POST /api/map/locations/search - Search locations');
+    console.log('  POST /api/map/routes/calculate - Calculate route');
   });
 
   process.on('SIGINT', () => shutdown(server));
