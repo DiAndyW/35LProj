@@ -185,12 +185,14 @@ class AuthenticationService: ObservableObject {
             case 200:
                 let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
                 // Store tokens
-                self.accessToken = loginResponse.access
-                self.refreshToken = loginResponse.refresh
-                // Extract user ID from JWT if needed
-                if let userId = self.extractUserIdFromToken(loginResponse.access) {
-                    self.currentUserId = userId
-                    KeychainManager.shared.saveUserId(userId)
+                await MainActor.run {
+                    self.accessToken = loginResponse.access
+                    self.refreshToken = loginResponse.refresh
+                    // Extract user ID from JWT if needed
+                    if let userId = self.extractUserIdFromToken(loginResponse.access) {
+                        self.currentUserId = userId
+                        KeychainManager.shared.saveUserId(userId)
+                    }
                 }
                 return loginResponse
                 
