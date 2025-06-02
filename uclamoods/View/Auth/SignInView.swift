@@ -24,8 +24,6 @@ struct SignInView: View {
             return
         }
         
-        // .sheet modifier was incorrectly placed here. It has been moved to the body.
-        
         isLoading = true
         feedbackMessage = ""
         performHapticFeedback()
@@ -80,12 +78,8 @@ struct SignInView: View {
     // MARK: - Body
     var body: some View {
         ZStack { // Apply sheet modifier here or to ScrollView
-            LinearGradient(
-                gradient: Gradient(colors: [Color(hex: "202020"), Color(hex: "181818")]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .edgesIgnoringSafeArea(.all)
+            Color.black
+                .edgesIgnoringSafeArea(.all)
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: mainStackSpacing) {

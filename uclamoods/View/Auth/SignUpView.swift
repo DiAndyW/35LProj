@@ -98,9 +98,9 @@ struct SignUpView: View {
             Color.black
                 .edgesIgnoringSafeArea(.all)
             
-            ScrollView(.vertical, showsIndicators: false) {
+            //ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: mainStackSpacing) {
-                    Spacer().frame(height: UIScreen.main.bounds.height * 0.05)
+                    Spacer().frame(height: UIScreen.main.bounds.height * 0.00)
                     
                     // App Title
                     Text("Morii")
@@ -109,7 +109,7 @@ struct SignUpView: View {
                     
                     // View Title
                     Text("Create Your Account")
-                        .font(.system(size: 26, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.85))
                         .padding(.bottom, mainStackSpacing / 2)
                     
@@ -247,7 +247,7 @@ struct SignUpView: View {
                 }
                 .padding(.bottom, 30)
             }
-        }
+        
         .animation(.interactiveSpring(response: 0.5, dampingFraction: 0.6, blendDuration: 0.2), value: username)
         .animation(.interactiveSpring(response: 0.5, dampingFraction: 0.6, blendDuration: 0.2), value: email)
         .animation(.interactiveSpring(response: 0.5, dampingFraction: 0.6, blendDuration: 0.2), value: password)
