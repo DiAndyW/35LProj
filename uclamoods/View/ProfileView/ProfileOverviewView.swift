@@ -42,11 +42,17 @@ struct ProfileOverviewView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(posts) { post in
-                            let feed = post.toFeedItem()
-                            MoodPostCard(post: feed)
+                if posts.isEmpty {
+                    Text("No activity yet!")
+                        .font(.custom("Georgia", size: 18))
+                        .foregroundColor(.white)
+                }else{
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(posts) { post in
+                                let feed = post.toFeedItem()
+                                ActivityCard(post: feed)
+                            }
                         }
                     }
                 }
