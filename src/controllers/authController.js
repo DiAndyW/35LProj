@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import UserModel from '../models/UserModel.js';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer'; 
-import UserModel from '../models/UserModel.js';
 
 const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{10,}$/;
 
