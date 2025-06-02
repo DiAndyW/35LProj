@@ -63,6 +63,31 @@ const moodCheckInSchema = new Schema({
   timestamp: {
     type: Date,
     default: Date.now, // Automatically set to current time
+  }, 
+
+  likes: { 
+    type: [Schema.Types.ObjectId],
+    default: [], 
+  }, 
+
+  comments: {
+    type: [{
+      userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      content: {
+        type: String,
+        required: true,
+        maxlength: 500
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      }
+    }], 
+    default: []
   }
 }, {
   timestamps: true, // Automatically add createdAt and updatedAt fields
@@ -94,7 +119,19 @@ moodCheckInSchema.virtual('displayData').get(function () {
     timestamp: this.timestamp,
     isAnonymous: this.isAnonymous, // Uses the virtual property we defined above
     createdAt: this.createdAt,
-    updatedAt: this.updatedAt
+    updatedAt: this.updatedAt, 
+    likes: {
+      count: this.likes.length,
+      userIds: this.likes
+    },
+    comments: {
+      count: this.comments.length,
+      data: this.comments.map(comment => ({
+        userId: comment.userId,
+        content: comment.content,
+        timestamp: comment.timestamp
+      }))
+    }
   };
 });
 

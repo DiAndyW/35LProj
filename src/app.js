@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
+import profileRouter from './routes/profile.js';
 import feedRouter from './routes/feed.js';
 import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
@@ -19,7 +20,7 @@ const connectMongoose = async () => {
       serverSelectionTimeoutMS: 10000, // Keep trying to connect for 10 seconds
       socketTimeoutMS: 45000,         // Close sockets after 45 seconds of inactivity
       connectTimeoutMS: 10000         // Give up initial connection after 10 seconds
-    });
+    }); 
     console.log('Connected to MongoDB via Mongoose!');
   } catch (err) {
     console.error('Error connecting to MongoDB via Mongoose:', err);
@@ -40,10 +41,12 @@ const shutdown = async (server) => {
   });
 };
 
+// Mounting root route
 app.get('/', (req, res) => {
   res.send('Hello, David');
 });
 
+// Mounting check-in routes
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
@@ -52,6 +55,10 @@ console.log('Feed routes mounted at /api');
 
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
+
+// Mounting profile routes
+app.use('/profile', profileRouter);
+console.log('Profile routes mounted at /profile');
 
 app.use('/api/users', userRouter);
 console.log('User routes mounted at /api/users');
@@ -66,6 +73,8 @@ const startServer = () => {
     console.log('  GET  /api/checkin/:userId - Get user check-ins');
     console.log('  GET  /api/checkin/detail/:id - Get specific check-in');
     console.log('  DELETE /api/checkin/:id - Delete check-in');
+    console.log('  PATCH /api/checkin/:id/like - Update likes on check-in');
+    console.log('  PATCH /api/checkin/:id/comment - Add comment to check-in');
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
