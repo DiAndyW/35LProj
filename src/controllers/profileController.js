@@ -69,6 +69,7 @@ export const getProfileSummary = async (req, res) => {
 // average mood when with each logged person.,
 // distribution of mood types (by attributes), (LATER)
 // distribution of mood for 1-4 (LATER)
+// there might be possible redundancy in the code, will overlook for now.
 
 export const getMoodAnalytics = async (req, res) => {
   try {

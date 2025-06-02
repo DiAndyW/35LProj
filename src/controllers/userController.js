@@ -1,4 +1,4 @@
-import User from '../models/user.js';
+import UserModel from '../models/UserModel.js';
 import mongoose from 'mongoose';
 
 export const getUsernameById = async (req, res) => {
@@ -11,7 +11,7 @@ export const getUsernameById = async (req, res) => {
 
   try {
     // Find the user by ID and select only the username field
-    const user = await User.findById(userId).select('username');
+    const user = await UserModel.findById(userId).select('username');
 
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
