@@ -100,8 +100,5 @@ struct ProfileView: View {
                 }
             }
         }
-        .onAppear {
-            userDataProvider.refreshUserData()
-        }
     }
 }

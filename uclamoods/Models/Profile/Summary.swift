@@ -28,14 +28,14 @@ struct BasicEmotionData: Codable {
 struct TopMoodData: Codable {
     let name: String
     let count: Int
-    let attributes: EmotionAttributesData // Reuses EmotionAttributesData
+    let attributes: EmotionAttributesData
 }
 
 // MARK: - Recent Checkin Item
 struct RecentCheckinData: Codable, Identifiable {
     let id: String
-    let emotion: BasicEmotionData // Optimized: Reuses BasicEmotionData
-    let timestamp: Date
+    let emotion: BasicEmotionData
+    let timestamp: String
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -50,31 +50,30 @@ struct WeeklyTopMoodData: Codable {
 }
 
 // MARK: - Average Mood within WeeklySummaryData
+// Matches the structure of averageMoodForWeek in the JS backend
 struct AverageMoodData: Codable {
-    let averageAttributes: EmotionAttributesData // Reuses EmotionAttributesData
+    let averageAttributes: EmotionAttributesData
     let totalCheckins: Int
-    let topEmotion: String
+    let topEmotion: String?
     let topEmotionCount: Int
 }
 
 // MARK: - Weekly Summary
 struct WeeklySummaryData: Codable {
     let weeklyCheckinsCount: Int
-    let weeklyTopMood: WeeklyTopMoodData
+    let weeklyTopMood: WeeklyTopMoodData?
     let averageMoodForWeek: AverageMoodData
 }
 
 // MARK: - Main User Profile Data (the "data" object)
 // This remains a dedicated struct for this specific API response.
-// Fields like username, email, profilePicture are duplicated from User model
-// for direct mapping of this response, which is a common pattern for DTOs.
 struct UserSummaryData: Codable {
-    let username: String        // Matches User.username
-    let email: String           // Matches User.email
-    let profilePicture: String  // Matches User.profilePicture
+    let username: String
+    let email: String
+    let profilePicture: String?
     let totalCheckins: Int
     let checkinStreak: Int
-    let topMood: TopMoodData
+    let topMood: TopMoodData?
     let recentCheckins: [RecentCheckinData]
     let weeklySummary: WeeklySummaryData
 }

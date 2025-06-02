@@ -8,7 +8,7 @@ import SwiftUI
 
 struct ProfileOverviewView: View {
     @State private var posts: [MoodPost] = []
-    @State private var summary: UserSummary
+    @State private var summary: UserSummary? = nil
     @StateObject private var userDataProvider = UserDataProvider.shared
 
     
@@ -21,18 +21,21 @@ struct ProfileOverviewView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 
-                EmotionRadarChartView(emotion: EmotionDataProvider.highEnergyEmotions[0])
-                    .frame(maxWidth: .infinity)
-                    .padding(16)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(16)
-
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 12) {
-                    WeekStatCard(title: "Top Emotion", value: "Happy", subtitle: "3 times")
-                    WeekStatCard(title: "Check-ins", value: "5", subtitle: "This week")
+                if let summary = summary {
+                    EmotionRadarChartView(emotion: EmotionDataProvider.highEnergyEmotions[0])
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(Color.white.opacity(0.05))
+                        .cornerRadius(16)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 12) {
+                        WeekStatCard(title: "Top Emotion", value: summary.data.weeklySummary.weeklyTopMood?.name ?? "No Data",
+                                     subtitle: "\(summary.data.weeklySummary.weeklyTopMood?.count ?? 0)")
+                        WeekStatCard(title: "Check-ins", value: "\(summary.data.weeklySummary.weeklyCheckinsCount)", subtitle: "This week")
+                    }
                 }
             }
             
@@ -61,19 +64,19 @@ struct ProfileOverviewView: View {
         }
         .onAppear(){
             loadFeed()
-            //loadSummary()
+            loadSummary()
         }
         .refreshable {
             loadFeed()
         }
     }
-    /*
+    
     private func loadSummary(){
         ProfileService.fetchSummary(){ result in
             DispatchQueue.main.async {
                 switch result {
-                    case .success(let summary):
-                        self.summary = summary
+                    case .success(let fetchedSummary):
+                        self.summary = fetchedSummary
                         print("Successfully fetched summary.")
                     case .failure(let error):
                         print("Error fetching summary: \(error)")
@@ -94,7 +97,7 @@ struct ProfileOverviewView: View {
                 }
             }
         }
-    }*/
+    }
     
     private func loadFeed() {
         MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userDataProvider.currentUser?.id ?? "000")") { result in
