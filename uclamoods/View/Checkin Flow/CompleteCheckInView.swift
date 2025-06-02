@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct MockUser: Identifiable, Hashable {
     let id = UUID()
@@ -341,141 +342,222 @@ struct CompleteCheckInView: View {
     @State private var showingAddCustomActivityField = false
     
     enum PrivacySetting: String, CaseIterable, Identifiable {
-        case friends = "Friends"
-        case isPublic = "Public"
-        case isPrivate = "Private"
-        var id: String { self.rawValue }
-    }
-    @State private var selectedPrivacy: PrivacySetting = .friends
-    
-    @State private var showLocation: Bool = true
-    @State private var currentLocation: String = "Math Science Building"
-    let emotion: Emotion
-    
-    @State private var isSaving: Bool = false
-    @State private var saveError: String? = nil
-    @State private var showSaveSuccessAlert: Bool = false
-    
-    private var timeFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter
-    }
-    
-    private var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d"
-        return formatter
-    }
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack{
-                VStack(spacing: 0) {
-                    EmotionHeaderView(
-                        emotion: emotion,
-                        timeFormatter: timeFormatter,
-                        currentDisplayLocation: showLocation ? (currentLocation.isEmpty ? "Current Location" : "@ \(currentLocation)") : "Location Hidden",
-                        geometry: geometry
-                    )
-                    .padding(.bottom, 30)
-                    .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.4)
-                    
-                    CheckInFormView(
-                        reasonText: $reasonText,
-                        isTextFieldFocused: $isTextFieldFocused,
-                        selectedUsers: $selectedUsers,
-                        availableUsers: availableUsers,
-                        selectedPrivacy: $selectedPrivacy,
-                        showLocation: $showLocation,
-                        currentLocation: $currentLocation,
-                        emotion: emotion,
-                        geometry: geometry,
-                        isSaving: $isSaving,
-                        saveError: $saveError,
-                        saveAction: saveCheckIn
-                    ).padding(.top, -geometry.size.height * 0.48)
-                    
+            case friends = "Friends"
+            case isPublic = "Public" // Consider renaming to "public" to avoid "is" prefix if not boolean
+            case isPrivate = "Private" // Consider "private"
+            var id: String { self.rawValue }
+        }
+        @State private var selectedPrivacy: PrivacySetting = .friends
+        
+        // MARK: - Location State
+        @State private var showLocation: Bool = true
+        @StateObject private var locationManager = LocationManager() // New Location Manager
+        // This will hold the landmark name or status messages from LocationManager
+        @State private var displayableLocationName: String = "Fetching location..."
+        
+        let emotion: Emotion // Passed in
+        
+        // MARK: - Saving State
+        @State private var isSaving: Bool = false
+        @State private var saveError: String? = nil
+        @State private var showSaveSuccessAlert: Bool = false
+        
+        // MARK: - Formatters
+        private var timeFormatter: DateFormatter {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            return formatter
+        }
+        
+        // MARK: - Body
+        var body: some View {
+            GeometryReader { geometry in
+                ZStack {
+                    // Main content stack
+                    VStack(spacing: 0) {
+                        EmotionHeaderView(
+                            emotion: emotion,
+                            timeFormatter: timeFormatter,
+                            currentDisplayLocation: getFormattedLocationForHeader(),
+                            geometry: geometry
+                        )
+                        .padding(.bottom, 30) // Adjust these offsets as per your original design
+                        .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48) // Example offset
+                        
+                        CheckInFormView(
+                            reasonText: $reasonText,
+                            isTextFieldFocused: $isTextFieldFocused,
+                            selectedUsers: $selectedUsers,
+                            availableUsers: availableUsers,
+                            selectedPrivacy: $selectedPrivacy,
+                            showLocation: $showLocation,
+                            currentLocation: $displayableLocationName, // Pass the displayable name
+                            emotion: emotion,
+                            geometry: geometry,
+                            isSaving: $isSaving,
+                            saveError: $saveError,
+                            saveAction: saveCheckIn
+                        )
+                        .padding(.top, -geometry.size.height * 0.55)
+                        .padding(.horizontal, geometry.size.width * 0.24)
+                    }
+                    .ignoresSafeArea(edges: .top)
+                    .onTapGesture {
+                        isTextFieldFocused = false // Dismiss keyboard
+                    }
+                    .offset(y: -geometry.size.width * 0.0)
+                    .offset(x: -geometry.size.width * 0.25)
+
+                    // Back Button Overlay
+                    VStack {
+                        HStack {
+                            Button(action: {
+                                // Your navigation logic
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                impactFeedback.prepare()
+                                impactFeedback.impactOccurred()
+                                router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44) // Ensure good tap area
+                            }
+                            .padding(.leading, 25)
+                            .padding(.top, -geometry.size.height * 0.02)
+                            
+                            Spacer()
+                        }
+                        Spacer()
+                    }
                 }
-                .ignoresSafeArea(edges: .top)
-                .onTapGesture {
-                    isTextFieldFocused = false
+                // Alert for save success
+                .alert("Success!", isPresented: $showSaveSuccessAlert) {
+                    Button("OK", role: .cancel) {
+                        router.navigateToMainApp()
+                    }
+                } message: {
+                    Text("Your check-in has been saved successfully.")
                 }
-                .offset(y: -geometry.size.width * 0.0)
-                .offset(x: -geometry.size.width * 0.25)
             }
-            .alert("Success!", isPresented: $showSaveSuccessAlert) {
-                Button("OK", role: .cancel) {
-                    router.navigateToMainApp()
+            // MARK: - View Lifecycle and Location Logic
+            .onAppear {
+                locationManager.requestLocationAccess() // Request access first
+                if showLocation {
+                     // displayableLocationName = "Fetching location..." // Set initial status
+                    locationManager.startFetchingLocation()
+                } else {
+                    displayableLocationName = "Location Hidden"
                 }
-            } message: {
-                Text("Your check-in has been saved successfully.")
             }
+            .onChange(of: showLocation) { newShowValue in
+                if newShowValue {
+                    displayableLocationName = locationManager.isLoading ? "Fetching location..." : (locationManager.landmarkName ?? "Tap to refresh location")
+                    locationManager.startFetchingLocation() // Fetch if toggled on
+                } else {
+                    displayableLocationName = "Location Hidden"
+                }
+            }
+            .onChange(of: locationManager.landmarkName) { newLandmark in
+                updateDisplayableLocationName(landmark: newLandmark, coordinates: locationManager.userCoordinates, isLoading: locationManager.isLoading)
+            }
+            .onChange(of: locationManager.userCoordinates) { newCoordinates in
+                 updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: newCoordinates, isLoading: locationManager.isLoading)
+            }
+            .onChange(of: locationManager.isLoading) { newIsLoading in
+                updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: locationManager.userCoordinates, isLoading: newIsLoading)
+            }
+            .onChange(of: locationManager.authorizationStatus) { newStatus in
+                 print("Auth status changed to: \(newStatus)")
+                if newStatus == .denied || newStatus == .restricted {
+                    displayableLocationName = "Location access needed"
+                    // showLocation = false // Optionally turn off the toggle
+                } else if newStatus == .authorizedAlways || newStatus == .authorizedWhenInUse {
+                    if showLocation && locationManager.userCoordinates == nil { // If authorized and location is shown but no coords yet
+                        locationManager.startFetchingLocation()
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Helper Methods
+        private func getFormattedLocationForHeader() -> String {
+            if !showLocation {
+                return "Location Hidden"
+            }
+            if displayableLocationName.isEmpty || displayableLocationName == "Fetching location..." || displayableLocationName == "Location unavailable" {
+                return displayableLocationName // Show status
+            }
+            return "@ \(displayableLocationName)"
+        }
+        
+        private func updateDisplayableLocationName(landmark: String?, coordinates: CLLocationCoordinate2D?, isLoading: Bool) {
+            if isLoading {
+                displayableLocationName = "Fetching location..."
+                return
+            }
+            if let name = landmark, !name.isEmpty {
+                displayableLocationName = name
+            } else if coordinates != nil { // Have coords but no name (or name fetch failed)
+                displayableLocationName = "Near your current location"
+            } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+                 displayableLocationName = "Location access needed"
+            }
+            else {
+                displayableLocationName = "Location unavailable" // Fallback
+            }
+        }
+        
+        private func saveCheckIn() {
+            isSaving = true
+            saveError = nil
+            showSaveSuccessAlert = false
             
-            VStack {
-                HStack {
-                    Button(action: {
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.prepare()
-                        impactFeedback.impactOccurred()
-                        router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                    }
-                    .padding(.leading, 25)
-                    .padding(.top, -geometry.size.height * 0.02)
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.prepare()
+            impactFeedback.impactOccurred()
+            
+            Task {
+                do {
+                    // Get the latest landmark name and coordinates from the locationManager
+                    let landmarkToSave = showLocation ? locationManager.landmarkName : nil
+                    let coordinatesToSave = showLocation ? locationManager.userCoordinates : nil
                     
-                    Spacer()
-                }
-                Spacer()
-            }
-        }
-    }
-    
-    private func saveCheckIn() {
-        isSaving = true
-        saveError = nil
-        showSaveSuccessAlert = false
-        
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.prepare()
-        impactFeedback.impactOccurred()
-        
-        Task {
-            do {
-                let response = try await CheckInService.createCheckIn(
-                    emotion: self.emotion,
-                    reasonText: self.reasonText,
-                    selectedUsers: self.selectedUsers,
-                    selectedActivities: self.selectedActivities,
-                    currentLocationName: self.currentLocation,
-                    showLocation: self.showLocation,
-                    privacySetting: self.selectedPrivacy,
-                    userDataProvider: self.userDataProvider
-                )
-                
-                await MainActor.run {
-                    isSaving = false
-                    print("Save successful: \(response.message)")
-                    showSaveSuccessAlert = true
-                }
-            } catch {
-                await MainActor.run {
-                    isSaving = false
-                    if let localizedError = error as? LocalizedError {
-                        saveError = localizedError.errorDescription ?? "An unknown error occurred."
-                    } else {
-                        saveError = error.localizedDescription
+                    print("Saving CheckIn - Landmark: \(landmarkToSave ?? "nil"), Coords: \(String(describing: coordinatesToSave)), ShowLocation: \(showLocation)")
+
+                    let response = try await CheckInService.createCheckIn(
+                        emotion: self.emotion,
+                        reasonText: self.reasonText,
+                        selectedUsers: self.selectedUsers,
+                        selectedActivities: self.selectedActivities,
+                        landmarkName: landmarkToSave,         // Pass fetched landmark name
+                        userCoordinates: coordinatesToSave,   // Pass fetched coordinates
+                        showLocation: self.showLocation,      // User's intent
+                        privacySetting: self.selectedPrivacy,
+                        userDataProvider: self.userDataProvider
+                    )
+                    
+                    await MainActor.run {
+                        isSaving = false
+                        print("Save successful: \(response.message)")
+                        showSaveSuccessAlert = true
                     }
-                    print("Failed to save check-in: \(String(describing: saveError))")
+                } catch {
+                    await MainActor.run {
+                        isSaving = false
+                        if let serviceError = error as? CheckInServiceError {
+                            saveError = serviceError.errorDescription ?? "An unknown error occurred."
+                        } else if let localizedError = error as? LocalizedError {
+                            saveError = localizedError.errorDescription ?? error.localizedDescription
+                        } else {
+                            saveError = error.localizedDescription
+                        }
+                        print("Failed to save check-in: \(String(describing: saveError))")
+                    }
                 }
             }
         }
     }
-}
 
 struct UpdatedCompleteCheckInView_Previews: PreviewProvider {
     static var previews: some View {

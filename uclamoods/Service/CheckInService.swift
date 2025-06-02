@@ -6,7 +6,9 @@
 //
 
 import Foundation
+import CoreLocation // Import CoreLocation
 
+// MARK: - Error Enum (Keep your existing detailed error enum)
 enum CheckInServiceError: LocalizedError {
     case encodingFailed
     case networkError(Error)
@@ -33,16 +35,20 @@ enum CheckInServiceError: LocalizedError {
     }
 }
 
+
+
+// MARK: - CheckInService Class
 class CheckInService {
     static func createCheckIn(
-        emotion: Emotion,
+        emotion: Emotion, // Assuming Emotion struct/class has needed properties
         reasonText: String,
         selectedUsers: Set<MockUser>,
         selectedActivities: Set<ActivityTag>,
-        currentLocationName: String,
-        showLocation: Bool,
+        landmarkName: String?, // Updated: Now the fetched landmark name
+        userCoordinates: CLLocationCoordinate2D?, // New: Actual coordinates
+        showLocation: Bool, // User's intent to share
         privacySetting: CompleteCheckInView.PrivacySetting,
-        userDataProvider: UserDataProvider
+        userDataProvider: UserDataProvider // Assuming this provides User ID and potentially auth token
     ) async throws -> CreateCheckInResponsePayload {
         
         guard let userId = userDataProvider.currentUser?.id else {
@@ -51,7 +57,7 @@ class CheckInService {
         }
         
         let emotionAttributes = CheckInEmotionAttributes(
-            pleasantness: emotion.pleasantness,
+            pleasantness: emotion.pleasantness, // Ensure your Emotion type has these
             intensity: emotion.intensity,
             control: emotion.control,
             clarity: emotion.clarity
@@ -61,13 +67,22 @@ class CheckInService {
         let peopleNames = selectedUsers.map { $0.name }.filter { !$0.isEmpty && $0.lowercased() != "by myself" }
         let activityNames = selectedActivities.map { $0.name }.filter { !$0.isEmpty }
         
-        var locationPayload: CheckInLocationPayload?
+        var locationAPIPayload: CheckInLocationPayload? = nil
         if showLocation {
-            locationPayload = CheckInLocationPayload(name: currentLocationName.isEmpty ? nil : currentLocationName, coordinates: nil, isShared: true)
-        } else {
-            locationPayload = CheckInLocationPayload(name: nil, coordinates: nil, isShared: false)
+            var coordsPayload: CheckInCoordinatesPayload? = nil
+            if let coords = userCoordinates {
+                coordsPayload = CheckInCoordinatesPayload(latitude: coords.latitude, longitude: coords.longitude)
+            }
+            // Send location object only if there's something to send (landmark or coords)
+            if landmarkName != nil || coordsPayload != nil {
+                 locationAPIPayload = CheckInLocationPayload(
+                    landmarkName: landmarkName?.isEmpty == false ? landmarkName : nil,
+                    coordinates: coordsPayload
+                )
+            }
         }
-        
+        // If !showLocation, locationAPIPayload remains nil, so backend won't receive 'location' field or it'll be null.
+
         let finalReason = reasonText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         let requestBody = CreateCheckInRequestPayload(
@@ -76,20 +91,23 @@ class CheckInService {
             reason: finalReason.isEmpty ? nil : finalReason,
             people: peopleNames.isEmpty ? nil : peopleNames,
             activities: activityNames.isEmpty ? nil : activityNames,
-            location: locationPayload,
+            location: locationAPIPayload, // Pass the structured location payload
             privacy: privacySetting.rawValue.lowercased()
         )
         
-        let url = Config.apiURL(for: "/api/checkin")
+        // Assuming Config.apiURL and request.addAuthenticationIfNeeded() are defined elsewhere
+        let url = Config.apiURL(for: "/api/checkin") // Ensure this path is correct
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        request.addAuthenticationIfNeeded()
-        
+        request.addAuthenticationIfNeeded() // Your existing auth method
         
         do {
-            let jsonData = try JSONEncoder().encode(requestBody)
+            let encoder = JSONEncoder()
+            // Optional: Configure date encoding strategy if needed by your backend for any Date properties
+            // encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(requestBody)
             request.httpBody = jsonData
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 print("CheckInService: Request body JSON: \(jsonString)")
@@ -101,40 +119,57 @@ class CheckInService {
         
         print("CheckInService: Sending createCheckIn request to \(url.absoluteString)")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("CheckInService: Invalid response from server.")
-            throw CheckInServiceError.unknownError
-        }
-        
-        print("CheckInService: Received status code \(httpResponse.statusCode)")
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("CheckInService: Response body: \(responseString)")
-        }
-        
-        
-        if (200...299).contains(httpResponse.statusCode) {
-            do {
-                let decodedResponse = try JSONDecoder().decode(CreateCheckInResponsePayload.self, from: data)
-                print("CheckInService: Check-in created successfully - \(decodedResponse.message)")
-                return decodedResponse
-            } catch {
-                print("CheckInService: Error decoding successful response - \(error.localizedDescription)")
-                throw CheckInServiceError.decodingFailed
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("CheckInService: Invalid response from server (not HTTPResponse).")
+                throw CheckInServiceError.unknownError // Or a more specific network error
             }
-        } else {
-            var errorMessage = "An error occurred."
-            if let errorData = try? JSONDecoder().decode(BackendErrorResponse.self, from: data) {
-                errorMessage = errorData.error
-                if let details = errorData.details {
-                    errorMessage += " (\(details))"
+            
+            print("CheckInService: Received status code \(httpResponse.statusCode)")
+            if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
+                print("CheckInService: Response body: \(responseString)")
+            } else {
+                print("CheckInService: Response body is empty.")
+            }
+            
+            if (200...299).contains(httpResponse.statusCode) {
+                do {
+                    let decoder = JSONDecoder()
+                    // Optional: Configure date decoding strategy if needed
+                    // decoder.dateDecodingStrategy = .iso8601
+                    let decodedResponse = try decoder.decode(CreateCheckInResponsePayload.self, from: data)
+                    print("CheckInService: Check-in created successfully - Message: \"\(decodedResponse.message)\"")
+                    return decodedResponse
+                } catch {
+                    print("CheckInService: Error decoding successful response - \(error.localizedDescription). Data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                    throw CheckInServiceError.decodingFailed
                 }
-            } else if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
-                errorMessage = responseString
+            } else {
+                var errorMessage = "An error occurred on the server."
+                do {
+                    let errorData = try JSONDecoder().decode(BackendErrorResponse.self, from: data)
+                    errorMessage = errorData.error
+                    if let details = errorData.details {
+                        errorMessage += " (\(details))"
+                    }
+                } catch {
+                    // If decoding the specific error fails, use a generic message or the raw response string
+                    if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
+                        errorMessage = responseString
+                    }
+                     print("CheckInService: Could not decode backend error structure. Raw error: \(errorMessage)")
+                }
+                print("CheckInService: Server error - Status \(httpResponse.statusCode), Message: \(errorMessage)")
+                throw CheckInServiceError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
-            print("CheckInService: Server error - Status \(httpResponse.statusCode), Message: \(errorMessage)")
-            throw CheckInServiceError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
+        } catch let error as CheckInServiceError {
+            throw error // Re-throw known errors
+        } catch {
+            // Catch other network errors (e.g., no internet connection)
+            print("CheckInService: Network or unknown error - \(error.localizedDescription)")
+            throw CheckInServiceError.networkError(error)
         }
     }
 }
