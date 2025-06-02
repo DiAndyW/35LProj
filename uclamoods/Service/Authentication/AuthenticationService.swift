@@ -74,6 +74,86 @@ class AuthenticationService: ObservableObject {
     
     @Published var isAuthenticated = false
     @Published var currentUserId: String?
+    @Published var currentUser: User?
+    
+    // MARK: - Fetch User Profile
+    func fetchUserProfile() async throws -> User {
+        guard isAuthenticated else {
+            throw AuthenticationError.invalidCredentials
+        }
+        
+        let endpoint = "/auth/profile"
+        let url = Config.apiURL(for: endpoint)
+        
+        var request = URLRequest(url: url)
+        request.addAuthenticationIfNeeded()
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthenticationError.invalidResponse
+        }
+        
+        if httpResponse.statusCode == 200 {
+            let user = try JSONDecoder().decode(User.self, from: data)
+            
+            // Update local state on main thread
+            await MainActor.run {
+                self.currentUser = user
+            }
+            
+            // Optionally store in Keychain for offline access
+            saveUserToKeychain(user)
+            
+            return user
+        } else if httpResponse.statusCode == 401 {
+            // Token expired, try to refresh
+            await refreshAccessToken()
+            // Retry after refresh
+            return try await fetchUserProfile()
+        } else {
+            throw AuthenticationError.serverError(
+                statusCode: httpResponse.statusCode,
+                message: "Failed to fetch profile"
+            )
+        }
+    }
+    
+    // MARK: - Update Login to Fetch Profile
+    func loginAndFetchProfile(email: String, password: String) async throws {
+        // First login
+        let _ = try await login(email: email, password: password)
+        
+        // Then fetch profile
+        _ = try await fetchUserProfile()
+    }
+    
+    // MARK: - Local Storage
+    private func saveUserToKeychain(_ user: User) {
+        if let userData = try? JSONEncoder().encode(user),
+           let userString = String(data: userData, encoding: .utf8) {
+            try? KeychainManager.shared.save(userString, for: "com.uclamoods.currentUser")
+        }
+    }
+    
+    func loadStoredUser() -> User? {
+        guard let userString = try? KeychainManager.shared.retrieve(for: "com.uclamoods.currentUser"),
+              let userData = userString.data(using: .utf8),
+              let user = try? JSONDecoder().decode(User.self, from: userData) else {
+            return nil
+        }
+        return user
+    }
+    
+    // MARK: - Clear User Data on Logout
+    func logoutAndClearData() {
+        // Clear tokens
+        logout()
+        
+        // Clear user data
+        currentUser = nil
+        try? KeychainManager.shared.delete(for: "com.uclamoods.currentUser")
+    }
     
     private var accessToken: String? {
         didSet {
