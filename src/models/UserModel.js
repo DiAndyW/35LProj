@@ -102,7 +102,15 @@ const userSchema = new mongoose.Schema({
   refreshTokens: [{
     token: { type: String, required: true },
     createdAt: { type: Date, default: Date.now, expires: 604800 } // Auto-delete after 7 days
-  }]
+  }],
+  passwordResetToken: {
+    type: String
+    // You might want to add 'default: undefined' or 'select: false' if needed
+  },
+  passwordResetExpires: {
+    type: Date // Storing as a Date is standard for expiration timestamps
+    // You might want to add 'default: undefined' or 'select: false' if needed
+  },
 }, {
   timestamps: true
 });

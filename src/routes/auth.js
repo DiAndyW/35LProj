@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { register, login, refreshToken, logout } from '../controllers/authController.js';
+import { 
+  register, 
+  login, 
+  refreshToken, 
+  logout, 
+  forgotPassword, 
+  resetPasswordWithCode
+} from '../controllers/authController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import UserModel from '../models/UserModel.js';
 
@@ -14,5 +21,7 @@ authRouter.get('/profile', requireAuth, async (req, res) => {
 });
 authRouter.post('/refresh', refreshToken);
 authRouter.post('/logout', requireAuth, logout); // requireAuth is your auth middleware
+authRouter.post('/forgot-password', forgotPassword);
+authRouter.post('/reset-password-with-code', resetPasswordWithCode);
 
 export default authRouter;
