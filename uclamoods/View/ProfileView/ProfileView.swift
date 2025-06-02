@@ -46,13 +46,12 @@ struct ProfileView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                             
-                            Text(userDataProvider.currentUser?.email ?? "Email")
+                            Text("@\(userDataProvider.currentUser?.email ?? "Email")")
                                 .foregroundColor(.white.opacity(0.6))
                         }
                         
                         // Quick stats
                         HStack(spacing: 30) {
-
                         }
                     }
                     
@@ -100,6 +99,9 @@ struct ProfileView: View {
                     .padding(.bottom, max(100, UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) + 70)
                 }
             }
+        }
+        .onAppear {
+            userDataProvider.refreshUserData()
         }
     }
 }

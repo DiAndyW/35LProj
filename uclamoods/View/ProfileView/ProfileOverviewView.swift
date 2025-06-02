@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ProfileOverviewView: View {
     @State private var posts: [MoodPost] = []
+    @State private var summary: UserSummary
     @StateObject private var userDataProvider = UserDataProvider.shared
 
     
@@ -60,11 +61,40 @@ struct ProfileOverviewView: View {
         }
         .onAppear(){
             loadFeed()
+            //loadSummary()
         }
         .refreshable {
             loadFeed()
         }
     }
+    /*
+    private func loadSummary(){
+        ProfileService.fetchSummary(){ result in
+            DispatchQueue.main.async {
+                switch result {
+                    case .success(let summary):
+                        self.summary = summary
+                        print("Successfully fetched summary.")
+                    case .failure(let error):
+                        print("Error fetching summary: \(error)")
+                        switch error {
+                            case .invalidURL:
+                                print("Error Detail: The URL was invalid.")
+                            case .networkError(let underlyingError):
+                                print("Error Detail: Network issue - \(underlyingError.localizedDescription)")
+                            case .invalidResponse:
+                                print("Error Detail: The server response was not a valid HTTP response.")
+                            case .noData:
+                                print("Error Detail: No data was returned from the server.")
+                            case .decodingError(let underlyingError):
+                                print("Error Detail: Failed to decode the JSON - \(underlyingError.localizedDescription)")
+                            case .serverError(let statusCode, let message):
+                                print("Error Detail: Server returned status \(statusCode) with message: \(message ?? "N/A")")
+                        }
+                }
+            }
+        }
+    }*/
     
     private func loadFeed() {
         MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userDataProvider.currentUser?.id ?? "000")") { result in
