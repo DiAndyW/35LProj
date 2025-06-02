@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  refreshTokens: [{
+    token: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now, expires: 604800 } // Auto-delete after 7 days
+  }]
 }, {
   timestamps: true
 });
