@@ -138,10 +138,14 @@ class MoodAppRouter: ObservableObject {
     }
     
     func signOut() {
-        withAnimation(.easeInOut(duration: 0.5)) {
-            currentSection = .auth
-            currentAuthScreen = .signIn
-            selectedMainTab = .home
+        print("[MoodAppRouter] signOut: Initiating logout process.")
+        AuthenticationService.shared.logout()
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            self.currentSection = .auth
+            self.currentAuthScreen = .signIn
+            self.selectedMainTab = .home
+            print("[MoodAppRouter] signOut: UI state updated to show SignIn screen.")
         }
     }
     

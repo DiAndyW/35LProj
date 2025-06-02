@@ -10,7 +10,6 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var router: MoodAppRouter
-    @State private var userStats = UserStats.sample
     @State private var selectedProfileTab: ProfileTab = .overview
     
     @StateObject private var userDataProvider = UserDataProvider.shared
@@ -53,9 +52,7 @@ struct ProfileView: View {
                         
                         // Quick stats
                         HStack(spacing: 30) {
-                            StatItem(value: "\(userStats.totalCheckIns)", label: "Check-ins")
-                            StatItem(value: "\(userStats.currentStreak)", label: "Day Streak")
-                            StatItem(value: userStats.topEmotion, label: "Top Mood")
+
                         }
                     }
                     
@@ -92,9 +89,9 @@ struct ProfileView: View {
                     Group {
                         switch selectedProfileTab {
                         case .overview:
-                            ProfileOverviewView(stats: userStats)
+                            ProfileOverviewView()
                         case .analytics:
-                            ProfileAnalyticsView(stats: userStats)
+                            ProfileAnalyticsView()
                         case .settings:
                             ProfileSettingsView()
                         }

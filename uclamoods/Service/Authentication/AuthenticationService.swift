@@ -232,27 +232,40 @@ class AuthenticationService: ObservableObject {
                 do {
                     let loginResponse = try jsonDecoder.decode(LoginResponse.self, from: data)
                     print("[AuthService][Login] Token acquisition successful.")
+                    
                     await MainActor.run {
                         self.accessToken = loginResponse.access
                         self.refreshToken = loginResponse.refresh
+                        
                         if let userId = self.extractUserIdFromToken(loginResponse.access) {
                             self.currentUserId = userId
                             KeychainManager.shared.saveUserId(userId)
                             print("[AuthService][Login] UserID: \(userId) extracted and saved.")
                         }
+                        
+                        if self.accessToken != nil {
+                            self.isAuthenticated = true
+                            print("[AuthService][Login] isAuthenticated directly set to true on MainActor.")
+                        } else {
+                            self.isAuthenticated = false
+                            print("[AuthService][Login] WARNING: accessToken was nil after decoding loginResponse. isAuthenticated set to false.")
+                        }
                     }
                     return loginResponse
                 } catch {
                     print("[AuthService][Login] Error: Failed to decode successful login response: \(error)")
+                    await MainActor.run { self.isAuthenticated = false }
                     throw AuthenticationError.decodingError(error, httpResponse.url)
                 }
             case 401:
                 print("[AuthService][Login] Error 401: Invalid credentials.")
+                await MainActor.run { self.isAuthenticated = false }
                 throw AuthenticationError.invalidCredentials
             default:
                 let errorResponse = try? jsonDecoder.decode(AuthErrorResponse.self, from: data)
                 let message = errorResponse?.msg ?? "Login failed with status \(httpResponse.statusCode)."
                 print("[AuthService][Login] Error \(httpResponse.statusCode): \(message)")
+                await MainActor.run { self.isAuthenticated = false }
                 throw AuthenticationError.serverError(statusCode: httpResponse.statusCode, message: message, httpResponse.url)
         }
     }
@@ -262,12 +275,17 @@ class AuthenticationService: ObservableObject {
         _ = try await login(email: email, password: password)
         
         if self.isAuthenticated {
-            print("[AuthService][LoginFlow] Login part successful, proceeding to fetch profile.")
-            _ = try await fetchUserProfile()
-            print("[AuthService][LoginFlow] Login and profile fetch sequence complete. CurrentUser: \(self.currentUser?.username ?? "nil")")
+            print("[AuthService][LoginFlow] Login successful (isAuthenticated is true), proceeding to fetch profile.")
+            do {
+                let user = try await fetchUserProfile()
+                print("[AuthService][LoginFlow] loginAndFetchProfile: Profile fetch returned. CurrentUser in AuthSvc: \(self.currentUser?.username ?? "nil")")
+            } catch {
+                print("[AuthService][LoginFlow] ERROR: fetchUserProfile failed AFTER successful login token acquisition: \(error.localizedDescription)")
+                throw error
+            }
         } else {
-            print("[AuthService][LoginFlow] Error: Login reported success but user is not authenticated before profile fetch.")
-            throw AuthenticationError.underlying(NSError(domain: "AuthFlow", code: -1, userInfo: [NSLocalizedDescriptionKey: "Internal authentication flow error."]))
+            print("[AuthService][LoginFlow] CRITICAL Error: Login attempt finished, but user is NOT authenticated before profile fetch. This indicates an issue in login() state update logic if login didn't throw.")
+            throw AuthenticationError.underlying(NSError(domain: "AuthFlow", code: -1, userInfo: [NSLocalizedDescriptionKey: "Internal authentication flow error: isAuthenticated was false after login() completed without error."]))
         }
     }
     

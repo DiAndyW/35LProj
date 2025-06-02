@@ -7,7 +7,6 @@
 import SwiftUI
 
 struct ProfileAnalyticsView: View {
-    let stats: UserStats
     
     var body: some View {
         VStack(spacing: 20) {

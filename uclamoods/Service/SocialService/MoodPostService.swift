@@ -12,8 +12,7 @@ enum MoodPostServiceError: Error {
 class MoodPostService {
     private var posts: [MoodPost] = []
     
-    static func fetchMoodPosts(completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
-        let endpoint = "/api/feed"
+    static func fetchMoodPosts(endpoint: String, completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
         let url = Config.apiURL(for: endpoint)
         
         print("MoodPostService: Fetching posts from \(url.absoluteString)")

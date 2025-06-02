@@ -113,7 +113,7 @@ struct HomeFeedView: View {
     }
     
     private func loadFeed() {
-        MoodPostService.fetchMoodPosts { result in
+        MoodPostService.fetchMoodPosts(endpoint: "/api/feed") { result in
             DispatchQueue.main.async {
                 switch result {
                     case .success(let posts):
@@ -141,11 +141,5 @@ struct HomeFeedView: View {
                 }
             }
         }
-    }
-    
-    private func refreshFeed() async {
-        // Simulate refresh
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-        //posts = MoodPost.samplePosts.shuffled()
     }
 }
