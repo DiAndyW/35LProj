@@ -3,9 +3,11 @@ import express from 'express';
 import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
+import profileRouter from './routes/profile.js';
 import feedRouter from './routes/feed.js';
 import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
+import mapRouter from './routes/mapRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -19,7 +21,7 @@ const connectMongoose = async () => {
       serverSelectionTimeoutMS: 10000, // Keep trying to connect for 10 seconds
       socketTimeoutMS: 45000,         // Close sockets after 45 seconds of inactivity
       connectTimeoutMS: 10000         // Give up initial connection after 10 seconds
-    });
+    }); 
     console.log('Connected to MongoDB via Mongoose!');
   } catch (err) {
     console.error('Error connecting to MongoDB via Mongoose:', err);
@@ -40,10 +42,12 @@ const shutdown = async (server) => {
   });
 };
 
+// Mounting root route
 app.get('/', (req, res) => {
   res.send('Hello, David');
 });
 
+// Mounting check-in routes
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
@@ -53,8 +57,15 @@ console.log('Feed routes mounted at /api');
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
 
+// Mounting profile routes
+app.use('/profile', profileRouter);
+console.log('Profile routes mounted at /profile');
+
 app.use('/api/users', userRouter);
 console.log('User routes mounted at /api/users');
+
+app.use('/api/map', mapRouter);
+console.log('Map routes mounted at /api/map');
 
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
@@ -73,6 +84,11 @@ const startServer = () => {
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
     console.log('  GET /api/feed?skip=0&limit=20 - Get first 20 global feed check-ins');
     console.log('  GET  /api/users/:userId/username - Get username by userId');
+    console.log('  GET  /api/map/locations - Get all locations');
+    console.log('  POST /api/map/locations - Add new location');
+    console.log('  GET  /api/map/locations/nearby/:lat/:lng - Find nearby locations');
+    console.log('  POST /api/map/locations/search - Search locations');
+    console.log('  POST /api/map/routes/calculate - Calculate route');
   });
 
   process.on('SIGINT', () => shutdown(server));

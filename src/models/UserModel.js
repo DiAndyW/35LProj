@@ -99,6 +99,16 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  refreshTokens: [{
+    token: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now, expires: 604800 } // Auto-delete after 7 days
+  }],
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetExpires: {
+    type: Date
+  },
 }, {
   timestamps: true
 });
@@ -114,4 +124,4 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model('UserModel', userSchema);

@@ -66,11 +66,28 @@ export const createCheckIn = async (req, res) => {
     }
 
     // Process location data
-    const locationResult = processLocationData(location);
-    if (locationResult.error) {
-      return res.status(400).json({ error: locationResult.error });
+    let processedLocation = null;
+    if (location && location.coordinates) { // If location and coordinates are provided
+      if (typeof location.coordinates.latitude !== 'number' || typeof location.coordinates.longitude !== 'number') {
+        return res.status(400).json({ error: 'Invalid location coordinates: latitude and longitude must be numbers.' });
+      }
+      processedLocation = {
+        coordinates: {
+          type: 'Point',
+          coordinates: [location.coordinates.longitude, location.coordinates.latitude] // GeoJSON: [longitude, latitude]
+        },
+        landmarkName: (location.landmarkName && typeof location.landmarkName === 'string') ? location.landmarkName.trim() : null
+      };
+    } else if (location && location.landmarkName && !location.coordinates) {
+      // Optional: Allow landmarkName even if coordinates are missing (e.g. user typed it)
+      // processedLocation = {
+      //   landmarkName: typeof location.landmarkName === 'string' ? location.landmarkName.trim() : null,
+      //   coordinates: undefined // Explicitly undefined or handled by schema default
+      // };
+      // For now, let's assume if location object is present, coordinates are expected.
+      // If you want to allow only landmarkName, this logic needs adjustment and frontend needs to support sending it.
+       return res.status(400).json({ error: 'Location coordinates are required if location object is provided.' });
     }
-    const processedLocation = locationResult.data;
 
     // Validate privacy setting
     const validPrivacySettings = ['friends', 'public', 'private'];
@@ -138,73 +155,14 @@ export const createCheckIn = async (req, res) => {
 export const getUserCheckIns = async (req, res) => {
   try {
     const { userId } = req.params;
-    const {
-      limit = 10,
-      skip = 0,
-      privacy,
-      emotion,
-      startDate,
-      endDate,
-      includeLocation = false
-    } = req.query;
-
-    const userIdValidation = validateObjectId(userId, 'userId');
-    if (!userIdValidation.isValid) {
-      return res.status(400).json({ error: userIdValidation.error });
-    }
-
-    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
-    const parsedSkip = Math.max(parseInt(skip, 10) || 0, 0);
-
-    const query = { userId };
-
-    if (privacy && ['friends', 'public', 'private'].includes(privacy.toLowerCase())) {
-      query.privacy = privacy.toLowerCase();
-    }
-
-    if (emotion) {
-      query['emotion.name'] = emotion.toLowerCase();
-    }
-
-    if (startDate || endDate) {
-      query.timestamp = {};
-      if (startDate) {
-        const start = new Date(startDate);
-        if (!isNaN(start.getTime())) {
-          query.timestamp.$gte = start;
-        }
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        if (!isNaN(end.getTime())) {
-          query.timestamp.$lte = end;
-        }
-      }
-    }
-
-    const checkIns = await MoodCheckIn.find(query)
+    const checkIns = await MoodCheckIn.find({ userId: userId })
       .sort({ timestamp: -1 })
-      .skip(parsedSkip)
-      .limit(parsedLimit);
+      .limit(20);
 
-    const processedCheckIns = checkIns.map(checkIn => {
-      const data = checkIn.displayData;
-      if (!includeLocation || !checkIn.location.isShared) {
-        data.location = null;
-      }
-      return data;
-    });
+    // Map each check-in to its displayData
+    const responseData = checkIns.map(checkIn => checkIn.displayData);
 
-    res.json({
-      checkIns: processedCheckIns,
-      pagination: {
-        limit: parsedLimit,
-        skip: parsedSkip,
-        total: processedCheckIns.length,
-        hasMore: processedCheckIns.length === parsedLimit
-      }
-    });
-
+    res.json(responseData);
   } catch (error) {
     console.error('Check-in retrieval error:', error);
     res.status(500).json({
@@ -383,7 +341,7 @@ export const deleteCheckIn = async (req, res) => {
 
 export const updateLikes = async (req, res) => {
   try {
-    
+
     const { id } = req.params;
     const { userId } = req.body; // Assuming userId of person adding the like is sent in body
 
@@ -407,7 +365,7 @@ export const updateLikes = async (req, res) => {
     // update likes
     if (checkIn.likes.includes(userId)) {
       // Remove the like if it already exists
-      checkIn.likes.pop(userId); 
+      checkIn.likes.pop(userId);
       await checkIn.save();
     } else {
       // Else, add the like
@@ -432,7 +390,7 @@ export const updateLikes = async (req, res) => {
 
 export const addComment = async (req, res) => {
   try {
-    
+
     const { id } = req.params;
     const { userId, content } = req.body; // Assuming userId & content is sent in body
 
@@ -458,18 +416,18 @@ export const addComment = async (req, res) => {
         error: 'Comment content is required and must not exceed 500 characters',
         currentLength: content ? content.length : 0
       });
-    } 
+    }
 
     // update comments
     const newComment = {
       userId,
       content,
       timestamp: new Date()
-    };  
+    };
 
     checkIn.comments.push(newComment);
     await checkIn.save();
-    
+
     res.json({
       message: 'Comment added successfully',
       checkInId: id,

@@ -34,23 +34,24 @@ const moodCheckInSchema = new Schema({
   }],
 
   location: {
-    name: {
+    landmarkName: { // New field for the landmark
       type: String,
+      trim: true,
       default: null
     },
-    coordinates: {
-      type: [Number], // Array of exactly 2 numbers [longitude, latitude]
-      validate: {
-        validator: function (v) {
-          return v == null || v.length === 2;
-        },
-        message: 'Coordinates must be an array of exactly 2 numbers'
+    coordinates: { // Storing as GeoJSON Point
+      type: {
+        type: String,
+        enum: ['Point'], //  Only 'Point' type for now
+        // `required` depends on whether coordinates are always mandatory when location is shared
+        // Making it not strictly required at schema level to allow landmarkName only, if desired
+        // but your controller logic will enforce it if 'location' object is present.
+        default: undefined
       },
-      default: null
-    },
-    isShared: {
-      type: Boolean,
-      default: false
+      coordinates: { // Array of [longitude, latitude]
+        type: [Number], // [longitude, latitude]
+        default: undefined
+      }
     }
   },
 
