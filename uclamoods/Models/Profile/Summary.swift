@@ -15,16 +15,12 @@ struct EmotionAttributesData: Codable {
 }
 
 // MARK: - Reusable Basic Emotion Structure
-// Represents an emotion with its name and attributes.
 struct BasicEmotionData: Codable {
     let name: String
     let attributes: EmotionAttributesData
 }
 
 // MARK: - Top Mood within UserProfileData
-// 'topMood' in the JSON has 'name' and 'attributes' at the same level as 'count',
-// so it's slightly different from just BasicEmotionData + count.
-// The previous TopMoodData structure was already direct.
 struct TopMoodData: Codable {
     let name: String
     let count: Int
@@ -50,7 +46,6 @@ struct WeeklyTopMoodData: Codable {
 }
 
 // MARK: - Average Mood within WeeklySummaryData
-// Matches the structure of averageMoodForWeek in the JS backend
 struct AverageMoodData: Codable {
     let averageAttributes: EmotionAttributesData
     let totalCheckins: Int
@@ -65,8 +60,7 @@ struct WeeklySummaryData: Codable {
     let averageMoodForWeek: AverageMoodData
 }
 
-// MARK: - Main User Profile Data (the "data" object)
-// This remains a dedicated struct for this specific API response.
+// MARK: - Main User Profile Data
 struct UserSummaryData: Codable {
     let username: String
     let email: String

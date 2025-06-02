@@ -10,11 +10,6 @@ struct ProfileAnalyticsView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("Detailed analytics coming soon!")
-                .font(.custom("Georgia", size: 18))
-                .foregroundColor(.white.opacity(0.6))
-                .padding(.top, 40)
-            
             // Placeholder for charts
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.white.opacity(0.05))
