@@ -111,38 +111,52 @@ struct AuthFlowView: View {
     }
 }
 
-// MARK: - 3-Tab Main App with Swipe Navigation
+// MARK: - 5-Tab Main App with Swipe Navigation (MODIFIED)
 struct MainAppView: View {
     @EnvironmentObject private var router: MoodAppRouter
-    
+     
     var body: some View {
         ZStack {
             TabView(selection: $router.selectedMainTab) {
-                // Home/Feed Tab
+                // Home Tab
                 HomeFeedView()
                     .tag(MoodAppRouter.MainTab.home)
-                
-                // Profile Tab (includes settings and analytics)
+                 
+                // Map Tab
+                MapView()
+                    .tag(MoodAppRouter.MainTab.map)
+                 
+                // Analytics Tab
+                AnalyticsView()
+                    .tag(MoodAppRouter.MainTab.analytics)
+
+                // Profile Tab
                 ProfileView()
                     .tag(MoodAppRouter.MainTab.profile)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default dots
-            .ignoresSafeArea(.all) // CHANGED: Ignore all safe areas for full screen
-            
+            .ignoresSafeArea(.all)
+             
             // Custom tab bar overlay
             VStack {
                 Spacer()
-                ThreeTabBar()
+                FiveTabBar() // CHANGED from ThreeTabBar
             }
-            .ignoresSafeArea(edges: .bottom) // Don't ignore keyboard
+            .ignoresSafeArea(edges: .bottom)
+        }
+        // Ensure the router has a default selected tab when MainAppView appears
+        .onAppear {
+             if router.selectedMainTab == nil { // Or some other logic to ensure a tab is selected
+                 router.selectTab(.home)
+             }
         }
     }
 }
 
 // MARK: - Custom 3-Tab Bar with Prominent Check-In Button
-struct ThreeTabBar: View {
+struct FiveTabBar: View { // RENAMED from ThreeTabBar
     @EnvironmentObject private var router: MoodAppRouter
-    
+     
     var body: some View {
         HStack {
             // Home Tab
@@ -154,20 +168,44 @@ struct ThreeTabBar: View {
                     router.selectTab(.home)
                 }
             }
-            
-            Spacer()
-            
+             
+            Spacer() // Spacer 1
+             
+            // Map Tab (NEW)
+            TabBarButton(
+                tab: .map,
+                isSelected: router.selectedMainTab == .map
+            ) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    router.selectTab(.map)
+                }
+            }
+             
+            Spacer() // Spacer 2
+             
             // Check-In Button (Prominent Middle Button)
             CheckInButton {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.prepare()
                 impactFeedback.impactOccurred()
-                
+                 
                 router.navigateToMoodFlow()
             }
-            
-            Spacer()
-            
+             
+            Spacer() // Spacer 3
+             
+            // Analytics Tab (NEW)
+            TabBarButton(
+                tab: .analytics,
+                isSelected: router.selectedMainTab == .analytics
+            ) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    router.selectTab(.analytics)
+                }
+            }
+             
+            Spacer() // Spacer 4
+             
             // Profile Tab
             TabBarButton(
                 tab: .profile,
@@ -178,26 +216,23 @@ struct ThreeTabBar: View {
                 }
             }
         }
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 20) // Adjusted horizontal padding slightly for more items
         .padding(.top, 12)
-        .padding(.bottom, 20) // CHANGED: Remove bottom padding
+        .padding(.bottom, 20)
         .background(
-            // Glassmorphism effect
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .overlay(
-                    Rectangle()
-                        .fill(Color.black.opacity(0.1))
-                )
+                .overlay(Rectangle().fill(Color.black.opacity(0.1)))
         )
         .clipShape(UnevenRoundedRectangle(cornerRadii: .init(
             topLeading: 25, bottomLeading: 0,
             bottomTrailing: 0, topTrailing: 25
         )))
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -5)
-        .ignoresSafeArea(edges: .bottom) // ADDED: Extend into safe area
+        .ignoresSafeArea(edges: .bottom)
     }
 }
+
 
 // MARK: - Tab Bar Button Component
 struct TabBarButton: View {
