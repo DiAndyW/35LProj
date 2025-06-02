@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct uclamoodsApp: App {
+    @StateObject private var userDataProvider = UserDataProvider.shared
     init() {
         // Initialize authentication service early
         configureAuthentication()
@@ -10,6 +11,7 @@ struct uclamoodsApp: App {
     var body: some Scene {
         WindowGroup {
             MoodAppContainer()
+                .environmentObject(userDataProvider)
                 .preferredColorScheme(.dark)
         }
     }
