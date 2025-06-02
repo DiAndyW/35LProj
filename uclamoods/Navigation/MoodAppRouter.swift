@@ -33,7 +33,6 @@ enum AppSection {
 enum AuthScreen: String, CaseIterable {
     case signIn = "signIn"
     case signUp = "signUp"
-    case completeProfile = "completeProfile"
 }
 
 enum MainScreen: String, CaseIterable, Hashable {
@@ -118,12 +117,6 @@ class MoodAppRouter: ObservableObject {
     func navigateToSignUp() {
         withAnimation(.easeInOut(duration: 0.3)) {
             currentAuthScreen = .signUp
-        }
-    }
-    
-    func navigateToCompleteProfile() {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            currentAuthScreen = .completeProfile
         }
     }
     

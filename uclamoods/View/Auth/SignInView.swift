@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var isLoading = false
     @State private var feedbackMessage = ""
     @State private var showBiometricOption = false
+    @State private var showForgotPassword = false // This state variable controls the sheet
     
     // Styling constants
     private let primaryButtonHeight: CGFloat = 52
@@ -22,6 +23,8 @@ struct SignInView: View {
             feedbackMessage = "Please enter both email and password"
             return
         }
+        
+        // .sheet modifier was incorrectly placed here. It has been moved to the body.
         
         isLoading = true
         feedbackMessage = ""
@@ -76,9 +79,13 @@ struct SignInView: View {
     
     // MARK: - Body
     var body: some View {
-        ZStack {
-            Color.black
-                        .edgesIgnoringSafeArea(.all)
+        ZStack { // Apply sheet modifier here or to ScrollView
+            LinearGradient(
+                gradient: Gradient(colors: [Color(hex: "202020"), Color(hex: "181818")]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .edgesIgnoringSafeArea(.all)
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: mainStackSpacing) {
@@ -93,11 +100,17 @@ struct SignInView: View {
         .onAppear {
             // Check if biometric auth is available and enabled
             showBiometricOption = UserDefaults.standard.isBiometricAuthEnabled &&
-                                 BiometricAuthManager.shared.isBiometricsAvailable()
+            BiometricAuthManager.shared.isBiometricsAvailable()
             
             // Attempt biometric login on appear if enabled
             if showBiometricOption {
                 attemptBiometricLogin()
+            }
+        }
+        // Attach the sheet modifier to a View in the body
+        .sheet(isPresented: $showForgotPassword) {
+            NavigationView { // Assuming ForgotPasswordView might need a navigation bar
+                ForgotPasswordView()
             }
         }
     }
@@ -120,9 +133,9 @@ struct SignInView: View {
         if showBiometricOption {
             Button(action: attemptBiometricLogin) {
                 HStack {
-                    Image(systemName: "faceid")
+                    Image(systemName: "faceid") // Or "touchid" depending on available biometrics
                         .font(.system(size: 24))
-                    Text("Sign in with Face ID")
+                    Text("Sign in with Face ID") // Or "Sign in with Touch ID"
                         .font(.system(size: 16, weight: .medium))
                 }
                 .foregroundColor(.white)
@@ -173,8 +186,7 @@ struct SignInView: View {
                 Spacer()
                 Button(action: {
                     performHapticFeedback(style: .light)
-                    print("Forgot Password Tapped")
-                    // TODO: Implement forgot password
+                    showForgotPassword = true // This will trigger the sheet
                 }) {
                     Text("Forgot Password?")
                         .font(.system(size: 14, weight: .medium))

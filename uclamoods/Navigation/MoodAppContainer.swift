@@ -104,9 +104,6 @@ struct AuthFlowView: View {
                 
             case .signUp:
                 SignUpView()
-                
-            case .completeProfile:
-                CompleteProfileView()
             }
         }
         .transition(.scaleAndCrossFade)
