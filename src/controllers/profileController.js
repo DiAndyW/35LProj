@@ -63,15 +63,50 @@ export const getProfileSummary = async (req, res) => {
 
 // GET /profile/analytics
 // for stats
-// average mood over past week, month, 3 months, year,
+// average mood over past week, month, 3 months, year (DONE)
 // avergae mood on each day of the week,
 // average mood when doing each logged activity,
 // average mood when with each logged person.,
-// distribution of mood types (by attributes),
-// distribution of mood for 1-4
+// distribution of mood types (by attributes), (LATER)
+// distribution of mood for 1-4 (LATER)
 
-export const getMoodAnalytics = async( req, res ) => {
-  res.sendStatus(205);
+export const getMoodAnalytics = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const { period = '3months' } = req.query;
+
+    // Calculate date range for the requested period
+    const dateRange = getDateRange(period);
+    if (!dateRange) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid period. Valid options: week, month, 3months, year, all'
+      });
+    }
+
+    // Get average mood for the specific time period
+    const averageMoodForPeriod = await getAverageMoodForPeriod(userId, period, dateRange);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        period,
+        dateRange: {
+          start: dateRange.start,
+          end: dateRange.end
+        },
+        averageMoodForPeriod
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching mood analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch mood analytics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
 
 //Helper Get Top Mood Function
@@ -223,3 +258,99 @@ const getWeeklySummary = async (userId) => {
     };
   }
 };
+
+// Get average mood for a specific time period
+// TODO: Possibly implement closest match emotion finder for avg mood, need a copy of every single mood and their values?
+const getAverageMoodForPeriod = async (userId, period, dateRange) => {
+  const match = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(dateRange.start && { timestamp: { $gte: dateRange.start, $lt: dateRange.end } })
+  };
+
+  const avgMood = await MoodCheckIn.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        avgPleasantness: { $avg: '$emotion.attributes.pleasantness' },
+        avgIntensity: { $avg: '$emotion.attributes.intensity' },
+        avgControl: { $avg: '$emotion.attributes.control' },
+        avgClarity: { $avg: '$emotion.attributes.clarity' },
+        totalCheckins: { $sum: 1 },
+        emotions: { $push: '$emotion.name' }
+      }
+    }
+  ]);
+
+  if (avgMood.length === 0) {
+    return {
+      averageAttributes: {
+        pleasantness: null,
+        intensity: null,
+        control: null,
+        clarity: null
+      },
+      totalCheckins: 0,
+      topEmotion: null,
+      topEmotionCount: 0
+    };
+  }
+
+  // Calculate most common emotion for this period
+  // possibly unnecessary, included currently if Frontend needs it
+  const emotionCounts = {};
+  avgMood[0].emotions.forEach(emotion => {
+    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+  });
+  
+  const topEmotion = Object.entries(emotionCounts)
+    .sort(([,a], [,b]) => b - a)[0];
+
+  return {
+    averageAttributes: {
+      pleasantness: Math.round((avgMood[0].avgPleasantness || 0) * 100) / 100,
+      intensity: Math.round((avgMood[0].avgIntensity || 0) * 100) / 100,
+      control: Math.round((avgMood[0].avgControl || 0) * 100) / 100,
+      clarity: Math.round((avgMood[0].avgClarity || 0) * 100) / 100
+    },
+    totalCheckins: avgMood[0].totalCheckins,
+    topEmotion: topEmotion ? topEmotion[0] : null,
+    topEmotionCount: topEmotion ? topEmotion[1] : 0
+  };
+};
+
+// Helper function to calculate date ranges
+const getDateRange = (period) => {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999); // EOD
+
+  let start;
+  
+  switch (period) {
+    case 'week':
+      start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      break;
+    case 'month':
+      start = new Date(now);
+      start.setMonth(now.getMonth() - 1);
+      break;
+    case '3months':
+      start = new Date(now);
+      start.setMonth(now.getMonth() - 3);
+      break;
+    case 'year':
+      start = new Date(now);
+      start.setFullYear(now.getFullYear() - 1);
+      break;
+    case 'all':
+      return { start: null, end: null }; 
+    default:
+      return null; // Invalid period
+  }
+  
+  start.setHours(0, 0, 0, 0); 
+  return { start, end };
+};
+
