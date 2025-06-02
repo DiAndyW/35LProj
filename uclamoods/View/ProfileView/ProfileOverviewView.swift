@@ -14,25 +14,29 @@ struct ProfileOverviewView: View {
             // This week summary
             VStack(alignment: .leading, spacing: 12) {
                 Text("This Week")
-                    .font(.custom("Georgia", size: 20))
+                    .font(.custom("Georgia", size: 24))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 
+                EmotionRadarChartView(emotion: EmotionDataProvider.highEnergyEmotions[0])
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(16)
+
                 LazyVGrid(columns: [
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: 12) {
-                    WeekStatCard(title: "Check-ins", value: "5", subtitle: "This week")
-                    WeekStatCard(title: "Avg Energy", value: "High", subtitle: "↑ from last week")
                     WeekStatCard(title: "Top Emotion", value: "Happy", subtitle: "3 times")
-                    WeekStatCard(title: "Streak", value: "\(stats.currentStreak) days", subtitle: "Keep it up!")
+                    WeekStatCard(title: "Check-ins", value: "5", subtitle: "This week")
                 }
             }
             
             // Recent activity
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recent Activity")
-                    .font(.custom("Georgia", size: 20))
+                    .font(.custom("Georgia", size: 24))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 

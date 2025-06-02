@@ -7,14 +7,13 @@
 import SwiftUI
 
 // MARK: - Profile View (includes settings and analytics)
+
 struct ProfileView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @State private var userStats = UserStats.sample
     @State private var selectedProfileTab: ProfileTab = .overview
     
-    @State private var displayUsername: String = ""
-    @State private var isLoadingUsername: Bool = false
-    @State private var usernameFetchFailed: Bool = false
+    @StateObject private var userDataProvider = UserDataProvider.shared
     
     enum ProfileTab: String, CaseIterable {
         case overview = "Overview"
@@ -44,13 +43,11 @@ struct ProfileView: View {
                         
                         // Name and username
                         VStack(spacing: 4) {
-                            Text("Sarah Chen")
-                                .font(.custom("Georgia", size: 24))
+                            Text(userDataProvider.currentUser?.username ?? "Username")
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                             
-                            Text("@sarahc")
-                                .font(.custom("Georgia", size: 16))
+                            Text(userDataProvider.currentUser?.email ?? "Email")
                                 .foregroundColor(.white.opacity(0.6))
                         }
                         

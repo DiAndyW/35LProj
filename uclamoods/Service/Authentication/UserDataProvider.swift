@@ -1,37 +1,43 @@
 import Foundation
 import SwiftUI
+import Combine
 
-// MARK: - User Data Provider (Singleton for Easy Access)
 class UserDataProvider: ObservableObject {
     static let shared = UserDataProvider()
     
-    @Published var currentUser: User?
-    
-    private init() {
-        // Subscribe to auth service user changes
-        AuthenticationService.shared.$currentUser
-            .assign(to: &$currentUser)
-    }
-    
-    // Convenience properties
-    var userId: String? {
-        currentUser?.id ?? AuthenticationService.shared.currentUserId
-    }
-    
-    var username: String? {
-        currentUser?.username
-    }
-    
-    var email: String? {
-        currentUser?.email
-    }
-    
-    // Refresh user data
-    func refreshUserData() async {
-        do {
-            _ = try await AuthenticationService.shared.fetchUserProfile()
-        } catch {
-            print("Failed to refresh user data: \(error)")
+    @Published var currentUser: User? {
+        didSet { // Use didSet for simple debugging
+            print("[UserDataProvider DEBUG] currentUser didSet. New username: \(currentUser?.username ?? "nil"), Email: \(currentUser?.email ?? "nil")")
         }
     }
-}
+    
+    // To store the subscription from .assign(to:)
+    private var cancellable: AnyCancellable?
+    
+    private init() {
+        print("[UserDataProvider DEBUG] Initializing and subscribing to AuthenticationService.shared.$currentUser")
+        // Subscribe to auth service user changes
+        // This assigns the value from AuthenticationService.shared.$currentUser to self.currentUser
+        // The didSet observer above will then print when it changes.
+        cancellable = AuthenticationService.shared.$currentUser
+            .assign(to: \.currentUser, on: self) // `on: self` ensures it's assigned to this instance's property
+    }
+    
+    var userId: String? {
+        // Also good to log here if accessed and nil unexpectedly
+        let id = currentUser?.id ?? AuthenticationService.shared.currentUserId
+        // print("[UserDataProvider DEBUG] userId accessed. Value: \(id ?? "nil")")
+        return id
+    }
+    
+    // ... (rest of the class)
+    func refreshUserData() async {
+        print("[UserDataProvider DEBUG] refreshUserData: Called.")
+        do {
+            _ = try await AuthenticationService.shared.fetchUserProfile()
+            print("[UserDataProvider DEBUG] refreshUserData: fetchUserProfile completed. CurrentUser in UserDataProvider: \(self.currentUser?.username ?? "nil")")
+        } catch {
+            print("[UserDataProvider DEBUG] refreshUserData: Failed to refresh user data: \(error.localizedDescription)")
+        }
+    }
+    }

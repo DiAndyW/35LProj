@@ -1,9 +1,3 @@
-//
-//  User.swift
-//  uclamoods
-//
-//  Created by Yang Gao on 6/1/25.
-//
 import SwiftUI
 
 // MARK: - User Model
@@ -12,10 +6,42 @@ struct User: Codable {
     let username: String
     let email: String
     let profilePicture: String?
-    let demographics: Demographics?
     let preferences: Preferences?
-    let isActive: Bool
+    let demographics: Demographics?
+    let isActive: Bool?
     let lastLogin: Date?
+    let createdAt: Date?
+    let updatedAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case username
+        case email
+        case profilePicture
+        case preferences
+        case demographics
+        case isActive
+        case lastLogin
+        case createdAt
+        case updatedAt
+    }
+    
+    struct Preferences: Codable {
+        let pushNotificationsEnabled: Bool?
+        let preferredNotificationTimeWindow: NotificationTimeWindow?
+        let shareLocationForHeatmap: Bool?
+        let privacySettings: PrivacySettings?
+        
+        struct NotificationTimeWindow: Codable {
+            let start: Int?
+            let end: Int?
+        }
+        
+        struct PrivacySettings: Codable {
+            let showMoodToStrangers: Bool?
+            let anonymousMoodSharing: Bool?
+        }
+    }
     
     struct Demographics: Codable {
         let graduatingClass: Int?
@@ -23,16 +49,5 @@ struct User: Codable {
         let gender: String?
         let ethnicity: String?
         let age: Int?
-    }
-    
-    struct Preferences: Codable {
-        let pushNotificationsEnabled: Bool
-        let shareLocationForHeatmap: Bool
-        let privacySettings: PrivacySettings?
-        
-        struct PrivacySettings: Codable {
-            let showMoodToStrangers: Bool
-            let anonymousMoodSharing: Bool
-        }
     }
 }

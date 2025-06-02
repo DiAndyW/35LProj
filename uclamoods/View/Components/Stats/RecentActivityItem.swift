@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct RecentActivityItem: View {
+struct RecentActivityItem: View {    
     let emotion: String
     let time: String
     let color: Color
@@ -21,7 +21,10 @@ struct RecentActivityItem: View {
                 .font(.custom("Georgia", size: 14))
                 .foregroundColor(.white.opacity(0.6))
         }
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .padding(16)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(12)
     }
 }
 
