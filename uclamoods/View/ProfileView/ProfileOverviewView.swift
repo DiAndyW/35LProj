@@ -1,52 +1,54 @@
 import SwiftUI
 
 struct ProfileOverviewView: View {
-    // State for data
+    // Data states
     @State private var posts: [MoodPost] = []
     @State private var summary: UserSummary? = nil
     
-    @ObservedObject private var userDataProvider = UserDataProvider.shared
+    @EnvironmentObject private var userDataProvider: UserDataProvider
     
-    @State private var isLoading: Bool = false
-    @State private var summaryError: String? = nil
-    @State private var postsError: String? = nil
+    @State private var isLoadingContent: Bool = true
+    @State private var contentLoadingError: String? = nil
     
     let refreshID: UUID
     
     var body: some View {
-        mainContentView
-            .onAppear {
-                if summary == nil && posts.isEmpty {
-                    Task {
-                        await loadInitialData()
-                    }
-                }
-            }
-            .onChange(of: refreshID) {
-                Task {
-                    print("ProfileOverviewView: refreshID changed, calling refreshData()")
-                    await refreshData(isPullToRefresh: true)
-                }
-            }
-    }
-    
-    @ViewBuilder
-    private var mainContentView: some View {
-        if isLoading && summary == nil && posts.isEmpty {
-            VStack {
-                Spacer()
+        Group {
+            if isLoadingContent && summary == nil && posts.isEmpty {
                 ProgressView("Loading overview...")
-                    .foregroundColor(.white)
-                Spacer()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.vertical, 50)
+            } else if let error = contentLoadingError {
+                VStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                        .font(.largeTitle)
+                    Text("Failed to load overview")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                    Button("Try Again") {
+                        Task {
+                            await loadContent(isRefresh: true)
+                        }
+                    }
+                    .padding(.top)
+                }
+                .padding()
+            } else {
+                VStack(spacing: 20) {
+                    summarySection
+                    postsSection
+                }
+                .padding(.vertical)
+                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 50)
-        } else {
-            VStack(spacing: 20) {
-                summarySection
-                postsSection
-            }
-            .padding(.vertical)
+        }
+        .task(id: refreshID) {
+            await loadContent(isRefresh: summary != nil || !posts.isEmpty)
         }
     }
     
@@ -83,10 +85,8 @@ struct ProfileOverviewView: View {
                     WeekStatCard(title: "Top Emotion", value: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "N/A")
                     WeekStatCard(title: "Check-ins", value: "\(currentSummary.data.weeklySummary.weeklyCheckinsCount)")
                 }
-            } else if isLoading {
-                ProgressView().frame(maxWidth: .infinity).padding()
-            } else {
-                Text("Could not load summary. Pull to refresh.")
+            } else if contentLoadingError == nil && !isLoadingContent {
+                Text("No summary data available for this week.")
                     .font(.custom("Georgia", size: 16))
                     .foregroundColor(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -109,17 +109,8 @@ struct ProfileOverviewView: View {
                         ActivityCard(post: post.toFeedItem())
                     }
                 }
-            } else if let errorMsg = postsError {
-                Text("Could not load posts: \(errorMsg)")
-                    .foregroundColor(.red)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-            } else if isLoading && posts.isEmpty {
-                ProgressView().frame(maxWidth: .infinity).padding()
-            } else if !isLoading {
-                Text("No activity yet! Make a check-in to see it here.")
+            } else if contentLoadingError == nil && !isLoadingContent {
+                Text("No recent activity to display.")
                     .font(.custom("Georgia", size: 16))
                     .foregroundColor(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -128,80 +119,71 @@ struct ProfileOverviewView: View {
         }
     }
     
-    // MARK: - Data Loading Functions
-    
-    private func loadInitialData() async {
-        guard !isLoading else { return }
-        await MainActor.run {
-            isLoading = true
-            summaryError = nil
-            postsError = nil
-        }
-        print("ProfileOverviewView: Loading initial data...")
-        
-        await refreshData(isPullToRefresh: false)
-        
-        print("ProfileOverviewView: Initial data load complete.")
-    }
-    
-    private func refreshData(isPullToRefresh: Bool) async {
-        print("ProfileOverviewView: Refreshing data (isPullToRefresh: \(isPullToRefresh))...")
-        if !isPullToRefresh {
-            await MainActor.run { isLoading = true }
-        }
-        await MainActor.run {
-            summaryError = nil
-            postsError = nil
+    private func loadContent(isRefresh: Bool = false) async {
+        if !isRefresh || (summary == nil && posts.isEmpty) {
+            await MainActor.run {
+                isLoadingContent = true
+                contentLoadingError = nil
+            }
+        } else {
+            await MainActor.run {
+                isLoadingContent = true
+                contentLoadingError = nil
+            }
         }
         
-        async let summaryResult: () = loadSummaryAsync()
-        async let feedResult: () = loadFeedAsync()
+        print("ProfileOverviewView: Loading content (isRefresh: \(isRefresh))...")
         
-        _ = await summaryResult
-        _ = await feedResult
-        
-        if !isPullToRefresh {
-            await MainActor.run { isLoading = false }
-        }
-        print("ProfileOverviewView: Data refresh complete.")
-    }
-    
-    @MainActor
-    private func loadSummaryAsync() async {
-        ProfileService.fetchSummary() { result in
-            switch result {
-                case .success(let fetchedSummary):
-                    self.summary = fetchedSummary
-                    self.summaryError = nil
-                    print("ProfileOverviewView: Successfully fetched summary.")
-                case .failure(let error):
-                    self.summaryError = error.localizedDescription
-                    self.summary = nil
-                    print("ProfileOverviewView: Error fetching summary: \(error.localizedDescription)")
+        do {
+            async let summaryDataResult = fetchSummaryData()
+            async let postsDataResult = fetchPostsData()
+            
+            let fetchedSummary = try await summaryDataResult
+            let fetchedPosts = try await postsDataResult
+            
+            await MainActor.run {
+                self.summary = fetchedSummary
+                self.posts = fetchedPosts
+                self.contentLoadingError = nil
+                self.isLoadingContent = false
+                print("ProfileOverviewView: Content loaded successfully.")
+            }
+        } catch {
+            await MainActor.run {
+                self.contentLoadingError = error.localizedDescription
+                self.isLoadingContent = false
+                print("ProfileOverviewView: Error loading content - \(error.localizedDescription)")
             }
         }
     }
     
-    @MainActor
-    private func loadFeedAsync() async {
-        guard let userId = userDataProvider.currentUser?.id, !userId.isEmpty else {
-            let errorMsg = "Invalid or missing user ID."
-            print("ProfileOverviewView: Error fetching posts: \(errorMsg)")
-            self.postsError = errorMsg
-            self.posts = []
-            return
+    private func fetchSummaryData() async throws -> UserSummary {
+        try await Task.sleep(for: .milliseconds(50))
+        return try await withCheckedThrowingContinuation { continuation in
+            ProfileService.fetchSummary { result in //
+                switch result {
+                    case .success(let summary):
+                        continuation.resume(returning: summary)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                }
+            }
         }
-        
-        MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)") { result in
-            switch result {
-                case .success(let fetchedPosts):
-                    self.posts = fetchedPosts
-                    self.postsError = nil
-                    print("ProfileOverviewView: Successfully fetched \(fetchedPosts.count) posts.")
-                case .failure(let error):
-                    self.postsError = error.localizedDescription
-                    self.posts = []
-                    print("ProfileOverviewView: Error fetching posts: \(error.localizedDescription)")
+    }
+    
+    private func fetchPostsData() async throws -> [MoodPost] {
+        try await Task.sleep(for: .milliseconds(50))
+        guard let userId = userDataProvider.currentUser?.id, !userId.isEmpty, userId != "000" else {
+            throw NSError(domain: "DataFetching", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid or missing user ID for fetching posts."])
+        }
+        return try await withCheckedThrowingContinuation { continuation in
+            MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)") { result in //
+                switch result {
+                    case .success(let posts):
+                        continuation.resume(returning: posts)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                }
             }
         }
     }
