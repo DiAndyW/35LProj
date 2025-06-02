@@ -64,7 +64,7 @@ export const getProfileSummary = async (req, res) => {
 // GET /profile/analytics
 // for stats
 // average mood over past week, month, 3 months, year (DONE)
-// avergae mood on each day of the week,
+// avergae mood on each day of the week, (DONE)
 // average mood when doing each logged activity,
 // average mood when with each logged person.,
 // distribution of mood types (by attributes), (LATER)
@@ -87,6 +87,8 @@ export const getMoodAnalytics = async (req, res) => {
 
     // Get average mood for the specific time period
     const averageMoodForPeriod = await getAverageMoodForPeriod(userId, period, dateRange);
+    // Get average mood for each day of week
+    const averageMoodByDayOfWeek = await getAverageMoodByDayOfWeek(userId, period, dateRange);
 
     res.status(200).json({
       success: true,
@@ -96,7 +98,8 @@ export const getMoodAnalytics = async (req, res) => {
           start: dateRange.start,
           end: dateRange.end
         },
-        averageMoodForPeriod
+        averageMoodForPeriod,
+        averageMoodByDayOfWeek,
       }
     });
 
@@ -189,6 +192,7 @@ const calculateCheckinStreak = async (userId) => {
   }
 };
 
+//Helper function to get weekly summary
 const getWeeklySummary = async (userId) => {
   try {
     //determine when the start of the week was
@@ -318,6 +322,85 @@ const getAverageMoodForPeriod = async (userId, period, dateRange) => {
     topEmotion: topEmotion ? topEmotion[0] : null,
     topEmotionCount: topEmotion ? topEmotion[1] : 0
   };
+};
+
+// Get average mood for each day of the week within a time period
+const getAverageMoodByDayOfWeek = async (userId, period, dateRange) => {
+  const match = {
+    userId: new mongoose.Types.ObjectId(userId),
+    ...(dateRange.start && { timestamp: { $gte: dateRange.start, $lt: dateRange.end } })
+  };
+
+  const weeklyMoodData = await MoodCheckIn.aggregate([
+    { $match: match },
+    {
+      $addFields: {
+        dayOfWeek: { $dayOfWeek: '$timestamp' } //1=Sun, 2=Mon, etc.
+      }
+    },
+    {
+      $group: {
+        _id: '$dayOfWeek',
+        avgPleasantness: { $avg: '$emotion.attributes.pleasantness' },
+        avgIntensity: { $avg: '$emotion.attributes.intensity' },
+        avgControl: { $avg: '$emotion.attributes.control' },
+        avgClarity: { $avg: '$emotion.attributes.clarity' },
+        totalCheckins: { $sum: 1 },
+        emotions: { $push: '$emotion.name' }
+      }
+    },
+    {
+      $sort: { _id: 1 } //Sort by day of week, sunday first
+    }
+  ]);
+
+  // Map day numbers to day names
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  
+  // Initialize result with all days having null values
+  const result = dayNames.map((dayName, index) => ({
+    dayOfWeek: dayName,
+    dayNumber: index + 1,
+    averageAttributes: {
+      pleasantness: null,
+      intensity: null,
+      control: null,
+      clarity: null
+    },
+    totalCheckins: 0,
+    topEmotion: null,
+    topEmotionCount: 0
+  }));
+
+  // Fill in actual data where available
+  weeklyMoodData.forEach(dayData => {
+    const dayIndex = dayData._id - 1; // Convert 1-7 -> 0-6 for array indexing
+    
+    // Calculate most common emotion for this day
+    const emotionCounts = {};
+    dayData.emotions.forEach(emotion => {
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    
+    const topEmotion = Object.entries(emotionCounts)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    result[dayIndex] = {
+      dayOfWeek: dayNames[dayIndex],
+      dayNumber: dayData._id,
+      averageAttributes: {
+        pleasantness: Math.round((dayData.avgPleasantness || 0) * 100) / 100,
+        intensity: Math.round((dayData.avgIntensity || 0) * 100) / 100,
+        control: Math.round((dayData.avgControl || 0) * 100) / 100,
+        clarity: Math.round((dayData.avgClarity || 0) * 100) / 100
+      },
+      totalCheckins: dayData.totalCheckins,
+      topEmotion: topEmotion ? topEmotion[0] : null,
+      topEmotionCount: topEmotion ? topEmotion[1] : 0
+    };
+  });
+
+  return result;
 };
 
 // Helper function to calculate date ranges
