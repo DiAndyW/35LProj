@@ -138,9 +138,10 @@
 									"pm.test(\"Response has an _id\", () => { pm.expect(res._id).to.be.a('string'); });",
 									"pm.environment.set(\"checkInId_A3_friends_noLoc\", res._id);",
 									"pm.test(\"Privacy is 'friends'\", () => { pm.expect(res.privacy).to.eql(\"friends\"); });",
-									"pm.test(\"Location is null\", () => { pm.expect(res.location.name).to.be.null; });"
+									"pm.test(\"Location is null\", () => { pm.expect(res.location).to.be.null; });"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],

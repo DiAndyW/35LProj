@@ -4,9 +4,14 @@ import mongoose from 'mongoose';
 import checkInRouter from './routes/check-in.js';
 import authRouter from './routes/auth.js';
 import profileRouter from './routes/profile.js';
+import feedRouter from './routes/feed.js';
+import userRouter from './routes/userRoutes.js';
+import cors from 'cors';
 
 const app = express();
+app.use(cors());
 app.use(express.json());
+
 
 // Mongoose connection setup
 const connectMongoose = async () => {
@@ -45,13 +50,18 @@ app.get('/', (req, res) => {
 app.use('/api', checkInRouter);
 console.log('Check-in routes mounted at /api');
 
-// Mounting authentication routes
+app.use('/api', feedRouter);
+console.log('Feed routes mounted at /api');
+
 app.use('/auth', authRouter);
 console.log('Auth routes mounted at /auth');
 
 // Mounting profile routes
 app.use('/profile', profileRouter);
 console.log('Profile routes mounted at /profile');
+
+app.use('/api/users', userRouter);
+console.log('User routes mounted at /api/users');
 
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
@@ -63,9 +73,13 @@ const startServer = () => {
     console.log('  GET  /api/checkin/:userId - Get user check-ins');
     console.log('  GET  /api/checkin/detail/:id - Get specific check-in');
     console.log('  DELETE /api/checkin/:id - Delete check-in');
+    console.log('  PATCH /api/checkin/:id/like - Update likes on check-in');
+    console.log('  PATCH /api/checkin/:id/comment - Add comment to check-in');
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
+    console.log('  GET /api/feed - Get global feed check-ins');
+    console.log('  GET  /api/users/:userId/username - Get username by userId');
   });
 
   process.on('SIGINT', () => shutdown(server));
