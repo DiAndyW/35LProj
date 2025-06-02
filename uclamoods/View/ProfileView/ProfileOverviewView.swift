@@ -21,8 +21,18 @@ struct ProfileOverviewView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 
-                if let summary = summary {
-                    EmotionRadarChartView(emotion: EmotionDataProvider.highEnergyEmotions[0])
+                if let userdata = summary {
+                    let avgpleasantness = userdata.data.weeklySummary.averageMoodForWeek.averageAttributes.pleasantness
+                    let avgintensity = userdata.data.weeklySummary.averageMoodForWeek.averageAttributes.intensity
+                    let avgcontrol = userdata.data.weeklySummary.averageMoodForWeek.averageAttributes.control
+                    let avgclarity = userdata.data.weeklySummary.averageMoodForWeek.averageAttributes.clarity
+
+                    let averageEmotion = Emotion(name: "Enraged",
+                                                 color: ColorData.calculateMoodColor(pleasantness: avgpleasantness, intensity: avgintensity) ?? .gray,
+                                                 description: "",
+                                                 pleasantness: avgpleasantness, intensity: avgintensity, control: avgcontrol, clarity: avgclarity)
+                    
+                    EmotionRadarChartView(emotion: averageEmotion)
                         .frame(maxWidth: .infinity)
                         .padding(16)
                         .background(Color.white.opacity(0.05))
@@ -32,10 +42,13 @@ struct ProfileOverviewView: View {
                         GridItem(.flexible()),
                         GridItem(.flexible())
                     ], spacing: 12) {
-                        WeekStatCard(title: "Top Emotion", value: summary.data.weeklySummary.weeklyTopMood?.name ?? "No Data",
-                                     subtitle: "\(summary.data.weeklySummary.weeklyTopMood?.count ?? 0)")
-                        WeekStatCard(title: "Check-ins", value: "\(summary.data.weeklySummary.weeklyCheckinsCount)", subtitle: "This week")
+                        WeekStatCard(title: "Top Emotion", value: userdata.data.weeklySummary.weeklyTopMood?.name ?? "No Data")
+                        WeekStatCard(title: "Check-ins", value: "\(userdata.data.weeklySummary.weeklyCheckinsCount)")
                     }
+                }else{
+                    Text("No activity yet!")
+                        .font(.custom("Georgia", size: 18))
+                        .foregroundColor(.white)
                 }
             }
             

@@ -15,12 +15,13 @@ enum ProfileServiceError: Error {
     case serverError(statusCode: Int, message: String?)
 }
 
+
 class ProfileService {
     
     static func fetchSummary(completion: @escaping (Result<UserSummary, ProfileServiceError>) -> Void) {
         let url = Config.apiURL(for: "/profile/summary")
         
-        print("ProfileService: Fetching posts from \(url.absoluteString)")
+        print("ProfileService: Fetching summary from \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -28,47 +29,52 @@ class ProfileService {
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("MoodPostService: Network request error - \(error.localizedDescription)")
+                print("ProfileService: Network request error - \(error.localizedDescription)")
                 completion(.failure(.networkError(error)))
                 return
             }
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("MoodPostService: Invalid response object received.")
+                print("ProfileService: Invalid response object received.")
                 completion(.failure(.invalidResponse))
                 return
             }
             
-            print("ProfileServiceError: Received HTTP status code \(httpResponse.statusCode)")
+            print("ProfileService: Received HTTP status code \(httpResponse.statusCode)")
             
             guard (200...299).contains(httpResponse.statusCode) else {
                 var serverMessage: String? = "Unknown server error."
                 if let responseData = data, let errorMessage = String(data: responseData, encoding: .utf8) {
                     serverMessage = errorMessage
-                    print("MoodPostService: Server error message - \(errorMessage)")
+                    print("ProfileService: Server error message - \(errorMessage)")
                 }
                 completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
                 return
             }
             
             guard let data = data else {
-                print("MoodPostService: No data received from server.")
+                print("ProfileService: No data received from server.")
                 completion(.failure(.noData))
                 return
             }
-            do{
+            do {
                 let decoder = JSONDecoder()
-                let response = try decoder.decode(UserSummary.self, from: data)
-                if response.success {
-                    let userProfileData = response.data
+                let decodedResponseObject = try decoder.decode(UserSummary.self, from: data)
+                
+                if decodedResponseObject.success {
+                    let userProfileData = decodedResponseObject.data
                     print("Username: \(userProfileData.username)")
                     if let firstRecentCheckinEmotionName = userProfileData.recentCheckins.first?.emotion.name {
                         print("First recent check-in emotion name: \(firstRecentCheckinEmotionName)")
                     }
+                    completion(.success(decodedResponseObject))
+                } else {
+                    print("ProfileService: Server responded with success: false.")
+                    completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: "Profile summary retrieval indicated failure (success: false).")))
                 }
-
+                
             } catch let decodingError {
-                print("MoodPostService: JSON decoding error - \(decodingError.localizedDescription)")
+                print("ProfileService: JSON decoding error - \(decodingError.localizedDescription)") // Corrected
                 if let decodingError = decodingError as? DecodingError {
                     switch decodingError {
                         case .typeMismatch(let type, let context):
@@ -86,6 +92,5 @@ class ProfileService {
                 completion(.failure(.decodingError(decodingError)))
             }
         }.resume()
-        
     }
 }

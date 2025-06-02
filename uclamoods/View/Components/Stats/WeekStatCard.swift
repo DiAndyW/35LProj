@@ -3,7 +3,6 @@ import SwiftUI
 struct WeekStatCard: View {
     let title: String
     let value: String
-    let subtitle: String
     
     var body: some View {
         VStack(spacing: 8) {
@@ -16,11 +15,6 @@ struct WeekStatCard: View {
                 .font(.custom("Georgia", size: 14))
                 .fontWeight(.medium)
                 .foregroundColor(.white)
-            
-            Text(subtitle)
-                .font(.custom("Georgia", size: 12))
-                .foregroundColor(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(16)
