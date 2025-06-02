@@ -14,8 +14,6 @@ struct ProfileSettingsView: View {
         VStack(spacing: 16) {
             SettingsRow(icon: "person.circle", title: "Edit Profile", subtitle: "Update your information")
             SettingsRow(icon: "bell", title: "Notifications", subtitle: "Manage notification preferences")
-            SettingsRow(icon: "lock", title: "Privacy", subtitle: "Control who sees your posts")
-            SettingsRow(icon: "paintbrush", title: "Appearance", subtitle: "Customize your experience")
             SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
             
             // Logout button
@@ -41,10 +39,16 @@ struct ProfileSettingsView: View {
                             .font(.custom("Georgia", size: 14))
                             .foregroundColor(.red.opacity(0.7))
                     }
+                    .padding(.leading, 8)
                     
                     Spacer()
                 }
+                .padding(.horizontal, 16)
             }
         }
     }
+}
+
+#Preview {
+    ProfileSettingsView()
 }
