@@ -2,9 +2,9 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import UserModel from '../models/UserModel.js';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer'; 
+import nodemailer from 'nodemailer';
 
-const strongPwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{10,}$/;
+const strongPwd = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{10,}$/;
 
 export const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -44,37 +44,37 @@ export const refreshToken = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader?.split(' ')[1];
-    
+
     if (!token) {
       return res.status(401).json({ msg: 'No refresh token provided' });
     }
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Check if user exists and is active
     const user = await User.findById(decoded.sub);
     if (!user || !user.isActive) {
       return res.status(401).json({ msg: 'User not found or inactive' });
     }
-    
+
     // Update last activity
     user.lastLogin = new Date();
     await user.save();
-    
+
     // Generate new tokens
     const access = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET, 
+      { sub: user.id },
+      process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
     );
-    
+
     // Refresh token gets renewed each time it's used
     const refresh = jwt.sign(
-      { sub: user.id }, 
-      process.env.JWT_SECRET, 
+      { sub: user.id },
+      process.env.JWT_SECRET,
       { expiresIn: '30d' } // 30 days from NOW
     );
-    
+
     res.json({ access, refresh });
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -172,8 +172,8 @@ export const resetPasswordWithCode = async (req, res) => {
     console.log(`[Reset PW] Received Plain Code from Client: "${code}"`); // Log code to see its exact form
 
     if (!email || !code || !newPassword) {
-        console.log('[Reset PW] Missing email, code, or newPassword in request body');
-        return res.status(400).json({ msg: 'Missing required fields' });
+      console.log('[Reset PW] Missing email, code, or newPassword in request body');
+      return res.status(400).json({ msg: 'Missing required fields' });
     }
 
     // Validate password strength
@@ -212,9 +212,9 @@ export const resetPasswordWithCode = async (req, res) => {
         console.log(`[Reset PW]   - Stored Token: ${existingUser.passwordResetToken || 'Not set'}`);
         console.log(`[Reset PW]   - Stored Expiry: ${existingUser.passwordResetExpires || 'Not set'} (${existingUser.passwordResetExpires ? (existingUser.passwordResetExpires > currentTime ? 'VALID' : 'EXPIRED') : 'N/A'})`);
         if (existingUser.passwordResetToken !== hashedCodeFromClientInput) {
-            console.error(`[Reset PW] CRITICAL: HASH MISMATCH!`);
-            console.error(`[Reset PW]   Client Hashed: ${hashedCodeFromClientInput}`);
-            console.error(`[Reset PW]   Stored Hashed: ${existingUser.passwordResetToken}`);
+          console.error(`[Reset PW] CRITICAL: HASH MISMATCH!`);
+          console.error(`[Reset PW]   Client Hashed: ${hashedCodeFromClientInput}`);
+          console.error(`[Reset PW]   Stored Hashed: ${existingUser.passwordResetToken}`);
         }
       } else {
         console.log(`[Reset PW] User with email ${email.toLowerCase()} does not exist at all.`);
