@@ -115,7 +115,7 @@ export const forgotPassword = async (req, res) => {
       .digest('hex');
 
     user.passwordResetToken = hashedCode;
-    user.passwordResetExpires = null; // doesn't expire
+    user.passwordResetExpires = Date.now() + 900000; // 15 minutes
     await user.save();
 
     console.log(`[Forgot PW] User: ${user.email}`);

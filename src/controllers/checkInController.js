@@ -65,28 +65,53 @@ export const createCheckIn = async (req, res) => {
       return res.status(400).json({ error: userIdValidation.error });
     }
 
-    // Process location data
-    let processedLocation = null;
-    if (location && location.coordinates) { // If location and coordinates are provided
-      if (typeof location.coordinates.latitude !== 'number' || typeof location.coordinates.longitude !== 'number') {
-        return res.status(400).json({ error: 'Invalid location coordinates: latitude and longitude must be numbers.' });
-      }
-      processedLocation = {
-        coordinates: {
-          type: 'Point',
-          coordinates: [location.coordinates.longitude, location.coordinates.latitude] // GeoJSON: [longitude, latitude]
-        },
-        landmarkName: (location.landmarkName && typeof location.landmarkName === 'string') ? location.landmarkName.trim() : null
-      };
-    } else if (location && location.landmarkName && !location.coordinates) {
-      // Optional: Allow landmarkName even if coordinates are missing (e.g. user typed it)
-      // processedLocation = {
-      //   landmarkName: typeof location.landmarkName === 'string' ? location.landmarkName.trim() : null,
-      //   coordinates: undefined // Explicitly undefined or handled by schema default
-      // };
-      // For now, let's assume if location object is present, coordinates are expected.
-      // If you want to allow only landmarkName, this logic needs adjustment and frontend needs to support sending it.
-       return res.status(400).json({ error: 'Location coordinates are required if location object is provided.' });
+    let processedLocationForDb = null; // This will be structured for your Mongoose schema
+
+    if (location) { // (A) Check if a 'location' object was sent by the client
+        const clientLandmarkName = (location.landmarkName && typeof location.landmarkName === 'string')
+                                 ? location.landmarkName.trim()
+                                 : null;
+
+        // (B) Check if the client sent the 'coordinates' sub-object (which should be our GeoJSON structure)
+        if (location.coordinates && typeof location.coordinates === 'object') {
+            const clientGeoJsonData = location.coordinates; // This is the { type: "Point", coordinates: [...] } object from the client
+
+            // (C) Validate the actual numerical coordinates array within the client's GeoJSON data
+            if (clientGeoJsonData.type === 'Point' && // Check type
+                Array.isArray(clientGeoJsonData.coordinates) &&
+                clientGeoJsonData.coordinates.length === 2 &&
+                typeof clientGeoJsonData.coordinates[0] === 'number' && // longitude
+                typeof clientGeoJsonData.coordinates[1] === 'number') {  // latitude
+
+                // Structure for Mongoose:
+                processedLocationForDb = {
+                    landmarkName: clientLandmarkName,
+                    coordinates: { // This is the GeoJSON structure for the database
+                        type: 'Point',
+                        coordinates: [clientGeoJsonData.coordinates[0], clientGeoJsonData.coordinates[1]] // [longitude, latitude]
+                    }
+                };
+            } else {
+                // The client sent a 'location.coordinates' object, but it's not a valid GeoJSON Point structure
+                return res.status(400).json({
+                    error: 'Invalid location.coordinates structure. Expected { type: "Point", coordinates: [longitude, latitude] } with numerical longitude and latitude.',
+                    receivedCoordinatesObject: clientGeoJsonData // Send back what was received for debugging
+                });
+            }
+        } else if (clientLandmarkName) {
+            // (D) Client sent 'location' with only 'landmarkName', no 'coordinates' object.
+            // This is valid if you want to allow saving only a landmark.
+            processedLocationForDb = {
+                landmarkName: clientLandmarkName
+                // 'coordinates' field will be absent, Mongoose schema default (undefined) will apply
+            };
+        } else if (Object.keys(location).length > 0) {
+            // (E) Client sent a 'location' object, but it was empty or didn't contain
+            // a 'landmarkName' or a 'coordinates' object.
+            return res.status(400).json({ error: 'Location object provided but lacks valid landmarkName or coordinates data.' });
+        }
+        // If 'location' object was sent but was completely empty (e.g. {}), processedLocationForDb remains null.
+        // If client didn't send a 'location' object at all, processedLocationForDb also remains null.
     }
 
     // Validate privacy setting
@@ -123,7 +148,7 @@ export const createCheckIn = async (req, res) => {
       reason: reason || null,
       people: processedPeople,
       activities: processedActivities,
-      location: processedLocation,
+      location: processedLocationForDb,
       privacy: processedPrivacy,
       timestamp: new Date()
     });
