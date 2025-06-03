@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 
 const moodPostSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   emotion: {
     name: String,
     // attributes: { pleasantness: Number, intensity: Number, ... }
@@ -21,7 +21,11 @@ const moodPostSchema = new mongoose.Schema({
   // ... other fields
 }, { timestamps: true });
 
-moodPostSchema.index({ 'location.coordinates': '2dsphere' }); // VERY IMPORTANT
-moodPostSchema.index({ privacy: 1, timestamp: -1 }); // Good for combined filtering
+// Ensure geospatial index exists
+moodPostSchema.index({ 'location.coordinates': '2dsphere' });
 
-export default mongoose.model('MoodPost', moodPostSchema);
+// Optional: compound index for common queries
+moodPostSchema.index({ privacy: 1, timestamp: -1 });
+
+// Export the model, explicitly specifying the collection name
+export default mongoose.model('MoodPost', moodPostSchema, 'moodcheckins');
