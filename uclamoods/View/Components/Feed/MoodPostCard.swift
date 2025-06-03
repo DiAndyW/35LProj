@@ -199,6 +199,7 @@ struct MoodPostCard: View {
         // Use a more generic placeholder while loading if post.isAnonymous could be true
         // For now, assuming fetchUsername will handle anonymous display if needed.
         displayUsername = "Loading..."
+        print("Fetching username for \(post.userId)...")
         
         fetchUsername(for: post.userId) { result in // You might need to pass post.isAnonymous too
             isLoadingUsername = false
