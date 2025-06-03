@@ -140,6 +140,7 @@ moodCheckInSchema.virtual('displayData').get(function () {
 moodCheckInSchema.index({ userId: 1, timestamp: -1 }); // Find user's check-ins by date
 moodCheckInSchema.index({ privacy: 1 }); // Filter by privacy level
 moodCheckInSchema.index({ 'location.coordinates': '2dsphere' }); // Geographic queries
+moodCheckInSchema.index({ 'likes.count': -1 }); // Sort by likes count
 
 const MoodCheckIn = mongoose.model('MoodCheckIn', moodCheckInSchema);
 
