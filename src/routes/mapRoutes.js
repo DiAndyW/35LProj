@@ -1,390 +1,563 @@
-// routes/mapRoutes.js
 import { Router } from 'express';
-import Location from '../models/Location.js';
+import MoodPost from '../models/MoodPost.js';
 
 const mapRouter = Router();
 
+// Helper function to calculate distance between two points
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
-  const R = 6371; 
+  const R = 6371; // Radius of the earth in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng/2) * Math.sin(dLng/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+  return R * c; // Distance in km
 };
 
+// Validate coordinates
 const isValidCoordinate = (lat, lng) => {
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 };
 
-mapRouter.get('/locations', async (req, res) => {
+/**
+ * GET /api/map/moods
+ * Fetch mood posts within map viewport bounds
+ * Query params:
+ * - swLat, swLng: Southwest corner of viewport
+ * - neLat, neLng: Northeast corner of viewport
+ * - centerLat, centerLng: Center of current view (for distance calculation)
+ * - since: ISO timestamp for time filtering
+ * - limit: Max number of posts to return
+ * - privacy: Filter by privacy level (public/friends/private)
+ * - cluster: Whether to cluster nearby posts (true/false)
+ * - zoomLevel: Current zoom level for clustering decisions
+ */
+mapRouter.get('/moods', async (req, res) => {
   try {
-    const { type, radius, lat, lng, limit = 50 } = req.query;
-    let query = {};
-    
-    if (type) {
-      query.type = type;
+    const {
+      swLat, swLng, neLat, neLng,
+      centerLat, centerLng,
+      since,
+      limit = 500, // Higher limit for map display
+      privacy = 'public',
+      cluster = 'false',
+      zoomLevel = 10
+    } = req.query;
+
+    // Validate required boundary coordinates
+    if (!swLat || !swLng || !neLat || !neLng) {
+      return res.status(400).json({
+        success: false,
+        error: 'Map boundary coordinates required'
+      });
     }
-    
-    let locations = await Location.find(query).limit(parseInt(limit));
-    
-    if (radius && lat && lng) {
-      const centerLat = parseFloat(lat);
-      const centerLng = parseFloat(lng);
-      const searchRadius = parseFloat(radius);
+
+    const bounds = {
+      sw: { lat: parseFloat(swLat), lng: parseFloat(swLng) },
+      ne: { lat: parseFloat(neLat), lng: parseFloat(neLng) }
+    };
+
+    if (!isValidCoordinate(bounds.sw.lat, bounds.sw.lng) || 
+        !isValidCoordinate(bounds.ne.lat, bounds.ne.lng)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid coordinates'
+      });
+    }
+
+    // Build MongoDB query
+    const query = {
+      // Must have location data
+      'location.coordinates': { $exists: true, $ne: null },
       
-      if (isValidCoordinate(centerLat, centerLng)) {
-        locations = locations.filter(loc => {
-          const distance = calculateDistance(centerLat, centerLng, loc.lat, loc.lng);
-          return distance <= searchRadius;
-        }).map(loc => ({
-          ...loc.toObject(),
-          distance: calculateDistance(centerLat, centerLng, loc.lat, loc.lng)
+      // Privacy filter
+      $or: [
+        { privacy: 'public' },
+        // Add user-specific privacy logic here if needed
+        // e.g., { privacy: 'friends', userId: { $in: req.user.friends } }
+      ]
+    };
+
+    // Time-based filtering
+    if (since) {
+      const sinceDate = new Date(since);
+      if (!isNaN(sinceDate.getTime())) {
+        query.timestamp = { $gte: sinceDate };
+      }
+    } else {
+      // Default to last 7 days for performance
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      query.timestamp = { $gte: sevenDaysAgo };
+    }
+
+    // Geospatial query using MongoDB's $geoWithin
+    query['location.coordinates'] = {
+      $geoWithin: {
+        $box: [
+          [bounds.sw.lng, bounds.sw.lat], // Bottom-left [lng, lat]
+          [bounds.ne.lng, bounds.ne.lat]  // Top-right [lng, lat]
+        ]
+      }
+    };
+
+    // Fetch mood posts
+    let moodPosts = await MoodPost.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .select('userId emotion reason location timestamp privacy isAnonymous')
+      .populate('userId', 'username profilePicture')
+      .lean(); // Use lean() for better performance
+
+    // Calculate distance from center if provided
+    if (centerLat && centerLng) {
+      const center = {
+        lat: parseFloat(centerLat),
+        lng: parseFloat(centerLng)
+      };
+      
+      if (isValidCoordinate(center.lat, center.lng)) {
+        moodPosts = moodPosts.map(post => ({
+          ...post,
+          distance: calculateDistance(
+            center.lat, center.lng,
+            post.location.coordinates.coordinates[1], // lat
+            post.location.coordinates.coordinates[0]  // lng
+          )
         }));
       }
     }
+
+    // Optional: Cluster nearby posts based on zoom level
+    let responseData = moodPosts;
     
+    if (cluster === 'true' && parseInt(zoomLevel) < 15) {
+      responseData = clusterMoodPosts(moodPosts, parseInt(zoomLevel));
+    }
+
     res.json({
       success: true,
-      count: locations.length,
-      data: locations
+      count: responseData.length,
+      viewport: bounds,
+      clustered: cluster === 'true',
+      data: responseData
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error fetching map moods:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch mood posts' 
+    });
   }
 });
 
-mapRouter.get('/locations/:id', async (req, res) => {
+/**
+ * GET /api/map/moods/heatmap
+ * Get aggregated mood data for heatmap visualization
+ */
+mapRouter.get('/moods/heatmap', async (req, res) => {
   try {
-    const location = await Location.findById(req.params.id);
-    
-    if (!location) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Location not found' 
-      });
-    }
-    
-    res.json({ success: true, data: location });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid location ID format' 
-      });
-    }
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+    const { swLat, swLng, neLat, neLng, gridSize = 50 } = req.query;
 
-mapRouter.post('/locations', async (req, res) => {
-  try {
-    const { name, lat, lng, type, description, address } = req.body;
-    
-    if (!name || lat === undefined || lng === undefined) {
+    if (!swLat || !swLng || !neLat || !neLng) {
       return res.status(400).json({
         success: false,
-        error: 'Name, latitude, and longitude are required'
+        error: 'Boundary coordinates required'
       });
     }
-    
-    if (!isValidCoordinate(lat, lng)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid coordinates provided'
-      });
-    }
-    
-    const newLocation = new Location({
-      name: name.trim(),
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      type: type || 'general',
-      description: description?.trim(),
-      address: address?.trim()
-    });
-    
-    const savedLocation = await newLocation.save();
-    
-    res.status(201).json({
-      success: true,
-      data: savedLocation
-    });
-  } catch (error) {
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
-mapRouter.put('/locations/:id', async (req, res) => {
-  try {
-    const { name, lat, lng, type, description, address } = req.body;
-    
-    if ((lat !== undefined || lng !== undefined) && 
-        !isValidCoordinate(lat, lng)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid coordinates provided'
-      });
-    }
-    
-    const updateData = { updatedAt: new Date() };
-    if (name !== undefined) updateData.name = name.trim();
-    if (lat !== undefined) updateData.lat = parseFloat(lat);
-    if (lng !== undefined) updateData.lng = parseFloat(lng);
-    if (type !== undefined) updateData.type = type;
-    if (description !== undefined) updateData.description = description?.trim();
-    if (address !== undefined) updateData.address = address?.trim();
-    
-    const updatedLocation = await Location.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
-    
-    if (!updatedLocation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Location not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: updatedLocation
-    });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid location ID format' 
-      });
-    }
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-mapRouter.delete('/locations/:id', async (req, res) => {
-  try {
-    const deletedLocation = await Location.findByIdAndDelete(req.params.id);
-    
-    if (!deletedLocation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Location not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Location deleted successfully',
-      data: deletedLocation
-    });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid location ID format' 
-      });
-    }
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-mapRouter.get('/locations/nearby/:lat/:lng', async (req, res) => {
-  try {
-    const centerLat = parseFloat(req.params.lat);
-    const centerLng = parseFloat(req.params.lng);
-    const radius = parseFloat(req.query.radius) || 10; // Default 10km
-    const limit = parseInt(req.query.limit) || 50;
-    
-    if (!isValidCoordinate(centerLat, centerLng)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid coordinates provided'
-      });
-    }
-    
-    const allLocations = await Location.find({});
-    
-    const nearbyLocations = allLocations
-      .map(location => ({
-        ...location.toObject(),
-        distance: calculateDistance(centerLat, centerLng, location.lat, location.lng)
-      }))
-      .filter(location => location.distance <= radius)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, limit);
-    
-    res.json({
-      success: true,
-      center: { lat: centerLat, lng: centerLng },
-      radius,
-      count: nearbyLocations.length,
-      data: nearbyLocations
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-mapRouter.post('/locations/search', async (req, res) => {
-  try {
-    const { query, type, limit = 10 } = req.body;
-    
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        error: 'Search query is required'
-      });
-    }
-    
-    const searchCriteria = {
-      name: { $regex: query, $options: 'i' }
+    const bounds = {
+      sw: { lat: parseFloat(swLat), lng: parseFloat(swLng) },
+      ne: { lat: parseFloat(neLat), lng: parseFloat(neLng) }
     };
-    
-    if (type) {
-      searchCriteria.type = type;
-    }
-    
-    const results = await Location.find(searchCriteria).limit(parseInt(limit));
-    
-    res.json({
-      success: true,
-      query,
-      count: results.length,
-      data: results
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
-mapRouter.get('/types', async (req, res) => {
-  try {
-    const typesWithCounts = await Location.aggregate([
+    // Aggregate mood posts into grid cells
+    const heatmapData = await MoodPost.aggregate([
       {
-        $group: {
-          _id: '$type',
-          count: { $sum: 1 }
+        $match: {
+          'location.coordinates': {
+            $geoWithin: {
+              $box: [
+                [bounds.sw.lng, bounds.sw.lat],
+                [bounds.ne.lng, bounds.ne.lat]
+              ]
+            }
+          },
+          privacy: 'public',
+          timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
         }
       },
       {
         $project: {
-          _id: 0,
-          type: '$_id',
-          count: 1
+          lat: { $arrayElemAt: ['$location.coordinates.coordinates', 1] },
+          lng: { $arrayElemAt: ['$location.coordinates.coordinates', 0] },
+          emotion: 1
         }
       },
       {
-        $sort: { type: 1 }
+        $group: {
+          _id: {
+            latBucket: {
+              $floor: {
+                $multiply: [
+                  { $divide: [{ $subtract: ['$lat', bounds.sw.lat] }, 
+                    { $subtract: [bounds.ne.lat, bounds.sw.lat] }] },
+                  parseInt(gridSize)
+                ]
+              }
+            },
+            lngBucket: {
+              $floor: {
+                $multiply: [
+                  { $divide: [{ $subtract: ['$lng', bounds.sw.lng] }, 
+                    { $subtract: [bounds.ne.lng, bounds.sw.lng] }] },
+                  parseInt(gridSize)
+                ]
+              }
+            }
+          },
+          count: { $sum: 1 },
+          emotions: { $push: '$emotion' }
+        }
       }
     ]);
-    
+
+    // Convert to heatmap points
+    const points = heatmapData.map(cell => {
+      const latStep = (bounds.ne.lat - bounds.sw.lat) / parseInt(gridSize);
+      const lngStep = (bounds.ne.lng - bounds.sw.lng) / parseInt(gridSize);
+      
+      return {
+        lat: bounds.sw.lat + (cell._id.latBucket + 0.5) * latStep,
+        lng: bounds.sw.lng + (cell._id.lngBucket + 0.5) * lngStep,
+        intensity: cell.count,
+        dominantEmotion: getMostFrequent(cell.emotions)
+      };
+    });
+
     res.json({
       success: true,
-      data: typesWithCounts
+      gridSize: parseInt(gridSize),
+      bounds,
+      data: points
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error generating heatmap:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate heatmap data' 
+    });
   }
 });
 
-mapRouter.get('/bounds', async (req, res) => {
+/**
+ * GET /api/map/moods/:id
+ * Get detailed information about a specific mood post
+ */
+mapRouter.get('/moods/:id', async (req, res) => {
   try {
-    const locations = await Location.find({}, 'lat lng');
-    
-    if (locations.length === 0) {
-      return res.json({
-        success: true,
-        data: null,
-        message: 'No locations available'
+    const moodPost = await MoodPost.findById(req.params.id)
+      .populate('userId', 'username profilePicture bio')
+      .populate('comments.userId', 'username profilePicture');
+
+    if (!moodPost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Mood post not found'
       });
     }
-    
-    const lats = locations.map(loc => loc.lat);
-    const lngs = locations.map(loc => loc.lng);
-    
-    const bounds = {
-      north: Math.max(...lats),
-      south: Math.min(...lats),
-      east: Math.max(...lngs),
-      west: Math.min(...lngs),
-      center: {
-        lat: (Math.max(...lats) + Math.min(...lats)) / 2,
-        lng: (Math.max(...lngs) + Math.min(...lngs)) / 2
-      }
-    };
-    
+
+    // Check privacy settings
+    // Add your privacy logic here
+
     res.json({
       success: true,
-      data: bounds
+      data: moodPost
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
-mapRouter.post('/routes/calculate', async (req, res) => {
-  try {
-    const { start, end, waypoints = [] } = req.body;
-    
-    if (!start || !end || !start.lat || !start.lng || !end.lat || !end.lng) {
+  } catch (error) {
+    if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
-        error: 'Start and end points with lat/lng are required'
+        error: 'Invalid mood post ID'
       });
     }
-    
-    const allPoints = [start, end, ...waypoints];
-    for (const point of allPoints) {
-      if (!isValidCoordinate(point.lat, point.lng)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid coordinates in route points'
-        });
-      }
-    }
-    
-    let totalDistance = 0;
-    const routePoints = [start, ...waypoints, end];
-    
-    for (let i = 0; i < routePoints.length - 1; i++) {
-      totalDistance += calculateDistance(
-        routePoints[i].lat, routePoints[i].lng,
-        routePoints[i + 1].lat, routePoints[i + 1].lng
-      );
-    }
-    
-    const calculatedRoute = {
-      start,
-      end,
-      waypoints,
-      totalDistance: Math.round(totalDistance * 100) / 100,
-      estimatedTime: Math.round(totalDistance * 60 / 50), 
-      routePoints
-    };
-    
-    res.json({
-      success: true,
-      data: calculatedRoute
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch mood post' 
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
   }
 });
+
+/**
+ * GET /api/map/moods/nearby/:lat/:lng
+ * Get mood posts near a specific location
+ */
+mapRouter.get('/moods/nearby/:lat/:lng', async (req, res) => {
+  try {
+    const lat = parseFloat(req.params.lat);
+    const lng = parseFloat(req.params.lng);
+    const maxDistance = parseFloat(req.query.maxDistance) || 5000; // meters
+    const limit = parseInt(req.query.limit) || 50;
+
+    if (!isValidCoordinate(lat, lng)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid coordinates'
+      });
+    }
+
+    const moodPosts = await MoodPost.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          },
+          distanceField: 'distance',
+          maxDistance: maxDistance,
+          spherical: true,
+          query: {
+            privacy: 'public',
+            timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+          }
+        }
+      },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $project: {
+          emotion: 1,
+          reason: 1,
+          location: 1,
+          timestamp: 1,
+          privacy: 1,
+          isAnonymous: 1,
+          distance: 1,
+          'user.username': 1,
+          'user.profilePicture': 1
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      center: { lat, lng },
+      maxDistance,
+      count: moodPosts.length,
+      data: moodPosts
+    });
+
+  } catch (error) {
+    console.error('Error fetching nearby moods:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch nearby mood posts' 
+    });
+  }
+});
+
+/**
+ * GET /api/map/stats
+ * Get statistics about mood posts in an area
+ */
+mapRouter.get('/stats', async (req, res) => {
+  try {
+    const { swLat, swLng, neLat, neLng } = req.query;
+
+    if (!swLat || !swLng || !neLat || !neLng) {
+      return res.status(400).json({
+        success: false,
+        error: 'Boundary coordinates required'
+      });
+    }
+
+    const bounds = {
+      sw: { lat: parseFloat(swLat), lng: parseFloat(swLng) },
+      ne: { lat: parseFloat(neLat), lng: parseFloat(neLng) }
+    };
+
+    const stats = await MoodPost.aggregate([
+      {
+        $match: {
+          'location.coordinates': {
+            $geoWithin: {
+              $box: [
+                [bounds.sw.lng, bounds.sw.lat],
+                [bounds.ne.lng, bounds.ne.lat]
+              ]
+            }
+          },
+          privacy: 'public',
+          timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalPosts: { $sum: 1 },
+          emotionCounts: {
+            $push: '$emotion'
+          },
+          averagePerDay: {
+            $avg: {
+              $dateDiff: {
+                startDate: '$timestamp',
+                endDate: new Date(),
+                unit: 'day'
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          totalPosts: 1,
+          emotionBreakdown: {
+            $arrayToObject: {
+              $map: {
+                input: { $setUnion: ['$emotionCounts'] },
+                as: 'emotion',
+                in: {
+                  k: '$$emotion',
+                  v: {
+                    $size: {
+                      $filter: {
+                        input: '$emotionCounts',
+                        cond: { $eq: ['$$this', '$$emotion'] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          postsPerDay: { $divide: ['$totalPosts', 30] }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      bounds,
+      data: stats[0] || {
+        totalPosts: 0,
+        emotionBreakdown: {},
+        postsPerDay: 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching map stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch statistics' 
+    });
+  }
+});
+
+// Helper function to cluster mood posts
+function clusterMoodPosts(posts, zoomLevel) {
+  const clusters = [];
+  const processed = new Set();
+  
+  // Clustering radius based on zoom level (in kilometers)
+  const clusterRadius = Math.max(0.5, 20 / Math.pow(2, zoomLevel));
+  
+  posts.forEach((post, i) => {
+    if (processed.has(i)) return;
+    
+    const cluster = {
+      id: `cluster_${i}`,
+      type: 'cluster',
+      location: post.location,
+      posts: [post],
+      emotions: [post.emotion]
+    };
+    
+    // Find nearby posts to cluster
+    posts.forEach((otherPost, j) => {
+      if (i === j || processed.has(j)) return;
+      
+      const distance = calculateDistance(
+        post.location.coordinates.coordinates[1],
+        post.location.coordinates.coordinates[0],
+        otherPost.location.coordinates.coordinates[1],
+        otherPost.location.coordinates.coordinates[0]
+      );
+      
+      if (distance <= clusterRadius) {
+        cluster.posts.push(otherPost);
+        cluster.emotions.push(otherPost.emotion);
+        processed.add(j);
+      }
+    });
+    
+    processed.add(i);
+    
+    if (cluster.posts.length > 1) {
+      // Calculate cluster center
+      const avgLat = cluster.posts.reduce((sum, p) => 
+        sum + p.location.coordinates.coordinates[1], 0) / cluster.posts.length;
+      const avgLng = cluster.posts.reduce((sum, p) => 
+        sum + p.location.coordinates.coordinates[0], 0) / cluster.posts.length;
+      
+      cluster.location = {
+        coordinates: {
+          type: 'Point',
+          coordinates: [avgLng, avgLat]
+        }
+      };
+      
+      cluster.count = cluster.posts.length;
+      cluster.dominantEmotion = getMostFrequent(cluster.emotions);
+      delete cluster.posts; // Remove individual posts to reduce payload
+      
+      clusters.push(cluster);
+    } else {
+      // Single post, not clustered
+      clusters.push({
+        ...post,
+        type: 'single'
+      });
+    }
+  });
+  
+  return clusters;
+}
+
+// Helper function to find most frequent element
+function getMostFrequent(arr) {
+  const counts = {};
+  let maxCount = 0;
+  let mostFrequent = arr[0];
+  
+  arr.forEach(item => {
+    counts[item] = (counts[item] || 0) + 1;
+    if (counts[item] > maxCount) {
+      maxCount = counts[item];
+      mostFrequent = item;
+    }
+  });
+  
+  return mostFrequent;
+}
+
+// Ensure 2dsphere index exists for geospatial queries
+// Add this to your MoodPost model or database setup:
+// MoodPost.collection.createIndex({ 'location.coordinates': '2dsphere' });
 
 export default mapRouter;
