@@ -3,7 +3,7 @@ import MoodPost from '../models/MoodPost.js'; // Ensure this path is correct
 
 const mapRouter = Router();
 
-// Helper function to calculate distance between two points
+// Helper function to calculate distance between two points (remains the same)
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
   const R = 6371; // Radius of the earth in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -16,7 +16,7 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
   return R * c; // Distance in km
 };
 
-// Validate coordinates
+// Validate coordinates (remains the same)
 const isValidCoordinate = (lat, lng) => {
   const numLat = parseFloat(lat);
   const numLng = parseFloat(lng);
@@ -24,35 +24,20 @@ const isValidCoordinate = (lat, lng) => {
          !isNaN(numLng) && numLng >= -180 && numLng <= 180;
 };
 
-/**
- * GET /api/map/moods
- * Fetch mood posts within map viewport bounds
- * Query params:
- * - swLat, swLng: Southwest corner of viewport
- * - neLat, neLng: Northeast corner of viewport
- * - centerLat, centerLng: Center of current view (for distance calculation)
- * - since: ISO timestamp for time filtering
- * - limit: Max number of posts to return
- * - privacy: Filter by privacy level (public/friends/private)
- * - cluster: Whether to cluster nearby posts (true/false)
- * - zoomLevel: Current zoom level for clustering decisions
- */
 mapRouter.get('/moods', async (req, res) => {
   try {
     const {
       swLat, swLng, neLat, neLng,
       centerLat, centerLng,
       since,
-      limit = '500', // Default as string, will be parsed
-      privacy = 'public',
+      limit = '500',
+      privacy = 'public', // Note: current query only fetches 'public'
       cluster = 'false',
-      zoomLevel = '10' // Default as string, will be parsed
+      zoomLevel = '10'
     } = req.query;
 
-    // --- DEBUGGING: Log incoming query parameters ---
     console.log('Received /moods request with query params:', req.query);
 
-    // Validate required boundary coordinates
     if (!swLat || !swLng || !neLat || !neLng) {
       console.error('Validation Error: Map boundary coordinates missing');
       return res.status(400).json({
@@ -75,100 +60,73 @@ mapRouter.get('/moods', async (req, res) => {
       });
     }
     
-    // --- DEBUGGING: Log parsed bounds ---
     console.log('Parsed map bounds:', bounds);
 
-    // Build MongoDB query
     const queryConditions = {
-      // Privacy filter first (simpler condition)
-      $or: [
-        { privacy: 'public' },
-        // Add user-specific privacy logic here if needed
-      ]
+      $or: [{ privacy: 'public' }], // Consider expanding privacy logic if needed
     };
 
-    // IMPORTANT: For $geoWithin with $box, MongoDB expects:
-    // - A 2dsphere index on the location.coordinates field
-    // - The box defined as [[minLng, minLat], [maxLng, maxLat]]
-    // 
-    // Since SW/NE might not always have min/max values (depending on hemisphere),
-    // we need to ensure we're using the actual min/max values:
     const minLat = Math.min(bounds.sw.lat, bounds.ne.lat);
     const maxLat = Math.max(bounds.sw.lat, bounds.ne.lat);
     const minLng = Math.min(bounds.sw.lng, bounds.ne.lng);
     const maxLng = Math.max(bounds.sw.lng, bounds.ne.lng);
 
-    // Add geospatial query
     queryConditions['location.coordinates'] = {
       $geoWithin: {
         $box: [
-          [minLng, minLat], // Bottom-left corner [lng, lat]
-          [maxLng, maxLat]  // Top-right corner [lng, lat]
+          [minLng, minLat],
+          [maxLng, maxLat]
         ]
       }
     };
 
-    // Time-based filtering
     if (since) {
       const sinceDate = new Date(since);
       if (!isNaN(sinceDate.getTime())) {
         queryConditions.timestamp = { $gte: sinceDate };
-        console.log('Using provided since date:', sinceDate);
       } else {
         console.warn('Invalid "since" date format received:', since);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        queryConditions.timestamp = { $gte: sevenDaysAgo }; // Fallback to default
       }
     } else {
-      // Default to last 7 days for performance
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       queryConditions.timestamp = { $gte: sevenDaysAgo };
-      console.log('Using default 7-day filter:', sevenDaysAgo);
     }
 
     const parsedLimit = parseInt(limit);
     const finalLimit = isNaN(parsedLimit) || parsedLimit <= 0 ? 500 : parsedLimit;
 
-    // --- DEBUGGING: Log the final MongoDB query ---
     console.log('Executing MoodPost.find() with query:', JSON.stringify(queryConditions, null, 2));
-    console.log('Box coordinates: minLng:', minLng, 'minLat:', minLat, 'maxLng:', maxLng, 'maxLat:', maxLat);
 
-    // First, let's check if we have ANY public posts in the database
-    const totalPublicPosts = await MoodPost.countDocuments({ privacy: 'public' });
-    console.log('Total public posts in database:', totalPublicPosts);
-
-    // Check posts within the time range
-    const postsInTimeRange = await MoodPost.countDocuments({ 
-      privacy: 'public',
-      timestamp: queryConditions.timestamp 
-    });
-    console.log('Public posts within time range:', postsInTimeRange);
-
-    // Fetch mood posts
-    let moodPosts = await MoodPost.find(queryConditions)
+    // Fetch mood posts - UPDATED .select()
+    let moodPostsFromDB = await MoodPost.find(queryConditions)
       .sort({ timestamp: -1 })
       .limit(finalLimit)
-      .select('userId emotion reason location timestamp privacy isAnonymous')
-      .populate('userId', 'username profilePicture')
+      .select('_id userId emotion reason location timestamp privacy isAnonymous likes comments people activities') // Ensure all needed fields are here
+      .populate('userId', 'username profilePicture _id') // Ensure _id is populated for UserBrief
       .lean();
 
-    // --- DEBUGGING: Log fetched posts count ---
-    console.log(`Found ${moodPosts.length} mood posts within bounds.`);
+    console.log(`Found ${moodPostsFromDB.length} mood posts from DB.`);
 
-    // If no posts found, let's do a diagnostic query
-    if (moodPosts.length === 0) {
-      // Try to find ANY post with location data
-      const anyLocationPost = await MoodPost.findOne({ 
-        'location.coordinates': { $exists: true },
-        privacy: 'public'
-      }).select('location').lean();
-      
-      if (anyLocationPost) {
-        console.log('Sample post with location:', JSON.stringify(anyLocationPost, null, 2));
-        console.log('Your query box:', { minLng, minLat, maxLng, maxLat });
-        console.log('Check if this location falls within your bounds.');
-      } else {
-        console.log('No public posts with location data found in the database.');
-      }
-    }
+    // --- TRANSFORM DATA to include counts and ensure all fields for Swift model ---
+    let moodPosts = moodPostsFromDB.map(post => {
+      return {
+        _id: post._id, // Swift model expects to map "_id" to "id"
+        userId: post.userId, // Populated user object
+        emotion: post.emotion,
+        reason: post.reason,
+        location: post.location,
+        timestamp: post.timestamp, // Mongoose converts Date to ISO string on JSON.stringify
+        privacy: post.privacy,
+        isAnonymous: post.isAnonymous === undefined ? false : post.isAnonymous, // Default if not present
+        likesCount: Array.isArray(post.likes) ? post.likes.length : 0,
+        commentsCount: Array.isArray(post.comments) ? post.comments.length : 0,
+        people: Array.isArray(post.people) ? post.people : [],
+        activities: Array.isArray(post.activities) ? post.activities : [],
+        // distance will be added in the next step if centerLat/Lng are provided
+      };
+    });
 
     // Calculate distance from center if provided
     if (centerLat && centerLng) {
@@ -179,7 +137,9 @@ mapRouter.get('/moods', async (req, res) => {
 
       if (isValidCoordinate(center.lat, center.lng)) {
         moodPosts = moodPosts.map(post => {
-          if (post.location && post.location.coordinates && post.location.coordinates.coordinates) {
+          // Ensure post.location and coordinates exist before trying to access them
+          if (post.location && post.location.coordinates && post.location.coordinates.coordinates &&
+              Array.isArray(post.location.coordinates.coordinates) && post.location.coordinates.coordinates.length === 2) {
             return {
               ...post,
               distance: calculateDistance(
@@ -189,28 +149,27 @@ mapRouter.get('/moods', async (req, res) => {
               )
             };
           }
-          return post;
+          return post; // Return post unmodified if location data is invalid/missing
         });
       } else {
         console.warn('Invalid centerLat/centerLng for distance calculation:', centerLat, centerLng);
       }
     }
 
-    // Optional: Cluster nearby posts based on zoom level
     let responseData = moodPosts;
     const parsedZoomLevel = parseInt(zoomLevel);
 
     if (cluster === 'true' && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15) {
-      responseData = clusterMoodPosts(moodPosts, parsedZoomLevel);
-    } else if (cluster === 'true' && (isNaN(parsedZoomLevel) || parsedZoomLevel >= 15)) {
-      console.warn(`Clustering requested but zoomLevel ("${zoomLevel}") is invalid or too high for clustering. Serving unclustered data.`);
+      responseData = clusterMoodPosts(moodPosts, parsedZoomLevel); // Pass the transformed moodPosts
+    } else if (cluster === 'true') {
+      console.warn(`Clustering requested but zoomLevel ("${zoomLevel}") is invalid or too high. Serving unclustered data.`);
     }
 
     res.json({
       success: true,
       count: responseData.length,
       viewport: bounds,
-      actualBounds: { minLat, minLng, maxLat, maxLng }, // Add this for debugging
+      actualBounds: { minLat, minLng, maxLat, maxLng },
       clustered: cluster === 'true' && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15,
       filtersApplied: {
         timestamp: queryConditions.timestamp,
@@ -229,9 +188,8 @@ mapRouter.get('/moods', async (req, res) => {
   }
 });
 
-// Helper function to cluster mood posts
+// Helper function to cluster mood posts (Modified to ensure `id` uses `_id`)
 function clusterMoodPosts(posts, zoomLevel) {
-  // Ensure posts have the necessary location structure before clustering
   const validPosts = posts.filter(p => 
     p.location && 
     p.location.coordinates && 
@@ -249,82 +207,94 @@ function clusterMoodPosts(posts, zoomLevel) {
 
   const clusters = [];
   const processed = new Set();
-
-  // Clustering radius based on zoom level (in kilometers)
-  const baseRadius = 50; // km at zoom level 0
+  const baseRadius = 50;
   const clusterRadius = Math.max(0.1, baseRadius / Math.pow(2, zoomLevel));
 
   validPosts.forEach((post, i) => {
     if (processed.has(i)) return;
 
+    // Ensure post.emotion is an object with a name, or handle potential variations
+    const initialEmotionName = (post.emotion && typeof post.emotion.name === 'string') ? post.emotion.name : 'Unknown';
+
     const cluster = {
       type: 'cluster',
-      location: JSON.parse(JSON.stringify(post.location)),
+      location: JSON.parse(JSON.stringify(post.location)), // Deep copy
       postsInCluster: [post],
-      emotions: [post.emotion]
+      // Storing emotion names for dominant emotion calculation
+      emotionNamesInCluster: [initialEmotionName] 
     };
-
     processed.add(i);
 
-    // Find nearby posts to cluster
     for (let j = i + 1; j < validPosts.length; j++) {
       if (processed.has(j)) continue;
-
       const otherPost = validPosts[j];
       const distance = calculateDistance(
-        post.location.coordinates.coordinates[1],    // lat1
-        post.location.coordinates.coordinates[0],    // lng1
-        otherPost.location.coordinates.coordinates[1], // lat2
-        otherPost.location.coordinates.coordinates[0]  // lng2
+        post.location.coordinates.coordinates[1],
+        post.location.coordinates.coordinates[0],
+        otherPost.location.coordinates.coordinates[1],
+        otherPost.location.coordinates.coordinates[0]
       );
 
       if (distance <= clusterRadius) {
         cluster.postsInCluster.push(otherPost);
-        cluster.emotions.push(otherPost.emotion);
+        const otherEmotionName = (otherPost.emotion && typeof otherPost.emotion.name === 'string') ? otherPost.emotion.name : 'Unknown';
+        cluster.emotionNamesInCluster.push(otherEmotionName);
         processed.add(j);
       }
     }
 
     if (cluster.postsInCluster.length > 1) {
-      // Calculate cluster center (average lat/lng)
-      const avgLat = cluster.postsInCluster.reduce((sum, p) =>
-        sum + p.location.coordinates.coordinates[1], 0) / cluster.postsInCluster.length;
-      const avgLng = cluster.postsInCluster.reduce((sum, p) =>
-        sum + p.location.coordinates.coordinates[0], 0) / cluster.postsInCluster.length;
-
+      const avgLat = cluster.postsInCluster.reduce((sum, p) => sum + p.location.coordinates.coordinates[1], 0) / cluster.postsInCluster.length;
+      const avgLng = cluster.postsInCluster.reduce((sum, p) => sum + p.location.coordinates.coordinates[0], 0) / cluster.postsInCluster.length;
+      
       cluster.location.coordinates.coordinates = [avgLng, avgLat];
       cluster.count = cluster.postsInCluster.length;
-      cluster.dominantEmotion = getMostFrequent(cluster.emotions);
-      cluster.id = `cluster_${avgLng.toFixed(5)}_${avgLat.toFixed(5)}_${cluster.count}`;
-      delete cluster.postsInCluster;
+      // Use emotionNamesInCluster for getMostFrequent
+      cluster.dominantEmotionName = getMostFrequent(cluster.emotionNamesInCluster); 
+      // The cluster itself doesn't have a single 'emotion' object in the same way a post does.
+      // It might have a representative emotion name. Adjust Swift client if it expects a full SimpleEmotion object for clusters.
+      // For now, sending dominantEmotionName. The client will need to handle this.
+      // Or, find the full dominant emotion object if needed.
+      // For simplicity, let's assume dominantEmotionName is enough or find the first post's emotion object with that name.
+      const dominantEmotionObject = cluster.postsInCluster.find(p => (p.emotion && p.emotion.name) === cluster.dominantEmotionName)?.emotion || cluster.postsInCluster[0].emotion;
 
-      clusters.push(cluster);
+      clusters.push({
+        // Fields expected by a "cluster" representation on the client
+        id: `cluster_${avgLng.toFixed(5)}_${avgLat.toFixed(5)}_${cluster.count}`,
+        type: 'cluster', // Indicates this is a cluster
+        location: cluster.location,
+        count: cluster.count,
+        // Represent the emotion of the cluster, e.g., by the dominant emotion name or its full object
+        emotion: dominantEmotionObject, // Or just { name: cluster.dominantEmotionName }
+        // The client might need to know it's a cluster and not a single post to render it differently.
+        // Individual posts are not directly in this top-level object for a cluster.
+      });
     } else {
       // Single post, not clustered
       clusters.push({
-        ...post,
-        id: `single_${post._id || i}`,
-        type: 'single',
-        count: 1
+        ...post, // 'post' is already the transformed object with likesCount, commentsCount etc.
+        id: post._id.toString(), // Use the actual post _id for the 'id' field
+        type: 'single', // Indicates this is a single, unclustered post
+        // count: 1, // 'count' might be redundant if it's always 1 for single, but can be explicit
       });
     }
   });
   return clusters;
 }
 
-// Helper function to find most frequent element
+// Helper function to find most frequent element (remains the same)
 function getMostFrequent(arr) {
   if (!arr || arr.length === 0) return null;
-
   const counts = {};
   let maxCount = 0;
-  let mostFrequent = arr[0];
+  let mostFrequent = arr[0]; // Default to first item
 
   arr.forEach(item => {
     if (item === null || typeof item === 'undefined') return;
-    counts[item] = (counts[item] || 0) + 1;
-    if (counts[item] > maxCount) {
-      maxCount = counts[item];
+    const key = typeof item === 'object' ? JSON.stringify(item) : item; // Handle objects if emotions are complex
+    counts[key] = (counts[key] || 0) + 1;
+    if (counts[key] > maxCount) {
+      maxCount = counts[key];
       mostFrequent = item;
     }
   });
