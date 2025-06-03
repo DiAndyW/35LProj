@@ -379,7 +379,7 @@ export const updateLikes = async (req, res) => {
       likesCount: checkIn.likes.length,
       timestamp: new Date().toISOString()
     });
-  } catch {
+  } catch (error) {
     console.error('Error adding like:', error);
     res.status(500).json({
       error: 'Failed to add like',
@@ -436,7 +436,7 @@ export const addComment = async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-  } catch {
+  } catch (error) {
     console.error('Error adding like:', error);
     res.status(500).json({
       error: 'Failed to add like',

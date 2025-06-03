@@ -8,8 +8,11 @@ import {
   updateLikes,
   addComment
 } from '../controllers/checkInController.js';
+import requireAuth from '../middleware/requireAuth.js';
 
 const checkInRouter = Router();
+
+checkInRouter.use(requireAuth);
 
 // POST - Create a new check-in
 checkInRouter.post('/checkin', createCheckIn);
