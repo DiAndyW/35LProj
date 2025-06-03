@@ -80,6 +80,7 @@ struct EmotionHeaderView: View {
                     .font(.custom("Chivo", size: 20))
                     .foregroundColor(.white)
                     .offset(y: geometry.size.width * 0.01)
+                    .padding(.horizontal, 200)
             }
             .offset(y: geometry.size.width * 0.35)
         }
@@ -328,8 +329,7 @@ struct CompleteCheckInView: View {
     
     @State private var selectedUsers: Set<MockUser> = []
     @State private var availableUsers: [MockUser] = [
-        MockUser(name: "Sarah"), MockUser(name: "Mike"), MockUser(name: "Chloe"),
-        MockUser(name: "David R."), MockUser(name: "By Myself")
+        MockUser(name: "Friends"), MockUser(name: "Family"), MockUser(name: "By Myself")
     ]
     
     @State private var selectedActivities: Set<ActivityTag> = []
