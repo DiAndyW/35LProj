@@ -112,9 +112,9 @@ moodCheckInSchema.virtual('displayData').get(function () {
     people: this.people,
     activities: this.activities,
     privacy: this.privacy,
-    location: this.location.name ? {
-      name: this.location.name,
-      coordinates: this.location.coordinates,
+    location: this.location?.landmarkName ? { // Use landmarkName
+      name: this.location.landmarkName, // Changed from this.location.name
+      coordinates: this.location.coordinates?.coordinates, // Access nested array
       isShared: this.location.isShared
     } : null,
     timestamp: this.timestamp,
