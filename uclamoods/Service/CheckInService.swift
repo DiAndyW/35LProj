@@ -35,19 +35,23 @@ enum CheckInServiceError: LocalizedError {
     }
 }
 
-
+extension String {
+    func nilIfEmpty() -> String? {
+        self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
 
 // MARK: - CheckInService Class
 class CheckInService {
     static func createCheckIn(
         emotion: Emotion,
         reasonText: String,
-        socialTags: Set<String>, // << CHANGED: from selectedUsers: Set<MockUser> to socialTags: Set<String>
+        socialTags: Set<String>,
         selectedActivities: Set<ActivityTag>,
         landmarkName: String?,
         userCoordinates: CLLocationCoordinate2D?,
         showLocation: Bool,
-        privacySetting: CompleteCheckInView.PrivacySetting, // Ensure CompleteCheckInView.PrivacySetting is accessible
+        privacySetting: CompleteCheckInView.PrivacySetting,
         userDataProvider: UserDataProvider
     ) async throws -> CreateCheckInResponsePayload {
         
@@ -56,7 +60,6 @@ class CheckInService {
             throw CheckInServiceError.noUserIdAvailable
         }
         
-        // Assuming your Emotion struct has these properties. Adjust if necessary.
         let emotionAttributes = CheckInEmotionAttributes(
             pleasantness: emotion.pleasantness,
             intensity: emotion.intensity,
@@ -65,27 +68,21 @@ class CheckInService {
         )
         let emotionPayload = CheckInEmotionPayload(name: emotion.name, attributes: emotionAttributes)
         
-        // << CHANGED: Processing for socialTags (Set<String>)
         let peopleNames = Array(socialTags).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty && $0.lowercased() != "by myself" }
-        // If "By Myself" is selected along with other names, this logic will filter out "By Myself".
-        // If only "By Myself" is present (and other filters pass), it will be an empty array here,
-        // leading to `people: nil` in the payload if `peopleNames` is empty.
-        // This matches your original filtering intent.
         
         let activityNames = selectedActivities.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         
         var locationAPIPayload: CheckInLocationPayload? = nil
         if showLocation {
-            var coordsPayload: CheckInCoordinatesPayload? = nil
-            if let coords = userCoordinates {
-                coordsPayload = CheckInCoordinatesPayload(latitude: coords.latitude, longitude: coords.longitude)
-            }
-            if landmarkName != nil || coordsPayload != nil {
+            let nameForAPI = landmarkName?.nilIfEmpty() // Use helper to get nil if empty/whitespace
+            let coordinatesForAPI: [Double]? = userCoordinates.map { [$0.longitude, $0.latitude] }
+            if nameForAPI != nil || coordinatesForAPI != nil {
                 locationAPIPayload = CheckInLocationPayload(
-                    landmarkName: landmarkName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? landmarkName?.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
-                    coordinates: coordsPayload
+                    name: nameForAPI,
+                    coordinates: coordinatesForAPI,
+                    isShared: true // <<< SET isShared to true because showLocation is true
                 )
             }
         }

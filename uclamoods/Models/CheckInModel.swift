@@ -8,11 +8,9 @@ struct CheckInCoordinatesPayload: Codable {
 
 // Updated location payload to include coordinates
 struct CheckInLocationPayload: Codable {
-    let landmarkName: String? // Changed from 'name' to 'landmarkName' for clarity with backend
-    let coordinates: CheckInCoordinatesPayload?
-    // 'isShared' can be inferred by the presence of the location object itself or this payload.
-    // If your backend strictly requires 'isShared', you can add it back.
-    // For now, assuming if locationPayload is non-nil, it's shared.
+    let name: String?          
+    let coordinates: [Double]?
+    let isShared: Bool
 }
 
 // Assuming these are already defined or you can create them:
