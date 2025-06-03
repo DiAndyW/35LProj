@@ -45,6 +45,93 @@ struct AddTagButton: View {
     }
 }
 
+struct SocialTagSectionView: View {
+    @Binding var selectedTags: Set<String>
+    let predefinedTags: [String]
+
+    @State private var newTagText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+
+    // Helper to get sorted custom tags that are already selected
+    private var customSelectedTags: [String] {
+        selectedTags.filter { !predefinedTags.contains($0) }.sorted()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Who were you with")
+                .font(.custom("Georgia", size: 18))
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    // Predefined Tags
+                    ForEach(predefinedTags, id: \.self) { tag in
+                        PillTagView(text: tag, isSelected: selectedTags.contains(tag)) {
+                            if selectedTags.contains(tag) {
+                                selectedTags.remove(tag)
+                            } else {
+                                selectedTags.insert(tag)
+                            }
+                            // Dismiss keyboard if a predefined tag is tapped
+                            isTextFieldFocused = false
+                        }
+                    }
+
+                    // Custom selected tags (already added)
+                    ForEach(customSelectedTags, id: \.self) { tag in
+                        PillTagView(text: tag, isSelected: true) { // These are always "selected" as they are from the selectedTags set
+                            selectedTags.remove(tag) // Action is to remove
+                            isTextFieldFocused = false // Dismiss keyboard
+                        }
+                    }
+
+                    // "Input Pill" TextField
+                    TextField("+ Add tag", text: $newTagText)
+                        .font(.custom("Chivo", size: 14))
+                        // Dynamic foreground color: placeholder is dimmer, input text is brighter
+                        .foregroundColor(newTagText.isEmpty ? Color.white.opacity(0.6) : .white)
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.3)) // Pill background
+                        .cornerRadius(20) // Pill corner radius
+                        .frame(minWidth: 100, idealWidth: 100) // Give it some initial width, can expand
+                        .focused($isTextFieldFocused)
+                        .onSubmit { // Called when Return key is pressed
+                            addCustomTagFromInput()
+                        }
+                        // Add a subtle border to the input pill if it's focused
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(isTextFieldFocused ? Color.white.opacity(0.5) : Color.clear, lineWidth: 1)
+                        )
+                }
+                .padding(.vertical, 5) // Padding for the HStack content within ScrollView
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+        // Tapping the VStack background will dismiss the keyboard
+        .contentShape(Rectangle()) // Ensure the whole VStack area is tappable
+        .onTapGesture {
+            if isTextFieldFocused { // Only dismiss if the text field was focused
+                 isTextFieldFocused = false
+            }
+        }
+    }
+
+    private func addCustomTagFromInput() {
+        let trimmedTag = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTag.isEmpty {
+            selectedTags.insert(trimmedTag)
+            newTagText = "" // Clear the input field, making it "blank" for the next tag
+            // Optionally, you might want to keep the TextField focused for rapid entry:
+            // isTextFieldFocused = true
+        }
+    }
+}
+
 struct EmotionHeaderView: View {
     let emotion: Emotion
     let timeFormatter: DateFormatter
@@ -84,48 +171,6 @@ struct EmotionHeaderView: View {
             }
             .offset(y: geometry.size.width * 0.35)
         }
-    }
-}
-
-
-struct SocialTagSectionView: View {
-    @Binding var selectedUsers: Set<MockUser>
-    let availableUsers: [MockUser]
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Who were you with")
-                .font(.custom("Georgia", size: 18))
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    AddTagButton {
-                        if let firstUser = availableUsers.first {
-                            if selectedUsers.contains(firstUser) {
-                                selectedUsers.remove(firstUser)
-                            } else {
-                                selectedUsers.insert(firstUser)
-                            }
-                        }
-                    }
-                    
-                    ForEach(availableUsers) { user in
-                        PillTagView(text: user.name, isSelected: selectedUsers.contains(user)) {
-                            if selectedUsers.contains(user) {
-                                selectedUsers.remove(user)
-                            } else {
-                                selectedUsers.insert(user)
-                            }
-                        }
-                    }
-                }
-                .padding(.vertical, 5)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
     }
 }
 
@@ -274,14 +319,15 @@ struct CheckInFormView: View {
     @Binding var reasonText: String
     var isTextFieldFocused: FocusState<Bool>.Binding
     
-    @Binding var selectedUsers: Set<MockUser>
-    let availableUsers: [MockUser]
+    // Updated properties for social tags
+    @Binding var selectedSocialTags: Set<String>
+    let predefinedSocialTags: [String]
     
     @Binding var selectedPrivacy: CompleteCheckInView.PrivacySetting
     @Binding var showLocation: Bool
     @Binding var currentLocation: String
     
-    let emotion: Emotion
+    let emotion: Emotion // Assuming Emotion struct is defined elsewhere
     let geometry: GeometryProxy
     
     @Binding var isSaving: Bool
@@ -292,8 +338,8 @@ struct CheckInFormView: View {
     var body: some View {
         VStack(spacing: 0) {
             SocialTagSectionView(
-                selectedUsers: $selectedUsers,
-                availableUsers: availableUsers
+                selectedTags: $selectedSocialTags,       // Pass the Set<String> binding
+                predefinedTags: predefinedSocialTags   // Pass the [String]
             )
             
             ReasonInputSectionView(
@@ -327,9 +373,9 @@ struct CompleteCheckInView: View {
     @State private var reasonText: String = ""
     @FocusState private var isTextFieldFocused: Bool
     
-    @State private var selectedUsers: Set<MockUser> = []
-    @State private var availableUsers: [MockUser] = [
-        MockUser(name: "Friends"), MockUser(name: "Family"), MockUser(name: "By Myself")
+    @State private var selectedSocialTags: Set<String> = []
+    @State private var predefinedSocialTags: [String] = [
+        "Friends", "Family", "By Myself"
     ]
     
     @State private var selectedActivities: Set<ActivityTag> = []
@@ -342,12 +388,12 @@ struct CompleteCheckInView: View {
     @State private var showingAddCustomActivityField = false
     
     enum PrivacySetting: String, CaseIterable, Identifiable {
-            case friends = "Friends"
+            //case friends = "Friends"
             case isPublic = "Public" // Consider renaming to "public" to avoid "is" prefix if not boolean
             case isPrivate = "Private" // Consider "private"
             var id: String { self.rawValue }
         }
-        @State private var selectedPrivacy: PrivacySetting = .friends
+        @State private var selectedPrivacy: PrivacySetting = .isPublic
         
         // MARK: - Location State
         @State private var showLocation: Bool = true
@@ -387,8 +433,8 @@ struct CompleteCheckInView: View {
                         CheckInFormView(
                             reasonText: $reasonText,
                             isTextFieldFocused: $isTextFieldFocused,
-                            selectedUsers: $selectedUsers,
-                            availableUsers: availableUsers,
+                            selectedSocialTags: $selectedSocialTags,
+                            predefinedSocialTags: predefinedSocialTags,
                             selectedPrivacy: $selectedPrivacy,
                             showLocation: $showLocation,
                             currentLocation: $displayableLocationName, // Pass the displayable name
@@ -398,7 +444,7 @@ struct CompleteCheckInView: View {
                             saveError: $saveError,
                             saveAction: saveCheckIn
                         )
-                        .padding(.top, -geometry.size.height * 0.55)
+                        .padding(.top, -geometry.size.height * 0.56)
                         .padding(.horizontal, geometry.size.width * 0.24)
                     }
                     .ignoresSafeArea(edges: .top)
@@ -528,7 +574,7 @@ struct CompleteCheckInView: View {
                     let response = try await CheckInService.createCheckIn(
                         emotion: self.emotion,
                         reasonText: self.reasonText,
-                        selectedUsers: self.selectedUsers,
+                        socialTags: self.selectedSocialTags,
                         selectedActivities: self.selectedActivities,
                         landmarkName: landmarkToSave,         // Pass fetched landmark name
                         userCoordinates: coordinatesToSave,   // Pass fetched coordinates
