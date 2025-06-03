@@ -1,5 +1,7 @@
 import SwiftUI
 import MapKit
+import CoreImage
+import CoreImage.CIFilterBuiltins
 
 // MARK: - Data Models
 
@@ -112,11 +114,338 @@ struct MoodPostAnnotation: Identifiable {
     let moodPost: MapMoodPost
     
     var color: Color {
-        moodPost.emotion.color ?? Color.gray
+        moodPost.emotion.color ?? EmotionColorMap.getColor(for: moodPost.emotion.name)
     }
 }
 
-// MARK: - MapView
+// MARK: - Heatmap Data Models
+
+struct HeatmapPoint: Codable {
+    let lat: Double
+    let lng: Double
+    let intensity: Int
+    let dominantEmotion: SimpleEmotion?
+    
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    }
+}
+
+struct HeatmapResponse: Codable {
+    let success: Bool
+    let gridSize: Int
+    let bounds: Viewport
+    let data: [HeatmapPoint]
+}
+
+// MARK: - Heatmap Overlay
+
+class HeatmapOverlay: NSObject, MKOverlay {
+    let coordinate: CLLocationCoordinate2D
+    let boundingMapRect: MKMapRect
+    let heatmapData: [HeatmapPoint]
+    
+    init(heatmapData: [HeatmapPoint], region: MKCoordinateRegion) {
+        self.heatmapData = heatmapData
+        self.coordinate = region.center
+        
+        // Calculate bounding rect from region
+        let topLeft = CLLocationCoordinate2D(
+            latitude: region.center.latitude + region.span.latitudeDelta / 2,
+            longitude: region.center.longitude - region.span.longitudeDelta / 2
+        )
+        let bottomRight = CLLocationCoordinate2D(
+            latitude: region.center.latitude - region.span.latitudeDelta / 2,
+            longitude: region.center.longitude + region.span.longitudeDelta / 2
+        )
+        
+        let topLeftPoint = MKMapPoint(topLeft)
+        let bottomRightPoint = MKMapPoint(bottomRight)
+        
+        self.boundingMapRect = MKMapRect(
+            x: topLeftPoint.x,
+            y: topLeftPoint.y,
+            width: bottomRightPoint.x - topLeftPoint.x,
+            height: bottomRightPoint.y - topLeftPoint.y
+        )
+        
+        super.init()
+    }
+}
+
+// MARK: - Heatmap Renderer
+
+// MARK: - Updated Heatmap Renderer with Emotion-Based Colors
+
+class HeatmapOverlayRenderer: MKOverlayRenderer {
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let overlay = overlay as? HeatmapOverlay else { return }
+        
+        let rect = self.rect(for: overlay.boundingMapRect)
+        
+        // Find max intensity for normalization
+        let maxIntensity = overlay.heatmapData.map { $0.intensity }.max() ?? 1
+        
+        // Draw each heatmap point with its emotion-based color
+        for point in overlay.heatmapData {
+            let mapPoint = MKMapPoint(point.coordinate)
+            let pointRect = self.point(for: mapPoint)
+            
+            // Skip if point is outside visible rect
+            if !rect.contains(pointRect) { continue }
+            
+            // Calculate radius based on zoom scale
+            let radius = 50.0 / zoomScale
+            
+            // Normalize intensity (0.0 to 1.0)
+            let normalizedIntensity = CGFloat(point.intensity) / CGFloat(maxIntensity)
+            
+            // Get emotion-based color
+            let emotionColor = getEmotionBasedColor(for: point, intensity: normalizedIntensity)
+            
+            // Create radial gradient for this specific emotion
+            let gradient = createEmotionGradient(baseColor: emotionColor, intensity: normalizedIntensity)
+            
+            // Draw radial gradient for this point
+            context.saveGState()
+            context.addEllipse(in: CGRect(
+                x: pointRect.x - radius,
+                y: pointRect.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
+            context.clip()
+            
+            // Draw gradient
+            context.drawRadialGradient(
+                gradient,
+                startCenter: pointRect,
+                startRadius: 0,
+                endCenter: pointRect,
+                endRadius: radius,
+                options: []
+            )
+            
+            context.restoreGState()
+        }
+    }
+    
+    // MARK: - Emotion Color Mapping
+    
+    private func getEmotionBasedColor(for point: HeatmapPoint, intensity: CGFloat) -> UIColor {
+        // If we have a dominant emotion, use its color
+        if let dominantEmotion = point.dominantEmotion {
+            let emotionColor = EmotionColorMap.getColor(for: dominantEmotion.name)
+            return UIColor(emotionColor)
+        }
+        
+        // Fallback: categorize by intensity level with emotion-appropriate colors
+        return getIntensityBasedEmotionColor(intensity: intensity)
+    }
+    
+    private func getIntensityBasedEmotionColor(intensity: CGFloat) -> UIColor {
+        // Map intensity to emotion-like colors rather than rainbow
+        switch intensity {
+        case 0.0..<0.2:
+            // Low intensity - calm, peaceful emotions (soft blues/greens)
+            return UIColor(red: 0.5, green: 0.8, blue: 0.6, alpha: 1.0) // Soft teal
+        case 0.2..<0.4:
+            // Low-medium intensity - content emotions (gentle blues)
+            return UIColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0) // Calm blue
+        case 0.4..<0.6:
+            // Medium intensity - neutral to positive (warm yellows)
+            return UIColor(red: 0.9, green: 0.8, blue: 0.3, alpha: 1.0) // Warm yellow
+        case 0.6..<0.8:
+            // High intensity - excited/energetic (vibrant oranges)
+            return UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0) // Energetic orange
+        default:
+            // Very high intensity - intense emotions (deep reds)
+            return UIColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) // Intense red
+        }
+    }
+    
+    private func createEmotionGradient(baseColor: UIColor, intensity: CGFloat) -> CGGradient {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        // Create a gradient from transparent to the emotion color
+        // Adjust alpha based on intensity
+        let clearColor = UIColor.clear
+        let lowAlphaColor = baseColor.withAlphaComponent(0.2 * intensity)
+        let mediumAlphaColor = baseColor.withAlphaComponent(0.5 * intensity)
+        let highAlphaColor = baseColor.withAlphaComponent(0.8 * intensity)
+        
+        let colors = [
+            clearColor.cgColor,
+            lowAlphaColor.cgColor,
+            mediumAlphaColor.cgColor,
+            highAlphaColor.cgColor
+        ]
+        
+        let locations: [CGFloat] = [0.0, 0.3, 0.7, 1.0]
+        
+        return CGGradient(
+            colorsSpace: colorSpace,
+            colors: colors as CFArray,
+            locations: locations
+        )!
+    }
+}
+
+// MARK: - Alternative: Blended Emotion Heatmap Renderer
+// Use this version if you want to blend multiple emotions in an area
+
+class BlendedEmotionHeatmapRenderer: MKOverlayRenderer {
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let overlay = overlay as? HeatmapOverlay else { return }
+        
+        let rect = self.rect(for: overlay.boundingMapRect)
+        let maxIntensity = overlay.heatmapData.map { $0.intensity }.max() ?? 1
+        
+        // Group nearby points for color blending
+        let groupedPoints = groupNearbyPoints(overlay.heatmapData, threshold: 0.001) // ~100m
+        
+        for group in groupedPoints {
+            let centerPoint = calculateCenterPoint(of: group)
+            let blendedColor = blendEmotionColors(from: group)
+            let totalIntensity = group.reduce(0) { $0 + $1.intensity }
+            let normalizedIntensity = CGFloat(totalIntensity) / CGFloat(maxIntensity * group.count)
+            
+            let mapPoint = MKMapPoint(centerPoint)
+            let pointRect = self.point(for: mapPoint)
+            
+            if !rect.contains(pointRect) { continue }
+            
+            let radius = 60.0 / zoomScale // Slightly larger for blended areas
+            
+            let gradient = createBlendedGradient(color: blendedColor, intensity: normalizedIntensity)
+            
+            context.saveGState()
+            context.addEllipse(in: CGRect(
+                x: pointRect.x - radius,
+                y: pointRect.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
+            context.clip()
+            
+            context.drawRadialGradient(
+                gradient,
+                startCenter: pointRect,
+                startRadius: 0,
+                endCenter: pointRect,
+                endRadius: radius,
+                options: []
+            )
+            
+            context.restoreGState()
+        }
+    }
+    
+    private func groupNearbyPoints(_ points: [HeatmapPoint], threshold: Double) -> [[HeatmapPoint]] {
+        var groups: [[HeatmapPoint]] = []
+        var processed: Set<Int> = []
+        
+        for (index, point) in points.enumerated() {
+            if processed.contains(index) { continue }
+            
+            var group = [point]
+            processed.insert(index)
+            
+            // Find nearby points
+            for (otherIndex, otherPoint) in points.enumerated() {
+                if processed.contains(otherIndex) { continue }
+                
+                let distance = calculateDistance(from: point.coordinate, to: otherPoint.coordinate)
+                if distance < threshold {
+                    group.append(otherPoint)
+                    processed.insert(otherIndex)
+                }
+            }
+            
+            groups.append(group)
+        }
+        
+        return groups
+    }
+    
+    private func calculateCenterPoint(of points: [HeatmapPoint]) -> CLLocationCoordinate2D {
+        let totalLat = points.reduce(0.0) { $0 + $1.lat }
+        let totalLng = points.reduce(0.0) { $0 + $1.lng }
+        return CLLocationCoordinate2D(
+            latitude: totalLat / Double(points.count),
+            longitude: totalLng / Double(points.count)
+        )
+    }
+    
+    private func blendEmotionColors(from points: [HeatmapPoint]) -> UIColor {
+        var totalRed: CGFloat = 0
+        var totalGreen: CGFloat = 0
+        var totalBlue: CGFloat = 0
+        var totalWeight: CGFloat = 0
+        
+        for point in points {
+            let weight = CGFloat(point.intensity)
+            let color: UIColor
+            
+            if let emotion = point.dominantEmotion {
+                color = UIColor(EmotionColorMap.getColor(for: emotion.name))
+            } else {
+                color = UIColor.gray
+            }
+            
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            
+            totalRed += red * weight
+            totalGreen += green * weight
+            totalBlue += blue * weight
+            totalWeight += weight
+        }
+        
+        guard totalWeight > 0 else { return UIColor.gray }
+        
+        return UIColor(
+            red: totalRed / totalWeight,
+            green: totalGreen / totalWeight,
+            blue: totalBlue / totalWeight,
+            alpha: 1.0
+        )
+    }
+    
+    private func createBlendedGradient(color: UIColor, intensity: CGFloat) -> CGGradient {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        let colors = [
+            UIColor.clear.cgColor,
+            color.withAlphaComponent(0.1 * intensity).cgColor,
+            color.withAlphaComponent(0.4 * intensity).cgColor,
+            color.withAlphaComponent(0.7 * intensity).cgColor
+        ]
+        
+        let locations: [CGFloat] = [0.0, 0.4, 0.8, 1.0]
+        
+        return CGGradient(
+            colorsSpace: colorSpace,
+            colors: colors as CFArray,
+            locations: locations
+        )!
+    }
+    
+    private func calculateDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let fromLocation = CLLocation(latitude: from.latitude, longitude: from.longitude)
+        let toLocation = CLLocation(latitude: to.latitude, longitude: to.longitude)
+        return fromLocation.distance(from: toLocation) / 1000.0 // Convert to km
+    }
+}
+
+// MARK: - Map View Mode
+
+enum MapViewMode {
+    case markers
+    case heatmap
+}
+
+// MARK: - Updated MapView
 
 struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
@@ -128,51 +457,38 @@ struct MapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     @State private var tracking: MapUserTrackingMode = .follow
+    @State private var viewMode: MapViewMode = .markers
     
     var body: some View {
         ZStack {
             // Main Map
-            Map(
-                coordinateRegion: $mapRegion,
-                interactionModes: .all,
-                showsUserLocation: true,
-                userTrackingMode: $tracking,
-                annotationItems: viewModel.annotations
-            ) { annotation in
-                MapAnnotation(coordinate: annotation.coordinate) {
-                    MoodPostMarker(annotation: annotation) {
-                        selectedMoodPost = annotation.moodPost
-                        showingMoodDetail = true
-                    }
-        .preferredColorScheme(.dark) // Match MoodPostCard dark theme
-                }
-            }
-            .onAppear {
-                locationManager.startUpdatingMapLocation()
-                if let userCoord = locationManager.userCoordinates {
-                    mapRegion.center = userCoord
-                }
-            }
-            .onDisappear {
-                locationManager.stopUpdatingMapLocation()
-            }
-            .onChange(of: mapRegion) { _ in
-                viewModel.fetchMoodPosts(for: mapRegion)
-            }
-            .onChange(of: locationManager.userCoordinates) { newCoordinates in
-                if let coordinates = newCoordinates, tracking == .follow {
-                    withAnimation {
-                        mapRegion.center = coordinates
-                    }
-                }
-            }
+            MapContent()
             
             // Overlay Controls
             VStack {
                 HStack {
+                    // View Mode Toggle
+                    Picker("View Mode", selection: $viewMode) {
+                        Label("Markers", systemImage: "mappin.circle.fill")
+                            .tag(MapViewMode.markers)
+                        Label("Heatmap", systemImage: "heat.waves")
+                            .tag(MapViewMode.heatmap)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 200)
+                    .padding(8)
+                    .background(Color.black.opacity(0.7))
+                    .cornerRadius(8)
+                    
+                    Spacer()
+                    
                     // Refresh Button
                     Button(action: {
-                        viewModel.fetchMoodPosts(for: mapRegion, forceRefresh: true)
+                        if viewMode == .markers {
+                            viewModel.fetchMoodPosts(for: mapRegion, forceRefresh: true)
+                        } else {
+                            viewModel.fetchHeatmapData(for: mapRegion)
+                        }
                     }) {
                         Image(systemName: "arrow.clockwise")
                             .foregroundColor(.white)
@@ -180,8 +496,6 @@ struct MapView: View {
                             .background(Color.black.opacity(0.7))
                             .clipShape(Circle())
                     }
-                    
-                    Spacer()
                     
                     // User Location Button
                     Button(action: {
@@ -203,9 +517,22 @@ struct MapView: View {
                 
                 Spacer()
                 
-                // Mood count in area
-                if !viewModel.annotations.isEmpty {
+                // Status text
+                if viewMode == .markers && !viewModel.annotations.isEmpty {
                     Text("\(viewModel.annotations.count) mood\(viewModel.annotations.count == 1 ? "" : "s") nearby")
+                        .font(.custom("Georgia", size: 13))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.25))
+                        .cornerRadius(20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
+                        .padding()
+                } else if viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty {
+                    Text("Showing mood intensity heatmap")
                         .font(.custom("Georgia", size: 13))
                         .foregroundColor(.white.opacity(0.7))
                         .padding(.horizontal, 12)
@@ -219,21 +546,6 @@ struct MapView: View {
                         .padding()
                 }
             }
-            
-//            // Loading Indicator
-//            if viewModel.isLoading {
-//                VStack {
-//                    ProgressView()
-//                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-//                        .scaleEffect(0.8)
-//                    Text("Loading nearby moods...")
-//                        .font(.custom("Georgia", size: 13))
-//                        .foregroundColor(.white.opacity(0.7))
-//                }
-//                .padding()
-//                .background(Color.black.opacity(0.7))
-//                .cornerRadius(12)
-//            }
         }
         .sheet(isPresented: $showingMoodDetail) {
             if let moodPost = selectedMoodPost {
@@ -244,6 +556,360 @@ struct MapView: View {
             Button("OK") { }
         } message: {
             Text(viewModel.errorMessage)
+        }
+        .onChange(of: viewMode) { _ in
+            // Fetch appropriate data when mode changes
+            if viewMode == .heatmap {
+                viewModel.fetchHeatmapData(for: mapRegion)
+            } else {
+                viewModel.fetchMoodPosts(for: mapRegion)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func MapContent() -> some View {
+        if viewMode == .markers {
+            // Markers Map
+            Map(
+                coordinateRegion: $mapRegion,
+                interactionModes: .all,
+                showsUserLocation: true,
+                userTrackingMode: $tracking,
+                annotationItems: viewModel.annotations
+            ) { annotation in
+                MapAnnotation(coordinate: annotation.coordinate) {
+                    MoodPostMarker(annotation: annotation) {
+                        selectedMoodPost = annotation.moodPost
+                        showingMoodDetail = true
+                    }
+                    .preferredColorScheme(.dark)
+                }
+            }
+            .onAppear {
+                locationManager.startUpdatingMapLocation()
+                if let userCoord = locationManager.userCoordinates {
+                    mapRegion.center = userCoord
+                }
+            }
+            .onDisappear {
+                locationManager.stopUpdatingMapLocation()
+            }
+            .onChange(of: mapRegion) { _ in
+                viewModel.fetchMoodPosts(for: mapRegion)
+            }
+            .onChange(of: locationManager.userCoordinates) { newCoordinates in
+                if let coordinates = newCoordinates, tracking == .follow {
+                    withAnimation {
+                        mapRegion.center = coordinates
+                    }
+                }
+            }
+        } else {
+            // Heatmap Map
+            HeatmapMapView(
+                region: $mapRegion,
+                tracking: $tracking,
+                heatmapData: viewModel.heatmapPoints
+            )
+            .onAppear {
+                locationManager.startUpdatingMapLocation()
+                if let userCoord = locationManager.userCoordinates {
+                    mapRegion.center = userCoord
+                }
+                viewModel.fetchHeatmapData(for: mapRegion)
+            }
+            .onDisappear {
+                locationManager.stopUpdatingMapLocation()
+            }
+            .onChange(of: mapRegion) { _ in
+                viewModel.fetchHeatmapData(for: mapRegion)
+            }
+            .onChange(of: locationManager.userCoordinates) { newCoordinates in
+                if let coordinates = newCoordinates, tracking == .follow {
+                    withAnimation {
+                        mapRegion.center = coordinates
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Heatmap Map View (UIKit Bridge)
+
+struct HeatmapMapView: UIViewRepresentable {
+    @Binding var region: MKCoordinateRegion
+    @Binding var tracking: MapUserTrackingMode
+    let heatmapData: [HeatmapPoint]
+    
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
+        mapView.showsUserLocation = true
+        mapView.userTrackingMode = tracking == .follow ? .follow : .none
+        return mapView
+    }
+    
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        if !context.coordinator.isUserInteracting {
+            mapView.setRegion(region, animated: true)
+        }
+        
+        // Update overlays
+        mapView.removeOverlays(mapView.overlays)
+        if !heatmapData.isEmpty {
+            let overlay = HeatmapOverlay(heatmapData: heatmapData, region: region)
+            mapView.addOverlay(overlay)
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, MKMapViewDelegate {
+        var parent: HeatmapMapView
+        var isUserInteracting = false
+        
+        init(_ parent: HeatmapMapView) {
+            self.parent = parent
+        }
+        
+        func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+            isUserInteracting = true
+        }
+        
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            isUserInteracting = false
+            parent.region = mapView.region
+        }
+        
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if overlay is HeatmapOverlay {
+                //return HeatmapOverlayRenderer(overlay: overlay)
+                return BlendedEmotionHeatmapRenderer(overlay: overlay)
+            }
+            return MKOverlayRenderer()
+        }
+    }
+}
+
+// MARK: - Updated View Model
+
+@MainActor
+class MapViewModel: ObservableObject {
+    @Published var annotations: [MoodPostAnnotation] = []
+    @Published var heatmapPoints: [HeatmapPoint] = []
+    @Published var isLoading = false
+    @Published var showError = false
+    @Published var errorMessage = ""
+
+    private var currentTask: Task<Void, Never>?
+    private var heatmapTask: Task<Void, Never>?
+
+    enum MapError: Error, LocalizedError {
+        case badURL
+        case requestFailed(Error)
+        case badServerResponse(statusCode: Int)
+        case decodingError(Error)
+        case unknown
+
+        var errorDescription: String? {
+            switch self {
+            case .badURL:
+                return "The URL for fetching map data was invalid."
+            case .requestFailed(let error):
+                return "Network request failed: \(error.localizedDescription)"
+            case .badServerResponse(let statusCode):
+                return "Server returned an error: HTTP \(statusCode)."
+            case .decodingError(let error):
+                return "Failed to decode map data: \(error.localizedDescription)"
+            case .unknown:
+                return "An unknown error occurred."
+            }
+        }
+    }
+
+    func fetchMoodPosts(for region: MKCoordinateRegion, forceRefresh: Bool = false) {
+        currentTask?.cancel()
+
+        currentTask = Task {
+            await MainActor.run {
+                if !forceRefresh && isLoading { return }
+                isLoading = true
+            }
+
+            do {
+                let bounds = region.getBounds()
+                let center = region.center
+
+                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
+                guard var validComponents = components else {
+                    throw MapError.badURL
+                }
+
+                validComponents.queryItems = [
+                    URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
+                    URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
+                    URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
+                    URLQueryItem(name: "neLng", value: String(bounds.ne.longitude)),
+                    URLQueryItem(name: "centerLat", value: String(center.latitude)),
+                    URLQueryItem(name: "centerLng", value: String(center.longitude)),
+                    URLQueryItem(name: "limit", value: "200"),
+                    URLQueryItem(name: "cluster", value: "false")
+                ]
+
+                guard let url = validComponents.url else {
+                    throw MapError.badURL
+                }
+
+                var request = URLRequest(url: url)
+                request.addAuthenticationIfNeeded()
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw MapError.unknown
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
+                }
+
+                let decoder = JSONDecoder()
+                let mapMoodsResponse = try decoder.decode(MapMoodsResponse.self, from: data)
+
+                if mapMoodsResponse.success {
+                    let newAnnotations = mapMoodsResponse.data.map { moodPost in
+                        MoodPostAnnotation(
+                            id: moodPost.id,
+                            coordinate: moodPost.location.coordinates.coordinate,
+                            moodPost: moodPost
+                        )
+                    }
+                    await MainActor.run {
+                        self.annotations = newAnnotations
+                    }
+                } else {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to load moods"
+                        self.showError = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoading = false
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        return
+                    }
+                    
+                    if let localizedError = error as? LocalizedError {
+                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
+                    } else {
+                        self.errorMessage = error.localizedDescription
+                    }
+                    self.showError = true
+                }
+            }
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
+    }
+    
+    func fetchHeatmapData(for region: MKCoordinateRegion) {
+        heatmapTask?.cancel()
+        
+        heatmapTask = Task {
+            await MainActor.run {
+                isLoading = true
+            }
+            
+            do {
+                let bounds = region.getBounds()
+                
+                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods/heatmap"), resolvingAgainstBaseURL: false)
+                guard var validComponents = components else {
+                    throw MapError.badURL
+                }
+                
+                // Calculate appropriate grid size based on zoom level
+                let gridSize = calculateGridSize(for: region)
+                
+                validComponents.queryItems = [
+                    URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
+                    URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
+                    URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
+                    URLQueryItem(name: "neLng", value: String(bounds.ne.longitude)),
+                    URLQueryItem(name: "gridSize", value: String(gridSize))
+                ]
+                
+                guard let url = validComponents.url else {
+                    throw MapError.badURL
+                }
+                
+                var request = URLRequest(url: url)
+                request.addAuthenticationIfNeeded()
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw MapError.unknown
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
+                }
+                
+                let decoder = JSONDecoder()
+                let heatmapResponse = try decoder.decode(HeatmapResponse.self, from: data)
+                
+                if heatmapResponse.success {
+                    await MainActor.run {
+                        self.heatmapPoints = heatmapResponse.data
+                    }
+                } else {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to load heatmap data"
+                        self.showError = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoading = false
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        return
+                    }
+                    
+                    if let localizedError = error as? LocalizedError {
+                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
+                    } else {
+                        self.errorMessage = error.localizedDescription
+                    }
+                    self.showError = true
+                }
+            }
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
+    }
+    
+    private func calculateGridSize(for region: MKCoordinateRegion) -> Int {
+        // Adjust grid size based on zoom level
+        let span = max(region.span.latitudeDelta, region.span.longitudeDelta)
+        
+        if span > 1.0 {
+            return 20 // Very zoomed out
+        } else if span > 0.5 {
+            return 30
+        } else if span > 0.1 {
+            return 40
+        } else if span > 0.05 {
+            return 50
+        } else {
+            return 60 // Very zoomed in
         }
     }
 }
@@ -388,7 +1054,7 @@ struct MoodPostDetailView: View {
                         ), annotationItems: [moodPost]) { post in
                             MapPin(
                                 coordinate: post.location.coordinates.coordinate,
-                                tint: post.emotion.color ?? Color.gray
+                                tint: post.emotion.color ?? EmotionColorMap.getColor(for: post.emotion.name)
                             )
                         }
                         .frame(height: 200)
@@ -428,149 +1094,6 @@ struct MoodPostDetailView: View {
             }
         }
         .preferredColorScheme(.dark)
-    }
-}
-
-// Remove the MoodStatsBar struct since we're using inline styling
-
-// MARK: - View Model
-
-@MainActor
-class MapViewModel: ObservableObject {
-    @Published var annotations: [MoodPostAnnotation] = []
-    @Published var isLoading = false
-    @Published var showError = false
-    @Published var errorMessage = ""
-
-    private var currentTask: Task<Void, Never>?
-
-    // Define a custom error enum for more specific error handling if desired
-    enum MapError: Error, LocalizedError {
-        case badURL
-        case requestFailed(Error)
-        case badServerResponse(statusCode: Int)
-        case decodingError(Error)
-        case unknown
-
-        var errorDescription: String? {
-            switch self {
-            case .badURL:
-                return "The URL for fetching map data was invalid."
-            case .requestFailed(let error):
-                return "Network request failed: \(error.localizedDescription)"
-            case .badServerResponse(let statusCode):
-                return "Server returned an error: HTTP \(statusCode)."
-            case .decodingError(let error):
-                return "Failed to decode map data: \(error.localizedDescription)"
-            case .unknown:
-                return "An unknown error occurred."
-            }
-        }
-    }
-
-    func fetchMoodPosts(for region: MKCoordinateRegion, forceRefresh: Bool = false) {
-        currentTask?.cancel()
-
-        currentTask = Task {
-            // Ensure UI updates are on the main thread if not already guaranteed by @MainActor on the class
-            await MainActor.run {
-                if !forceRefresh && isLoading { return }
-                isLoading = true
-                // showError = false // Optionally reset error state at the beginning
-                // errorMessage = ""
-            }
-
-            do {
-                let bounds = region.getBounds()
-                let center = region.center
-
-                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
-                guard var validComponents = components else {
-                    throw MapError.badURL // Use custom error
-                }
-
-                validComponents.queryItems = [
-                    URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
-                    URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
-                    URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
-                    URLQueryItem(name: "neLng", value: String(bounds.ne.longitude)),
-                    URLQueryItem(name: "centerLat", value: String(center.latitude)),
-                    URLQueryItem(name: "centerLng", value: String(center.longitude)),
-                    URLQueryItem(name: "limit", value: "200"),
-                    URLQueryItem(name: "cluster", value: "false")
-                ]
-
-                guard let url = validComponents.url else {
-                    throw MapError.badURL // Use custom error
-                }
-
-                var request = URLRequest(url: url)
-                request.addAuthenticationIfNeeded()
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw MapError.unknown // Or a more specific "invalid response type" error
-                }
-                
-                print("MapViewModel: Received HTTP status code \(httpResponse.statusCode) for \(url.absoluteString)")
-
-
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    // Try to decode an error message from the server if available
-                    // This assumes your server sends a JSON like {"msg": "error detail"} or similar for errors
-                    if let errorData = String(data: data, encoding: .utf8) {
-                        print("MapViewModel: Server error response data: \(errorData)")
-                        // You might want to decode this into a specific error struct
-                    }
-                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
-                }
-
-                let decoder = JSONDecoder()
-                let mapMoodsResponse = try decoder.decode(MapMoodsResponse.self, from: data)
-
-                if mapMoodsResponse.success {
-                    let newAnnotations = mapMoodsResponse.data.map { moodPost in
-                        MoodPostAnnotation(
-                            id: moodPost.id,
-                            coordinate: moodPost.location.coordinates.coordinate,
-                            moodPost: moodPost
-                        )
-                    }
-                    await MainActor.run {
-                        self.annotations = newAnnotations
-                    }
-                } else {
-                    // Handle backend "success: false" case, potentially with a message from response
-                    let message = "Failed to load moods (server indicated not successful)." // Replace with actual error message from response if available
-                     await MainActor.run {
-                        self.errorMessage = message
-                        self.showError = true
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.isLoading = false // Ensure isLoading is set to false in all catch paths
-                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
-                        print("MapViewModel: Task was cancelled.")
-                        // Do not show error for cancellation
-                        return
-                    }
-                    
-                    print("MapViewModel fetchMoodPosts error: \(error)")
-                    if let localizedError = error as? LocalizedError {
-                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
-                    } else {
-                        self.errorMessage = error.localizedDescription
-                    }
-                    self.showError = true
-                }
-            }
-            // Ensure isLoading is set to false after successful completion or handled error
-            await MainActor.run {
-                self.isLoading = false
-            }
-        }
     }
 }
 

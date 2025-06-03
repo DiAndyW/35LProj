@@ -33,15 +33,12 @@ struct MoodPost: Codable, Identifiable {
         let clarityDouble = AttributeValue.getAttributeAsDouble(from: self.emotion.attributes, forKey: "clarity")
         let controlDouble = AttributeValue.getAttributeAsDouble(from: self.emotion.attributes, forKey: "control")
         
-        let calculatedColorForSimpleEmotion = ColorData.calculateMoodColor(pleasantness: pleasantnessDouble, intensity: intensityDouble)
-        
         let simpleEmotion = SimpleEmotion(
             name: self.emotion.name,
             pleasantness: pleasantnessDouble != nil ? Float(pleasantnessDouble!) : nil,
             intensity: intensityDouble != nil ? Float(intensityDouble!) : nil,
             clarity: clarityDouble != nil ? Float(clarityDouble!) : nil,
             control: controlDouble != nil ? Float(controlDouble!) : nil,
-            color: calculatedColorForSimpleEmotion
         )
         
         let simpleLocation: SimpleLocation?
@@ -66,6 +63,7 @@ struct MoodPost: Codable, Identifiable {
     }
 }
 
+// MARK: - Updated EmotionData struct
 struct EmotionData: Codable {
     let name: String
     let attributes: [String: AttributeValue]?
@@ -74,13 +72,8 @@ struct EmotionData: Codable {
     init(name: String, attributes: [String: AttributeValue]?, color: Color? = nil) {
         self.name = name
         self.attributes = attributes
-        if let color = color {
-            self.color = color
-        } else {
-            let pleasantnessValue = AttributeValue.getAttributeAsDouble(from: attributes, forKey: "pleasantness")
-            let intensityValue = AttributeValue.getAttributeAsDouble(from: attributes, forKey: "intensity")
-            self.color = ColorData.calculateMoodColor(pleasantness: pleasantnessValue, intensity: intensityValue)
-        }
+        // Use the emotion name to get color from map
+        self.color = EmotionColorMap.getColor(for: name)
     }
     
     enum CodingKeys: String, CodingKey {
@@ -92,11 +85,10 @@ struct EmotionData: Codable {
         self.name = try container.decode(String.self, forKey: .name)
         self.attributes = try container.decodeIfPresent([String: AttributeValue].self, forKey: .attributes)
         
-        // Derive color using ColorData
-        let pleasantnessValue = AttributeValue.getAttributeAsDouble(from: self.attributes, forKey: "pleasantness")
-        let intensityValue = AttributeValue.getAttributeAsDouble(from: self.attributes, forKey: "intensity")
-        self.color = ColorData.calculateMoodColor(pleasantness: pleasantnessValue, intensity: intensityValue)
+        // Use the emotion name to get color from map instead of calculating
+        self.color = EmotionColorMap.getColor(for: self.name)
     }
+    
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
@@ -135,17 +127,16 @@ struct AttributeValue: Codable {
 }
 
 struct LocationData: Codable {
-    let landmarkName: String? // Your Swift property name can stay the same
+    let landmarkName: String?
     let coordinatesData: CoordinatesObject
-    let isShared: Bool? // Note: "isShared" is not in your new JSON snippet for location.
-                        // If it's never sent, it will correctly be nil.
+    let isShared: Bool?
 
-    var coordinates: [Double] { // Your computed property
+    var coordinates: [Double] {
         return coordinatesData.coordinates
     }
 
     enum CodingKeys: String, CodingKey {
-        case landmarkName = "name" // Corrected: Map to JSON key "name"
+        case landmarkName // JSON key is "landmarkName", not "name"
         case coordinatesData = "coordinates"
         case isShared
     }
@@ -264,25 +255,24 @@ struct SimpleEmotion: Codable {
     let intensity: Float?
     let clarity: Float?
     let control: Float?
-    let color: Color? // This will be handled via RGBAColor for Codable conformance
+    let color: Color?
 
-    // This initializer is used by MoodPost.toFeedItem()
-    init(name: String, pleasantness: Float?, intensity: Float?, clarity: Float?, control: Float?, color: Color?) {
+    init(name: String, pleasantness: Float?, intensity: Float?, clarity: Float?, control: Float?, color: Color? = nil) {
         self.name = name
         self.pleasantness = pleasantness
         self.intensity = intensity
         self.clarity = clarity
         self.control = control
-        self.color = color
+        
+        // Use the emotion name to get color from map
+        self.color = EmotionColorMap.getColor(for: name)
     }
 
-    // Define CodingKeys to map property names to JSON keys, especially for the color representation.
     enum CodingKeys: String, CodingKey {
         case name, pleasantness, intensity, clarity, control
-        case colorData = "color" // Store the RGBA representation under the key "color" in JSON
+        case colorData = "color"
     }
 
-    // Decodable conformance
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decode(String.self, forKey: .name)
@@ -291,15 +281,10 @@ struct SimpleEmotion: Codable {
         clarity = try container.decodeIfPresent(Float.self, forKey: .clarity)
         control = try container.decodeIfPresent(Float.self, forKey: .control)
 
-        // Attempt to decode the RGBAColor structure for the color property
-        if let rgbaColor = try container.decodeIfPresent(RGBAColor.self, forKey: .colorData) {
-            self.color = rgbaColor.swiftUIColor
-        } else {
-            self.color = nil
-        }
+        // Use the emotion name to get color from map
+        self.color = EmotionColorMap.getColor(for: self.name)
     }
 
-    // Encodable conformance
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
@@ -308,17 +293,14 @@ struct SimpleEmotion: Codable {
         try container.encodeIfPresent(clarity, forKey: .clarity)
         try container.encodeIfPresent(control, forKey: .control)
 
-        // Convert SwiftUI.Color to RGBAColor and encode it
+        // Encode the color from the map
         if let existingColor = self.color {
             if let rgbaRepresentation = RGBAColor(color: existingColor) {
                 try container.encode(rgbaRepresentation, forKey: .colorData)
             } else {
-                // If color exists but couldn't be converted (e.g., platform issue), encode nil.
-                // You might want to log a warning here.
                 try container.encodeNil(forKey: .colorData)
             }
         } else {
-            // If color is nil, encode nil for its key.
             try container.encodeNil(forKey: .colorData)
         }
     }
