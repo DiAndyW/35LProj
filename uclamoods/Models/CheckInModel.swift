@@ -6,11 +6,22 @@ struct CheckInCoordinatesPayload: Codable {
     let longitude: Double
 }
 
-// Updated location payload to include coordinates
+// Represents the GeoJSON "coordinates" object in your Mongoose schema
+struct GeoJSONPointData: Codable {
+    let type: String // This will be "Point"
+    let coordinates: [Double]  // Array of [longitude, latitude]
+
+    // Initializer to ensure 'type' is always "Point"
+    init(coordinates: [Double]) {
+        self.type = "Point"
+        self.coordinates = coordinates
+    }
+}
+
+// This is your main location payload structure to send to the backend
 struct CheckInLocationPayload: Codable {
-    let name: String?          
-    let coordinates: [Double]?
-    let isShared: Bool
+    let landmarkName: String?
+    let coordinates: GeoJSONPointData? // This will now hold the GeoJSON object
 }
 
 // Assuming these are already defined or you can create them:

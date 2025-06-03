@@ -75,14 +75,22 @@ class CheckInService {
             .filter { !$0.isEmpty }
         
         var locationAPIPayload: CheckInLocationPayload? = nil
-        if showLocation {
-            let nameForAPI = landmarkName?.nilIfEmpty() // Use helper to get nil if empty/whitespace
-            let coordinatesForAPI: [Double]? = userCoordinates.map { [$0.longitude, $0.latitude] }
-            if nameForAPI != nil || coordinatesForAPI != nil {
+        if showLocation { // 'showLocation' from the client view determines if location data is sent
+            let nameForAPI = landmarkName?.nilIfEmpty()
+            var geoJSONPointDataForAPI: GeoJSONPointData? = nil
+
+            if let userCoords = userCoordinates {
+                // Create the GeoJSONPointData object with [longitude, latitude]
+                geoJSONPointDataForAPI = GeoJSONPointData(
+                    coordinates: [userCoords.longitude, userCoords.latitude]
+                )
+            }
+
+            // Only create the main location payload if there's a landmark name OR GeoJSON coordinate data
+            if nameForAPI != nil || geoJSONPointDataForAPI != nil {
                 locationAPIPayload = CheckInLocationPayload(
-                    name: nameForAPI,
-                    coordinates: coordinatesForAPI,
-                    isShared: true // <<< SET isShared to true because showLocation is true
+                    landmarkName: nameForAPI,
+                    coordinates: geoJSONPointDataForAPI
                 )
             }
         }

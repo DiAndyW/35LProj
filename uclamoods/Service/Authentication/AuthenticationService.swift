@@ -322,7 +322,7 @@ class AuthenticationService: ObservableObject {
                         print("[AuthService][ProfileFetch] POST-ASSIGN on MainActor. New self.currentUser?.username: \(self.currentUser?.username ?? "nil")")
                     }
                     saveUserToKeychain(user)
-                    printUserObjectDetails(user, context: "ProfileFetch SUCCESS")
+                    //printUserObjectDetails(user, context: "ProfileFetch SUCCESS")
                     return user
                 } catch {
                     print("[AuthService][ProfileFetch] Error: Failed to decode successful profile response (HTTP 200). This is a CRITICAL error if data was expected.")
@@ -529,31 +529,31 @@ class AuthenticationService: ObservableObject {
     }
     
     // MARK: - Debug Helpers
-    private func printUserObjectDetails(_ user: User, context: String) {
-        print("""
-        [AuthService][\(context)] User Object Details:
-          ID: \(user.id)
-          Username: \(user.username)
-          Email: \(user.email)
-          Profile Picture: \(user.profilePicture ?? "N/A")
-          IsActive: \(user.isActive?.description ?? "N/A")
-          Last Login: \(user.lastLogin?.description ?? "N/A")
-          Created At: \(user.createdAt?.description ?? "N/A")
-          Updated At: \(user.updatedAt?.description ?? "N/A")
-          Preferences:
-            Push Enabled: \(user.preferences?.pushNotificationsEnabled?.description ?? "N/A")
-            Share Location: \(user.preferences?.shareLocationForHeatmap?.description ?? "N/A")
-            Show Mood to Strangers: \(user.preferences?.privacySettings?.showMoodToStrangers?.description ?? "N/A")
-            Anonymous Sharing: \(user.preferences?.privacySettings?.anonymousMoodSharing?.description ?? "N/A")
-            Notification Window: Start: \(user.preferences?.preferredNotificationTimeWindow?.start?.description ?? "N/A"), End: \(user.preferences?.preferredNotificationTimeWindow?.end?.description ?? "N/A")
-          Demographics:
-            Graduating Class: \(user.demographics?.graduatingClass?.description ?? "N/A")
-            Major: \(user.demographics?.major ?? "N/A")
-            Gender: \(user.demographics?.gender ?? "N/A")
-            Ethnicity: \(user.demographics?.ethnicity ?? "N/A")
-            Age: \(user.demographics?.age?.description ?? "N/A")
-        """)
-    }
+//    private func printUserObjectDetails(_ user: User, context: String) {
+//        print("""
+//        [AuthService][\(context)] User Object Details:
+//          ID: \(user.id)
+//          Username: \(user.username)
+//          Email: \(user.email)
+//          Profile Picture: \(user.profilePicture ?? "N/A")
+//          IsActive: \(user.isActive.description ?? "N/A")
+//          Last Login: \(user.lastLogin?.description ?? "N/A")
+//          Created At: \(user.createdAt?.description ?? "N/A")
+//          Updated At: \(user.updatedAt?.description ?? "N/A")
+//          Preferences:
+//            Push Enabled: \(user.preferences?.pushNotificationsEnabled?.description ?? "N/A")
+//            Share Location: \(user.preferences?.shareLocationForHeatmap?.description ?? "N/A")
+//            Show Mood to Strangers: \(user.preferences?.privacySettings?.showMoodToStrangers?.description ?? "N/A")
+//            Anonymous Sharing: \(user.preferences?.privacySettings?.anonymousMoodSharing?.description ?? "N/A")
+//            Notification Window: Start: \(user.preferences?.preferredNotificationTimeWindow?.start?.description ?? "N/A"), End: \(user.preferences?.preferredNotificationTimeWindow?.end?.description ?? "N/A")
+//          Demographics:
+//            Graduating Class: \(user.demographics?.graduatingClass?.description ?? "N/A")
+//            Major: \(user.demographics?.major ?? "N/A")
+//            Gender: \(user.demographics?.gender ?? "N/A")
+//            Ethnicity: \(user.demographics?.ethnicity ?? "N/A")
+//            Age: \(user.demographics?.age?.description ?? "N/A")
+//        """)
+//    }
     
     private func printDecodingErrorDetails(_ error: DecodingError) {
         var errorContext = "[AuthService][DecodingErrorDetails] "

@@ -22,6 +22,12 @@ class MoodPostService {
         
         request.addAuthenticationIfNeeded()
         
+        if let authorizationHeader = request.value(forHTTPHeaderField: "Authorization") {
+            print("MoodPostService: Authorization Header being sent: \(authorizationHeader)")
+        } else {
+            print("MoodPostService: Authorization Header is NOT set on the request.")
+        }
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             
             if let error = error {
@@ -62,16 +68,16 @@ class MoodPostService {
                 print("MoodPostService: JSON decoding error - \(decodingError.localizedDescription)")
                 if let decodingError = decodingError as? DecodingError {
                     switch decodingError {
-                        case .typeMismatch(let type, let context):
-                            print("  Type mismatch for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                        case .valueNotFound(let type, let context):
-                            print("  Value not found for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                        case .keyNotFound(let key, let context):
-                            print("  Key not found: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                        case .dataCorrupted(let context):
-                            print("  Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                        @unknown default:
-                            print("  Unknown decoding error.")
+                    case .typeMismatch(let type, let context):
+                        print("  Type mismatch for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                    case .valueNotFound(let type, let context):
+                        print("  Value not found for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                    case .keyNotFound(let key, let context):
+                        print("  Key not found: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                    case .dataCorrupted(let context):
+                        print("  Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
+                    @unknown default:
+                        print("  Unknown decoding error.")
                     }
                 }
                 completion(.failure(.decodingError(decodingError)))

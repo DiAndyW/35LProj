@@ -18,10 +18,21 @@ extension MKCoordinateRegion: Equatable {
     }
 }
 
-// Using FeedItem as the base model to match your existing structure
+struct UserBrief: Codable, Identifiable {
+    let id: String
+    let username: String
+    let profilePicture: String? // Or String if it's never null
+
+    private enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case username
+        case profilePicture
+    }
+}
+
 struct MapMoodPost: Identifiable, Codable {
     let id: String
-    let userId: String
+    let userId: UserBrief // Ensure UserBrief's CodingKeys map _id to id if necessary
     let emotion: SimpleEmotion
     let reason: String?
     let location: MapLocation
@@ -29,32 +40,34 @@ struct MapMoodPost: Identifiable, Codable {
     let privacy: String
     let isAnonymous: Bool?
     let distance: Double?
-    let likesCount: Int
-    let commentsCount: Int
+    let likesCount: Int       // Expects JSON key "likesCount"
+    let commentsCount: Int    // Expects JSON key "commentsCount"
     let people: [String]?
     let activities: [String]?
+
     
     private enum CodingKeys: String, CodingKey {
-        case id = "_id"
+        case id = "_id" // Correct: maps JSON "_id" to Swift "id"
         case userId, emotion, reason, location, timestamp, privacy, isAnonymous, distance
-        case likesCount = "likes"
-        case commentsCount = "comments"
+        // CORRECTED for new backend JSON keys:
+        case likesCount
+        case commentsCount
         case people, activities
+        // case type // if you add type to the JSON for single posts as well
     }
     
-    // Convert to FeedItem for reuse in detail views
     var asFeedItem: FeedItem {
         FeedItem(
             id: id,
-            userId: userId,
+            userId: userId.id, // Assuming FeedItem.userId is a String ID
             emotion: emotion,
             content: reason,
             people: people,
             activities: activities,
             location: SimpleLocation(name: location.landmarkName),
             timestamp: timestamp,
-            likesCount: likesCount,
-            commentsCount: commentsCount
+            likesCount: likesCount,     // Pass through
+            commentsCount: commentsCount  // Pass through
         )
     }
 }
@@ -207,20 +220,20 @@ struct MapView: View {
                 }
             }
             
-            // Loading Indicator
-            if viewModel.isLoading {
-                VStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.8)
-                    Text("Loading nearby moods...")
-                        .font(.custom("Georgia", size: 13))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .padding()
-                .background(Color.black.opacity(0.7))
-                .cornerRadius(12)
-            }
+//            // Loading Indicator
+//            if viewModel.isLoading {
+//                VStack {
+//                    ProgressView()
+//                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+//                        .scaleEffect(0.8)
+//                    Text("Loading nearby moods...")
+//                        .font(.custom("Georgia", size: 13))
+//                        .foregroundColor(.white.opacity(0.7))
+//                }
+//                .padding()
+//                .background(Color.black.opacity(0.7))
+//                .cornerRadius(12)
+//            }
         }
         .sheet(isPresented: $showingMoodDetail) {
             if let moodPost = selectedMoodPost {
@@ -335,7 +348,7 @@ struct MoodPostPreview: View {
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
         .onAppear {
-            fetchUsername(for: moodPost.userId) { result in
+            fetchUsername(for: moodPost.userId.id) { result in
                 switch result {
                 case .success(let username):
                     displayUsername = moodPost.isAnonymous ?? false ? "Anonymous" : username

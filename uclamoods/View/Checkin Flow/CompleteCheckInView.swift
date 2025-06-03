@@ -173,7 +173,7 @@ struct EmotionHeaderView: View {
                     .font(.custom("Chivo", size: 20))
                     .foregroundColor(.white)
                     .offset(y: geometry.size.width * 0.01)
-                    .padding(.horizontal, 200)
+                    .padding(.horizontal, 100)
             }
             .offset(y: geometry.size.width * 0.35)
         }
