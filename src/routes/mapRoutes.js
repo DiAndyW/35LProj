@@ -147,14 +147,20 @@ mapRouter.get('/moods', async (req, res) => {
       swLat, swLng, neLat, neLng,
       centerLat, centerLng,
       since,
-      limit = '500', // Default as string, will be parsed
-      privacy = 'public', // Current logic only handles 'public' effectively
+      limit = '500',
+      privacy = 'public', // Note: current query only fetches 'public'
       cluster = 'false',
-      zoomLevel = '10' // Default as string, will be parsed
+      zoomLevel = '10'
     } = req.query;
 
-    if (!isValidCoordinate(swLat, swLng) || !isValidCoordinate(neLat, neLng)) {
-      return res.status(400).json({ success: false, error: 'Invalid boundary coordinates' });
+    console.log('Received /moods request with query params:', req.query);
+
+    if (!swLat || !swLng || !neLat || !neLng) {
+      console.error('Validation Error: Map boundary coordinates missing');
+      return res.status(400).json({
+        success: false,
+        error: 'Map boundary coordinates required'
+      });
     }
 
     const bounds = {
@@ -162,29 +168,43 @@ mapRouter.get('/moods', async (req, res) => {
       ne: { lat: parseFloat(neLat), lng: parseFloat(neLng) }
     };
 
+    if (!isValidCoordinate(bounds.sw.lat, bounds.sw.lng) ||
+        !isValidCoordinate(bounds.ne.lat, bounds.ne.lng)) {
+      console.error('Validation Error: Invalid coordinates received:', bounds);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid coordinates'
+      });
+    }
+    
+    console.log('Parsed map bounds:', bounds);
+
     const queryConditions = {
-      'location.coordinates': { $exists: true, $ne: null },
-      $or: [{ privacy: 'public' }], // Expand if other privacy levels are implemented
+      $or: [{ privacy: 'public' }], // Consider expanding privacy logic if needed
     };
 
-    // Ensure correct min/max for $box to handle dateline crossing if necessary, though $box might not support it directly.
-    // For simplicity, assuming viewport doesn't cross anti-meridian.
-    const minLng = Math.min(bounds.sw.lng, bounds.ne.lng);
-    const maxLng = Math.max(bounds.sw.lng, bounds.ne.lng);
     const minLat = Math.min(bounds.sw.lat, bounds.ne.lat);
     const maxLat = Math.max(bounds.sw.lat, bounds.ne.lat);
-    
-    queryConditions['location.coordinates'].$geoWithin = {
-      $box: [
-        [minLng, minLat], // bottom-left
-        [maxLng, maxLat]  // top-right
-      ]
+    const minLng = Math.min(bounds.sw.lng, bounds.ne.lng);
+    const maxLng = Math.max(bounds.sw.lng, bounds.ne.lng);
+
+    queryConditions['location.coordinates'] = {
+      $geoWithin: {
+        $box: [
+          [minLng, minLat],
+          [maxLng, maxLat]
+        ]
+      }
     };
 
     if (since) {
       const sinceDate = new Date(since);
       if (!isNaN(sinceDate.getTime())) {
         queryConditions.timestamp = { $gte: sinceDate };
+      } else {
+        console.warn('Invalid "since" date format received:', since);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        queryConditions.timestamp = { $gte: sevenDaysAgo }; // Fallback to default
       }
     } else {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -194,78 +214,97 @@ mapRouter.get('/moods', async (req, res) => {
     const parsedLimit = parseInt(limit);
     const finalLimit = isNaN(parsedLimit) || parsedLimit <= 0 ? 500 : parsedLimit;
 
+    console.log('Executing MoodPost.find() with query:', JSON.stringify(queryConditions, null, 2));
+
+    // Fetch mood posts - UPDATED .select()
     let moodPostsFromDB = await MoodPost.find(queryConditions)
       .sort({ timestamp: -1 })
       .limit(finalLimit)
-      .select('_id userId emotion reason location timestamp privacy isAnonymous likes comments people activities')
-      .populate('userId', '_id username profilePicture') // Populate with _id for UserBrief
+      .select('_id userId emotion reason location timestamp privacy isAnonymous likes comments people activities') // Ensure all needed fields are here
+      .populate('userId', 'username profilePicture _id') // Ensure _id is populated for UserBrief
       .lean();
 
-    let transformedMoodPosts = moodPostsFromDB.map(post => ({
-      _id: post._id,
-      userId: post.userId ? { // Ensure userId is structured as UserBrief
-          _id: post.userId._id,
-          id: post.userId._id.toString(), // Swift client UserBrief has 'id'
-          username: post.userId.username,
-          profilePicture: post.userId.profilePicture
-      } : null,
-      emotion: post.emotion,
-      reason: post.reason,
-      location: post.location,
-      timestamp: post.timestamp,
-      privacy: post.privacy,
-      isAnonymous: typeof post.isAnonymous === 'boolean' ? post.isAnonymous : false,
-      likesCount: Array.isArray(post.likes) ? post.likes.length : 0,
-      commentsCount: Array.isArray(post.comments) ? post.comments.length : 0,
-      people: Array.isArray(post.people) ? post.people : [],
-      activities: Array.isArray(post.activities) ? post.activities : [],
-    }));
+    console.log(`Found ${moodPostsFromDB.length} mood posts from DB.`);
 
-    if (centerLat && centerLng && isValidCoordinate(centerLat, centerLng)) {
-      const center = { lat: parseFloat(centerLat), lng: parseFloat(centerLng) };
-      transformedMoodPosts = transformedMoodPosts.map(post => {
-        if (post.location && post.location.coordinates && post.location.coordinates.coordinates) {
-          return {
-            ...post,
-            distance: calculateDistance(
-              center.lat, center.lng,
-              post.location.coordinates.coordinates[1], // lat
-              post.location.coordinates.coordinates[0]  // lng
-            )
-          };
-        }
-        return post;
-      });
+    // --- TRANSFORM DATA to include counts and ensure all fields for Swift model ---
+    let moodPosts = moodPostsFromDB.map(post => {
+      return {
+        _id: post._id, // Swift model expects to map "_id" to "id"
+        userId: post.userId, // Populated user object
+        emotion: post.emotion,
+        reason: post.reason,
+        location: post.location,
+        timestamp: post.timestamp, // Mongoose converts Date to ISO string on JSON.stringify
+        privacy: post.privacy,
+        isAnonymous: post.isAnonymous === undefined ? false : post.isAnonymous, // Default if not present
+        likesCount: Array.isArray(post.likes) ? post.likes.length : 0,
+        commentsCount: Array.isArray(post.comments) ? post.comments.length : 0,
+        people: Array.isArray(post.people) ? post.people : [],
+        activities: Array.isArray(post.activities) ? post.activities : [],
+        // distance will be added in the next step if centerLat/Lng are provided
+      };
+    });
+
+    // Calculate distance from center if provided
+    if (centerLat && centerLng) {
+      const center = {
+        lat: parseFloat(centerLat),
+        lng: parseFloat(centerLng)
+      };
+
+      if (isValidCoordinate(center.lat, center.lng)) {
+        moodPosts = moodPosts.map(post => {
+          // Ensure post.location and coordinates exist before trying to access them
+          if (post.location && post.location.coordinates && post.location.coordinates.coordinates &&
+              Array.isArray(post.location.coordinates.coordinates) && post.location.coordinates.coordinates.length === 2) {
+            return {
+              ...post,
+              distance: calculateDistance(
+                center.lat, center.lng,
+                post.location.coordinates.coordinates[1], // lat
+                post.location.coordinates.coordinates[0]  // lng
+              )
+            };
+          }
+          return post; // Return post unmodified if location data is invalid/missing
+        });
+      } else {
+        console.warn('Invalid centerLat/centerLng for distance calculation:', centerLat, centerLng);
+      }
     }
 
-    let responseData = transformedMoodPosts;
+    let responseData = moodPosts;
     const parsedZoomLevel = parseInt(zoomLevel);
-    const doCluster = cluster === 'true';
 
-    if (doCluster && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15) { // Example zoom threshold for clustering
-      responseData = clusterMoodPosts(transformedMoodPosts, parsedZoomLevel);
-    } else if (doCluster) {
-       console.warn(`Clustering requested but zoomLevel ("${zoomLevel}") is too high or invalid. Serving unclustered data.`);
+    if (cluster === 'true' && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15) {
+      responseData = clusterMoodPosts(moodPosts, parsedZoomLevel); // Pass the transformed moodPosts
+    } else if (cluster === 'true') {
+      console.warn(`Clustering requested but zoomLevel ("${zoomLevel}") is invalid or too high. Serving unclustered data.`);
     }
-    
+
     res.json({
       success: true,
       count: responseData.length,
-      viewport: bounds, // Original requested viewport
-      // actualBounds: { minLat, minLng, maxLat, maxLng }, // For debugging if needed
-      clustered: doCluster && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15,
-      filtersApplied: { // For debugging or client info
-          timestamp: queryConditions.timestamp,
-          privacy: queryConditions.$or.map(p => p.privacy).filter(Boolean)
+      viewport: bounds,
+      actualBounds: { minLat, minLng, maxLat, maxLng },
+      clustered: cluster === 'true' && !isNaN(parsedZoomLevel) && parsedZoomLevel < 15,
+      filtersApplied: {
+        timestamp: queryConditions.timestamp,
+        privacy: queryConditions.$or.map(p => p.privacy).filter(Boolean)
       },
       data: responseData
     });
 
   } catch (error) {
     console.error('Error fetching map moods:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch mood posts', details: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch mood posts',
+      details: error.message
+    });
   }
 });
+
 
 /**
  * GET /api/map/moods/heatmap
