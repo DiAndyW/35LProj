@@ -5,7 +5,8 @@ import {
   refreshToken, 
   logout, 
   forgotPassword, 
-  resetPasswordWithCode
+  resetPasswordWithCode,
+  deleteAccount
 } from '../controllers/authController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import UserModel from '../models/UserModel.js';
@@ -23,5 +24,6 @@ authRouter.post('/refresh', refreshToken);
 authRouter.post('/logout', requireAuth, logout); // requireAuth is your auth middleware
 authRouter.post('/forgot-password', forgotPassword);
 authRouter.post('/reset-password-with-code', resetPasswordWithCode);
+authRouter.delete('/delete-account', requireAuth, deleteAccount);
 
 export default authRouter;

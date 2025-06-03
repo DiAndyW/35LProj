@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import UserModel from '../models/UserModel.js';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import MoodCheckIn from '../models/CheckIn.js';
+import mongoose from 'mongoose';
 
 const strongPwd = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{10,}$/;
 
@@ -30,10 +32,16 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   const user = await UserModel.findOne({ email }).select('+password');
+  console.log('User found:', !!user);
+  if (user) console.log('User ID:', user._id);
   if (!user) return res.status(401).json({ msg: 'Invalid credentials' });
+
+  console.log('Stored hash:', user.password);
+  console.log('Plain password:', password);
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(401).json({ msg: 'Invalid credentials' });
+  console.log('Password match:', ok);
 
   const access = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '365d' });
   const refresh = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -235,5 +243,40 @@ export const resetPasswordWithCode = async (req, res) => {
   } catch (error) {
     console.error('[Reset PW] Error:', error);
     res.status(500).json({ msg: 'Error resetting password' });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const userId = req.user.sub;
+      const delAccount = await UserModel.deleteOne({ _id: userId }, { session });
+      const delCheckins = await MoodCheckIn.deleteMany({ userId }, { session });
+      
+      if (delAccount.deletedCount === 0) {
+        throw new Error('User not found');
+      }
+      
+      const response = {
+        delAccount,
+        delCheckins
+      };
+
+      res.status(200).json({
+        success: true,
+        data: response,
+        message: 'Account successfully deleted'
+      });
+    });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete account',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  } finally {
+    await session.endSession();
   }
 };
