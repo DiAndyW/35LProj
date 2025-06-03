@@ -79,7 +79,9 @@ struct ActivityCard_Previews: PreviewProvider {
             people: ["Alice", "Bob"],
             activities: ["Exploring", "Eating"],
             location: sampleLocation,
-            timestamp: dummyDateString
+            timestamp: dummyDateString,
+            likesCount: 0,
+            commentsCount: 0
         )
     }
     

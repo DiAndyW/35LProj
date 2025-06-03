@@ -59,7 +59,9 @@ struct MoodPost: Codable, Identifiable {
             people: self.people,
             activities: self.activities,
             location: simpleLocation,
-            timestamp: self.timestamp
+            timestamp: self.timestamp,
+            likesCount: 0,
+            commentsCount: 0
         )
     }
 }
@@ -160,4 +162,6 @@ struct FeedItem: Identifiable {
     let activities: [String]?
     let location: SimpleLocation?
     let timestamp: String
+    let likesCount: Int
+    let commentsCount: Int
 }
