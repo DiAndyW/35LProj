@@ -583,6 +583,96 @@ mapRouter.get('/stats', async (req, res) => {
     
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+    // First, get the basic stats and emotion names
+    const basicStats = await MoodPost.aggregate([
+      {
+        $match: {
+          'location.coordinates': {
+            $geoWithin: {
+              $box: [
+                [bounds.sw.lng, bounds.sw.lat],
+                [bounds.ne.lng, bounds.ne.lat]
+              ]
+            }
+          },
+          privacy: 'public',
+          timestamp: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalPosts: { $sum: 1 },
+          emotionNames: { $push: '$emotion.name' }
+        }
+      }
+    ]);
+
+    if (!basicStats || basicStats.length === 0) {
+      // No posts found in the area
+      return res.json({
+        success: true,
+        bounds,
+        data: {
+          totalPosts: 0,
+          emotionBreakdown: {},
+          postsPerDay: 0
+        }
+      });
+    }
+
+    const { totalPosts, emotionNames } = basicStats[0];
+
+    // Count emotion occurrences
+    const emotionBreakdown = {};
+    emotionNames.forEach(emotionName => {
+      if (emotionName && typeof emotionName === 'string') {
+        emotionBreakdown[emotionName] = (emotionBreakdown[emotionName] || 0) + 1;
+      }
+    });
+
+    // Calculate posts per day
+    const postsPerDay = totalPosts > 0 ? totalPosts / 30 : 0;
+
+    const result = {
+      totalPosts,
+      emotionBreakdown,
+      postsPerDay: Number(postsPerDay.toFixed(2))
+    };
+
+    res.json({
+      success: true,
+      bounds,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('Error fetching map stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch statistics', 
+      details: error.message 
+    });
+  }
+});
+
+// Alternative implementation using a more complex aggregation if you prefer:
+// This version does everything in one aggregation pipeline
+mapRouter.get('/stats-advanced', async (req, res) => {
+  try {
+    const { swLat, swLng, neLat, neLng } = req.query;
+
+    if (!isValidCoordinate(swLat, swLng) || !isValidCoordinate(neLat, neLng)) {
+      return res.status(400).json({ success: false, error: 'Valid boundary coordinates required' });
+    }
+    
+    const bounds = {
+      sw: { lat: parseFloat(swLat), lng: parseFloat(swLng) },
+      ne: { lat: parseFloat(neLat), lng: parseFloat(neLng) }
+    };
+    
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     const statsResult = await MoodPost.aggregate([
       {
         $match: {
@@ -594,48 +684,51 @@ mapRouter.get('/stats', async (req, res) => {
               ]
             }
           },
-          privacy: 'public', // Or other relevant filters
+          privacy: 'public',
           timestamp: { $gte: thirtyDaysAgo }
         }
       },
       {
         $group: {
-          _id: null, // Group all matched documents together
-          totalPosts: { $sum: 1 },
-          // Assuming emotion is an object like { name: "Happy", ... }
-          // We need to push emotion names for breakdown
-          emotionNames: { $push: '$emotion.name' } 
+          _id: '$emotion.name', // Group by emotion name
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalPosts: { $sum: '$count' },
+          emotions: {
+            $push: {
+              name: '$_id',
+              count: '$count'
+            }
+          }
         }
       },
       {
         $project: {
           _id: 0,
           totalPosts: 1,
-          emotionBreakdown: { // Create a key-value map of emotion name -> count
-            $reduce: {
-              input: '$emotionNames',
-              initialValue: {},
-              in: {
-                $let: {
-                  vars: { emotionNameStr: '$$this' },
-                  in: {
-                    $mergeObjects: [
-                      '$$value',
-                      {
-                        $let: {
-                           vars: { currentCount: { $ifNull: [{ $getField: { field: '$$emotionNameStr', input: '$$value' } }, 0] } },
-                           in: { $$ROOT: { [`$$emotionNameStr`]: { $add: ['$$currentCount', 1] } } } // Dynamically set key
-                        }
-                      }
-                    ]
-                  }
+          emotionBreakdown: {
+            $arrayToObject: {
+              $map: {
+                input: '$emotions',
+                as: 'emotion',
+                in: {
+                  k: '$$emotion.name',
+                  v: '$$emotion.count'
                 }
               }
             }
           },
-          // Calculate postsPerDay based on the actual date range of fetched posts if more accuracy is needed
-          // For simplicity, using 30 days as per the filter
-          postsPerDay: { $cond: { if: { $eq: ['$totalPosts', 0] }, then: 0, else: { $divide: ['$totalPosts', 30] } } }
+          postsPerDay: {
+            $cond: {
+              if: { $eq: ['$totalPosts', 0] },
+              then: 0,
+              else: { $round: [{ $divide: ['$totalPosts', 30] }, 2] }
+            }
+          }
         }
       }
     ]);
@@ -643,7 +736,7 @@ mapRouter.get('/stats', async (req, res) => {
     res.json({
       success: true,
       bounds,
-      data: statsResult[0] || { // Default if no posts found
+      data: statsResult[0] || {
         totalPosts: 0,
         emotionBreakdown: {},
         postsPerDay: 0
@@ -651,8 +744,12 @@ mapRouter.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching map stats:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch statistics', details: error.message });
+    console.error('Error fetching map stats (advanced):', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch statistics', 
+      details: error.message 
+    });
   }
 });
 
