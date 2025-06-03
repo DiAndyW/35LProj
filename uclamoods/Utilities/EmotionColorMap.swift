@@ -59,7 +59,7 @@ struct EmotionColorMap {
         "Envious": ColorData.calculateMoodColor(pleasantness: 0.2, intensity: 0.55) ?? .gray,
         "Guilty": ColorData.calculateMoodColor(pleasantness: 0.25, intensity: 0.5) ?? .gray,
         "Troubled": ColorData.calculateMoodColor(pleasantness: 0.3, intensity: 0.5) ?? .gray,
-        "Stressed (Medium)": ColorData.calculateMoodColor(pleasantness: 0.32, intensity: 0.6) ?? .gray,
+        "Nervous": ColorData.calculateMoodColor(pleasantness: 0.32, intensity: 0.6) ?? .gray,
         "Disappointed": ColorData.calculateMoodColor(pleasantness: 0.35, intensity: 0.5) ?? .gray,
         "Irritated": ColorData.calculateMoodColor(pleasantness: 0.4, intensity: 0.55) ?? .gray,
         "Calm": ColorData.calculateMoodColor(pleasantness: 0.5, intensity: 0.4) ?? .gray,
