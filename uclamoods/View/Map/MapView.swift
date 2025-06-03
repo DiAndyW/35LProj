@@ -428,27 +428,55 @@ class MapViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
-    
+
     private var currentTask: Task<Void, Never>?
-    
+
+    // Define a custom error enum for more specific error handling if desired
+    enum MapError: Error, LocalizedError {
+        case badURL
+        case requestFailed(Error)
+        case badServerResponse(statusCode: Int)
+        case decodingError(Error)
+        case unknown
+
+        var errorDescription: String? {
+            switch self {
+            case .badURL:
+                return "The URL for fetching map data was invalid."
+            case .requestFailed(let error):
+                return "Network request failed: \(error.localizedDescription)"
+            case .badServerResponse(let statusCode):
+                return "Server returned an error: HTTP \(statusCode)."
+            case .decodingError(let error):
+                return "Failed to decode map data: \(error.localizedDescription)"
+            case .unknown:
+                return "An unknown error occurred."
+            }
+        }
+    }
+
     func fetchMoodPosts(for region: MKCoordinateRegion, forceRefresh: Bool = false) {
-        // Cancel previous request if still running
         currentTask?.cancel()
-        
+
         currentTask = Task {
-            guard !Task.isCancelled else { return }
-            
-            if !forceRefresh && isLoading { return }
-            
-            isLoading = true
-            defer { isLoading = false }
-            
+            // Ensure UI updates are on the main thread if not already guaranteed by @MainActor on the class
+            await MainActor.run {
+                if !forceRefresh && isLoading { return }
+                isLoading = true
+                // showError = false // Optionally reset error state at the beginning
+                // errorMessage = ""
+            }
+
             do {
                 let bounds = region.getBounds()
                 let center = region.center
-                
-                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)!
-                components.queryItems = [
+
+                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
+                guard var validComponents = components else {
+                    throw MapError.badURL // Use custom error
+                }
+
+                validComponents.queryItems = [
                     URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
                     URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
                     URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
@@ -456,29 +484,78 @@ class MapViewModel: ObservableObject {
                     URLQueryItem(name: "centerLat", value: String(center.latitude)),
                     URLQueryItem(name: "centerLng", value: String(center.longitude)),
                     URLQueryItem(name: "limit", value: "200"),
-                    URLQueryItem(name: "cluster", value: "false") // Handle clustering client-side for now
+                    URLQueryItem(name: "cluster", value: "false")
                 ]
+
+                guard let url = validComponents.url else {
+                    throw MapError.badURL // Use custom error
+                }
+
+                var request = URLRequest(url: url)
+                request.addAuthenticationIfNeeded()
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw MapError.unknown // Or a more specific "invalid response type" error
+                }
                 
-                guard let url = components.url else { throw URLError(.badURL) }
-                
-                let (data, _) = try await URLSession.shared.data(from: url)
+                print("MapViewModel: Received HTTP status code \(httpResponse.statusCode) for \(url.absoluteString)")
+
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    // Try to decode an error message from the server if available
+                    // This assumes your server sends a JSON like {"msg": "error detail"} or similar for errors
+                    if let errorData = String(data: data, encoding: .utf8) {
+                        print("MapViewModel: Server error response data: \(errorData)")
+                        // You might want to decode this into a specific error struct
+                    }
+                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
+                }
+
                 let decoder = JSONDecoder()
-                let response = try decoder.decode(MapMoodsResponse.self, from: data)
-                
-                if response.success {
-                    self.annotations = response.data.map { moodPost in
+                let mapMoodsResponse = try decoder.decode(MapMoodsResponse.self, from: data)
+
+                if mapMoodsResponse.success {
+                    let newAnnotations = mapMoodsResponse.data.map { moodPost in
                         MoodPostAnnotation(
                             id: moodPost.id,
                             coordinate: moodPost.location.coordinates.coordinate,
                             moodPost: moodPost
                         )
                     }
+                    await MainActor.run {
+                        self.annotations = newAnnotations
+                    }
+                } else {
+                    // Handle backend "success: false" case, potentially with a message from response
+                    let message = "Failed to load moods (server indicated not successful)." // Replace with actual error message from response if available
+                     await MainActor.run {
+                        self.errorMessage = message
+                        self.showError = true
+                    }
                 }
             } catch {
-                if !Task.isCancelled {
-                    errorMessage = error.localizedDescription
-                    showError = true
+                await MainActor.run {
+                    self.isLoading = false // Ensure isLoading is set to false in all catch paths
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        print("MapViewModel: Task was cancelled.")
+                        // Do not show error for cancellation
+                        return
+                    }
+                    
+                    print("MapViewModel fetchMoodPosts error: \(error)")
+                    if let localizedError = error as? LocalizedError {
+                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
+                    } else {
+                        self.errorMessage = error.localizedDescription
+                    }
+                    self.showError = true
                 }
+            }
+            // Ensure isLoading is set to false after successful completion or handled error
+            await MainActor.run {
+                self.isLoading = false
             }
         }
     }
