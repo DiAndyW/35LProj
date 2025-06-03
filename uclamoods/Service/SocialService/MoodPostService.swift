@@ -20,6 +20,8 @@ class MoodPostService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
+        request.addAuthenticationIfNeeded()
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             
             if let error = error {

@@ -40,4 +40,4 @@ class UserDataProvider: ObservableObject {
             print("[UserDataProvider DEBUG] refreshUserData: Failed to refresh user data: \(error.localizedDescription)")
         }
     }
-    }
+}

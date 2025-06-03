@@ -18,36 +18,6 @@
             endingLineNumber = "116"
             landmarkName = "loadFeed()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "91C8E401-911D-426F-A4AE-452504FB84E8 - 37f2e6c14200c29d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "uclamoods.HomeFeedView.loadFeed() -&gt; ()"
-                  moduleName = "uclamoods.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yang/uclamoods/uclamoods/View/HomeView/HomeView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "116"
-                  endingLineNumber = "116">
-               </Location>
-               <Location
-                  uuid = "91C8E401-911D-426F-A4AE-452504FB84E8 - 2b442196fbc58c5b"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 (Swift.Result&lt;Swift.Array&lt;uclamoods.MoodPost&gt;, uclamoods.MoodPostServiceError&gt;) -&gt; () in uclamoods.HomeFeedView.loadFeed() -&gt; ()"
-                  moduleName = "uclamoods.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/yang/uclamoods/uclamoods/View/HomeView/HomeView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "116"
-                  endingLineNumber = "116">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy

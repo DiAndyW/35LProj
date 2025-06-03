@@ -114,6 +114,7 @@ struct AuthFlowView: View {
 // MARK: - 5-Tab Main App with Swipe Navigation (MODIFIED)
 struct MainAppView: View {
     @EnvironmentObject private var router: MoodAppRouter
+    @StateObject private var locationManager = LocationManager()
      
     var body: some View {
         ZStack {
@@ -125,6 +126,7 @@ struct MainAppView: View {
                 // Map Tab
                 MapView()
                     .tag(MoodAppRouter.MainTab.map)
+                    .environmentObject(locationManager)
                  
                 // Analytics Tab
                 AnalyticsView()

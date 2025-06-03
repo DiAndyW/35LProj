@@ -1,6 +1,12 @@
 import SwiftUI
 import CoreLocation
 
+extension CLLocationCoordinate2D: Equatable {
+    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
+
 struct MockUser: Identifiable, Hashable {
     let id = UUID()
     let name: String
@@ -497,10 +503,10 @@ struct CompleteCheckInView: View {
             }
             // MARK: - View Lifecycle and Location Logic
             .onAppear {
-                locationManager.requestLocationAccess() // Request access first
+                locationManager.requestLocationAccessIfNeeded() // Request access first
                 if showLocation {
                      // displayableLocationName = "Fetching location..." // Set initial status
-                    locationManager.startFetchingLocation()
+                    locationManager.fetchCurrentLocationAndLandmark()
                 } else {
                     displayableLocationName = "Location Hidden"
                 }
@@ -508,7 +514,7 @@ struct CompleteCheckInView: View {
             .onChange(of: showLocation) { newShowValue in
                 if newShowValue {
                     displayableLocationName = locationManager.isLoading ? "Fetching location..." : (locationManager.landmarkName ?? "Tap to refresh location")
-                    locationManager.startFetchingLocation() // Fetch if toggled on
+                    locationManager.fetchCurrentLocationAndLandmark() // Fetch if toggled on
                 } else {
                     displayableLocationName = "Location Hidden"
                 }
@@ -529,7 +535,7 @@ struct CompleteCheckInView: View {
                     // showLocation = false // Optionally turn off the toggle
                 } else if newStatus == .authorizedAlways || newStatus == .authorizedWhenInUse {
                     if showLocation && locationManager.userCoordinates == nil { // If authorized and location is shown but no coords yet
-                        locationManager.startFetchingLocation()
+                        locationManager.fetchCurrentLocationAndLandmark()
                     }
                 }
             }

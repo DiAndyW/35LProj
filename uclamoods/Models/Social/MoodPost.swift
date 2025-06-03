@@ -204,14 +204,124 @@ struct CoordinatesObject: Codable {
     }
 }
 
+// Helper struct to represent Color in a Codable way (RGBA components)
+// This can be placed in the same file or a separate utility file.
+struct RGBAColor: Codable {
+    let red: Double
+    let green: Double
+    let blue: Double
+    let alpha: Double
 
-struct SimpleEmotion {
+    // Initialize from SwiftUI.Color
+    // Returns nil if color components cannot be extracted (e.g., on unsupported platforms or for invalid colors)
+    init?(color: Color?) {
+        guard let existingColor = color else { return nil }
+
+        // Use UIColor (iOS/tvOS/watchOS/visionOS) or NSColor (macOS) to extract RGBA components
+        #if canImport(UIKit)
+            let platformColor = UIColor(existingColor)
+        #elseif canImport(AppKit)
+            // Ensure the NSColor is in a device-independent color space (e.g., sRGB) before extracting components
+            guard let platformColor = NSColor(existingColor).usingColorSpace(.sRGB) else {
+                // Fallback if color conversion fails
+                // print("Warning: Could not convert NSColor to sRGB for serialization.")
+                return nil
+            }
+        #else
+            // Fallback for platforms where neither UIKit nor AppKit is available.
+            // Direct component extraction from SwiftUI.Color is not universally supported.
+            // print("Warning: Color serialization is not fully supported on this platform.")
+            return nil // Or define a default/error color representation
+        #endif
+
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+
+        // Extract components
+        #if canImport(UIKit) || canImport(AppKit)
+            platformColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+            self.red = Double(r)
+            self.green = Double(g)
+            self.blue = Double(b)
+            self.alpha = Double(a)
+        #else
+            // Should not be reached if the earlier #else for platformColor assignment returned nil
+            return nil
+        #endif
+    }
+
+    // Convert back to SwiftUI.Color
+    var swiftUIColor: Color {
+        Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
+    }
+}
+
+struct SimpleEmotion: Codable {
     let name: String
     let pleasantness: Float?
     let intensity: Float?
     let clarity: Float?
     let control: Float?
-    let color: Color?
+    let color: Color? // This will be handled via RGBAColor for Codable conformance
+
+    // This initializer is used by MoodPost.toFeedItem()
+    init(name: String, pleasantness: Float?, intensity: Float?, clarity: Float?, control: Float?, color: Color?) {
+        self.name = name
+        self.pleasantness = pleasantness
+        self.intensity = intensity
+        self.clarity = clarity
+        self.control = control
+        self.color = color
+    }
+
+    // Define CodingKeys to map property names to JSON keys, especially for the color representation.
+    enum CodingKeys: String, CodingKey {
+        case name, pleasantness, intensity, clarity, control
+        case colorData = "color" // Store the RGBA representation under the key "color" in JSON
+    }
+
+    // Decodable conformance
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        pleasantness = try container.decodeIfPresent(Float.self, forKey: .pleasantness)
+        intensity = try container.decodeIfPresent(Float.self, forKey: .intensity)
+        clarity = try container.decodeIfPresent(Float.self, forKey: .clarity)
+        control = try container.decodeIfPresent(Float.self, forKey: .control)
+
+        // Attempt to decode the RGBAColor structure for the color property
+        if let rgbaColor = try container.decodeIfPresent(RGBAColor.self, forKey: .colorData) {
+            self.color = rgbaColor.swiftUIColor
+        } else {
+            self.color = nil
+        }
+    }
+
+    // Encodable conformance
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(pleasantness, forKey: .pleasantness)
+        try container.encodeIfPresent(intensity, forKey: .intensity)
+        try container.encodeIfPresent(clarity, forKey: .clarity)
+        try container.encodeIfPresent(control, forKey: .control)
+
+        // Convert SwiftUI.Color to RGBAColor and encode it
+        if let existingColor = self.color {
+            if let rgbaRepresentation = RGBAColor(color: existingColor) {
+                try container.encode(rgbaRepresentation, forKey: .colorData)
+            } else {
+                // If color exists but couldn't be converted (e.g., platform issue), encode nil.
+                // You might want to log a warning here.
+                try container.encodeNil(forKey: .colorData)
+            }
+        } else {
+            // If color is nil, encode nil for its key.
+            try container.encodeNil(forKey: .colorData)
+        }
+    }
 }
 
 struct SimpleLocation {
