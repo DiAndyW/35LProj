@@ -136,7 +136,7 @@ struct LocationData: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case landmarkName // JSON key is "landmarkName", not "name"
+        case landmarkName = "name"
         case coordinatesData = "coordinates"
         case isShared
     }
