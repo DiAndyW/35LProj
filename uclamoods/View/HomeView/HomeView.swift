@@ -120,7 +120,7 @@ struct HomeFeedView: View {
                         self.posts = posts
                         print("Successfully fetched \(posts.count) posts.")
                         for post in posts {
-                            print("Post ID: \(post.id), Emotion: \(post.emotion.name)")
+                            print("Post ID: \(post.id), Location: \(post.location?.landmarkName ?? "Unknown"), Emotion: \(post.emotion.name)")
                         }
                     case .failure(let error):
                         print("Error fetching posts: \(error)")

@@ -231,6 +231,7 @@ struct ReasonInputSectionView: View {
     @Binding var reasonText: String
     var isTextFieldFocused: FocusState<Bool>.Binding
     let accentColor: Color
+    let maxCharacterLimit = 300 // Add this constant
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -259,8 +260,13 @@ struct ReasonInputSectionView: View {
                     .onTapGesture {
                         isTextFieldFocused.wrappedValue = true
                     }
+                    .onChange(of: reasonText) { newValue in
+                        if newValue.count > maxCharacterLimit {
+                            reasonText = String(newValue.prefix(maxCharacterLimit))
+                        }
+                    }
                 
-                Text("\(reasonText.count)/500")
+                Text("\(reasonText.count)/\(maxCharacterLimit)") // Update to use the constant
                     .font(.custom("Roberto", size: 14))
                     .foregroundColor(.white.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -280,6 +286,7 @@ struct SaveCheckInButtonView: View {
     let action: () -> Void
     let isSaving: Bool
     let saveError: String?
+    let isDisabled: Bool // Add this property
     
     var body: some View {
         VStack(spacing: 8) {
@@ -293,12 +300,13 @@ struct SaveCheckInButtonView: View {
                     Button(action: action) {
                         Text("Save Check-in")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.black)
+                            .foregroundColor(isDisabled ? .gray : .black) // Change text color when disabled
                             .frame(width: geometry.size.width * 0.8, height: 50)
-                            .background(Color.white)
+                            .background(isDisabled ? Color.white.opacity(0.5) : Color.white) // Change background when disabled
                             .cornerRadius(25)
                             .shadow(radius: 5)
                     }
+                    .disabled(isDisabled) // Disable button when condition is met
                     Spacer()
                 }
             }
@@ -360,7 +368,8 @@ struct CheckInFormView: View {
                 geometry: geometry,
                 action: saveAction,
                 isSaving: isSaving,
-                saveError: saveError
+                saveError: saveError,
+                isDisabled: reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             )
         }
     }
