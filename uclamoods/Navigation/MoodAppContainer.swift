@@ -129,7 +129,7 @@ struct MainAppView: View {
                     .environmentObject(locationManager)
                  
                 // Analytics Tab
-                AnalyticsView()
+                SocialAnalyticsView()
                     .tag(MoodAppRouter.MainTab.analytics)
 
                 // Profile Tab
