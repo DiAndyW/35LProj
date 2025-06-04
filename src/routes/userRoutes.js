@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsernameById, blockAUser, makeAdmin } from '../controllers/userController.js';
+import { getUsernameById, blockAUser, makeAdmin, getBlockedUsers, unblockAUser } from '../controllers/userController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 
@@ -14,5 +14,11 @@ userRouter.post('/:userId/block', blockAUser);
 
 // PATCH - Make a user an admin
 userRouter.patch('/:userId/admin', requireAdmin, makeAdmin);
+
+// GET /api/users/me/blocked
+userRouter.get('/me/blocked', getBlockedUsers);
+
+// POST /api/users/:userId/unblock  
+userRouter.post('/:userId/unblock', unblockAUser);
 
 export default userRouter;
