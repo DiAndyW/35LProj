@@ -280,3 +280,88 @@ export const deleteAccount = async (req, res) => {
     await session.endSession();
   }
 };
+
+export const updateNotificationPreferences = async (req, res) => {
+  const userId = req.user.sub;
+
+  if (!userId) {
+    return res.status(401).json({ msg: 'User not authenticated and no testing ID provided.' });
+  }
+
+  const {
+    pushNotificationsEnabled,
+    notificationHourPST,
+    notificationMinutePST
+  } = req.body;
+
+  if (typeof pushNotificationsEnabled !== 'boolean') {
+    return res.status(400).json({ msg: 'Invalid value for pushNotificationsEnabled. Must be true or false.' });
+  }
+  if (notificationHourPST !== undefined && (typeof notificationHourPST !== 'number' || notificationHourPST < 0 || notificationHourPST > 23)) {
+    return res.status(400).json({ msg: 'Invalid value for notificationHourPST. Must be a number between 0 and 23.' });
+  }
+  if (notificationMinutePST !== undefined && (typeof notificationMinutePST !== 'number' || notificationMinutePST < 0 || notificationMinutePST > 59)) {
+    return res.status(400).json({ msg: 'Invalid value for notificationMinutePST. Must be a number between 0 and 59.' });
+  }
+
+  try {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    user.preferences.pushNotificationsEnabled = pushNotificationsEnabled;
+
+    if (pushNotificationsEnabled) {
+      user.preferences.notificationHourPST = notificationHourPST !== undefined ? notificationHourPST : user.preferences.notificationHourPST;
+      user.preferences.notificationMinutePST = notificationMinutePST !== undefined ? notificationMinutePST : user.preferences.notificationMinutePST;
+    }
+
+    await user.save();
+
+    res.json({
+      msg: 'Notification preferences updated successfully',
+      preferences: user.preferences
+    });
+
+  } catch (error) {
+    console.error('Error updating notification preferences:', error);
+    res.status(500).json({ msg: 'Server error while updating preferences', details: error.message });
+  }
+};
+
+export const updateFCMToken = async (req, res) => {
+  const userId = req.user.sub;
+
+  if (!userId) {
+    return res.status(401).json({ msg: 'User not authenticated and no testing ID provided.' });
+  }
+
+  const { fcmToken } = req.body;
+
+  if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.trim() === '') {
+    return res.status(400).json({ msg: 'fcmToken is required and must be a non-empty string.' });
+  }
+
+  try {
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { $set: { fcmToken: fcmToken.trim() } },
+      { new: true, runValidators: true }
+    ).select('username email fcmToken');
+
+    if (!updatedUser) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    res.json({
+      msg: 'FCM token updated successfully',
+      fcmToken: updatedUser.fcmToken
+    });
+
+  } catch (error) {
+    console.error('Error updating FCM token:', error);
+    res.status(500).json({ msg: 'Server error while updating FCM token', details: error.message });
+  }
+};

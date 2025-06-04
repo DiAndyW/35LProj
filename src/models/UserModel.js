@@ -39,19 +39,17 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     },
-    preferredNotificationTimeWindow: {
-      start: {
-        type: Number,
-        min: 0,
-        max: 23,
-        default: 9
-      },
-      end: {
-        type: Number,
-        min: 0,
-        max: 23,
-        default: 21
-      }
+    notificationHourPST: {
+      type: Number,
+      min: 0,
+      max: 23,
+      default: 13 // Default to 1 PM PST (13:00)
+    },
+    notificationMinutePST: {
+      type: Number,
+      min: 0,
+      max: 59,
+      default: 0 // Default to 00 minutes
     },
     shareLocationForHeatmap: {
       type: Boolean,
