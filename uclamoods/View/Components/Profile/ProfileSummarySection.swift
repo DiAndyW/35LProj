@@ -118,7 +118,6 @@ struct ProfileSummarySectionView: View {
                             .foregroundColor(.white)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(16)
                     .background(Color.white.opacity(0.05))
                     .cornerRadius(12)
                     .overlay(

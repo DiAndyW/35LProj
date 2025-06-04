@@ -35,7 +35,7 @@ struct ProfileTabViewSelector: View {
     @Namespace private var selectedTabNamespace
     
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 6) {
             ForEach(tabs, id: \.self) { tab in
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.35)) {
@@ -64,7 +64,6 @@ struct ProfileTabViewSelector: View {
         }
         .background(Color.white.opacity(0.05))
         .clipShape(Capsule())
-        .padding(.horizontal, 20)
     }
 }
 
@@ -128,7 +127,7 @@ struct ProfileView: View {
                 .padding(.bottom, 20)
             
             ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab) //
-                .padding(.bottom, 20)
+                .scaleEffect(0.9)
             
             ScrollView {
                 tabContentView

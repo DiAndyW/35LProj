@@ -44,6 +44,7 @@ struct ProfileOverviewView: View {
                         isLoading: self.isLoadingContent && self.summary == nil,
                         loadingError: self.summary == nil ? self.contentLoadingError : nil
                     )
+                    Divider().background(Color.white.opacity(0.5))
                     postsSection
                 }
                 .padding(.vertical)
@@ -59,7 +60,7 @@ struct ProfileOverviewView: View {
     private var postsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recent Activity")
-                .font(.custom("Georgia", size: 24))
+                .font(.custom("Georgia", size: 20))
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
             
