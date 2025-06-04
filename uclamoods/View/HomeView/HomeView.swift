@@ -61,11 +61,9 @@ struct HomeFeedView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: Main Feed Content
                 VStack(spacing: 0) {
                     headerSection
                     
@@ -111,7 +109,6 @@ struct HomeFeedView: View {
                 .blur(radius: showDetailViewAnimated ? 15 : 0)
                 .disabled(showDetailViewAnimated)
                 
-                // Layer 2 & 3: Dimming Overlay and Floating MoodPostDetailView
                 if showDetailViewAnimated {
                     Color.black.opacity(0.4)
                         .edgesIgnoringSafeArea(.all)
@@ -125,7 +122,8 @@ struct HomeFeedView: View {
                         onDismiss: dismissDetailView
                     )
                     .environmentObject(userDataProvider)
-                    .frame(width: geometry.size.width * 0.95, height: geometry.size.height * 0.9)
+                    .environmentObject(router)
+                    .frame(width: geometry.size.width * 0.95, height: max(geometry.size.height * 0.5, min(geometry.size.height * 0.90, 700)))
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(1)
@@ -138,17 +136,22 @@ struct HomeFeedView: View {
                 } else {
                     isLoading = false
                 }
-                if selectedPostForDetail == nil {
+                if !showDetailViewAnimated {
                     router.isDetailViewShowing = false
                 }
             }
             .onChange(of: showDetailViewAnimated) { newValue in
                 router.isDetailViewShowing = newValue
             }
+            .onChange(of: router.selectedMainTab) { oldTab, newTab in
+                if newTab != .home && self.showDetailViewAnimated {
+                    print("HomeFeedView: Tab changed from .home to \(newTab), dismissing detail view.")
+                    self.dismissDetailView()
+                }
+            }
         }
     }
     
-    // Unified data loading function
     private func loadFeedData(isRefresh: Bool) async {
         if !isRefresh && posts.isEmpty {
             await MainActor.run { isLoading = true }
