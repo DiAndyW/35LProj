@@ -6,7 +6,6 @@ struct HomeFeedView: View {
     @State private var isLoading: Bool = true
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
-    
     @EnvironmentObject private var userDataProvider: UserDataProvider
     
     private func dismissDetailView() {
@@ -16,6 +15,9 @@ struct HomeFeedView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             self.selectedPostForDetail = nil
         }
+        if router.tabWithActiveDetailView == .home {
+            router.tabWithActiveDetailView = nil
+        }
     }
     
     private func presentDetailView(for feedItem: FeedItem) {
@@ -23,6 +25,7 @@ struct HomeFeedView: View {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             self.showDetailViewAnimated = true
         }
+        router.tabWithActiveDetailView = .home
     }
     
     @ViewBuilder
@@ -66,7 +69,6 @@ struct HomeFeedView: View {
             ZStack {
                 VStack(spacing: 0) {
                     headerSection
-                    
                     if isLoading && posts.isEmpty {
                         VStack {
                             Spacer()
@@ -110,9 +112,7 @@ struct HomeFeedView: View {
                 .disabled(showDetailViewAnimated)
                 
                 if showDetailViewAnimated {
-                    Color.black.opacity(0.4)
-                        .edgesIgnoringSafeArea(.all)
-                        .transition(.opacity)
+                    Color.black.opacity(0.4).edgesIgnoringSafeArea(.all).transition(.opacity)
                         .onTapGesture { dismissDetailView() }
                 }
                 
@@ -125,64 +125,42 @@ struct HomeFeedView: View {
                     .environmentObject(router)
                     .frame(width: geometry.size.width * 0.95, height: max(geometry.size.height * 0.5, min(geometry.size.height * 0.90, 700)))
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(1)
+                    .transition(.move(edge: .bottom).combined(with: .opacity)).zIndex(1)
                 }
             }
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .onAppear {
-                if posts.isEmpty {
-                    Task { await loadFeedData(isRefresh: false) }
+                if posts.isEmpty { Task { await loadFeedData(isRefresh: false) } } else { isLoading = false }
+                if showDetailViewAnimated {
+                    router.tabWithActiveDetailView = .home
                 } else {
-                    isLoading = false
+                    if router.tabWithActiveDetailView == .home {
+                        router.tabWithActiveDetailView = nil
+                    }
                 }
-                if !showDetailViewAnimated {
-                    router.isDetailViewShowing = false
-                }
-            }
-            .onChange(of: showDetailViewAnimated) { newValue in
-                router.isDetailViewShowing = newValue
             }
             .onChange(of: router.selectedMainTab) { oldTab, newTab in
-                if newTab != .home && self.showDetailViewAnimated {
-                    print("HomeFeedView: Tab changed from .home to \(newTab), dismissing detail view.")
-                    self.dismissDetailView()
+                if newTab == .home && self.showDetailViewAnimated {
+                    router.tabWithActiveDetailView = .home
                 }
             }
         }
     }
     
     private func loadFeedData(isRefresh: Bool) async {
-        if !isRefresh && posts.isEmpty {
-            await MainActor.run { isLoading = true }
-        }
-        
+        if !isRefresh && posts.isEmpty { await MainActor.run { isLoading = true } }
         let result = await fetchPostsFromServer()
-        
         await MainActor.run {
-            if !isRefresh {
-                isLoading = false
-            }
+            if !isRefresh { isLoading = false }
             switch result {
-                case .success(let fetchedPosts):
-                    if isRefresh {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            self.posts = fetchedPosts
-                        }
-                    } else {
-                        self.posts = fetchedPosts
-                    }
-                case .failure(let error):
-                    print("Error fetching posts: \(error.localizedDescription)")
+                case .success(let fPosts):
+                    if isRefresh { withAnimation(.easeInOut(duration: 0.3)) { self.posts = fPosts } } else { self.posts = fPosts }
+                case .failure(let e): print("Error: \(e.localizedDescription)")
             }
         }
     }
     
     private func fetchPostsFromServer() async -> Result<[MoodPost], MoodPostServiceError> {
-        await withCheckedContinuation { continuation in
-            MoodPostService.fetchMoodPosts(endpoint: "/api/feed") { result in //
-                continuation.resume(returning: result)
-            }
-        }
+        await withCheckedContinuation { c in MoodPostService.fetchMoodPosts(endpoint: "/api/feed") { r in c.resume(returning: r) } }
     }
 }

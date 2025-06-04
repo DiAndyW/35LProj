@@ -119,35 +119,24 @@ struct MainAppView: View {
     var body: some View {
         ZStack {
             TabView(selection: $router.selectedMainTab) {
-                // Home Tab
                 HomeFeedView()
                     .tag(MoodAppRouter.MainTab.home)
-                
-                // Map Tab
                 MapView()
                     .tag(MoodAppRouter.MainTab.map)
                     .environmentObject(locationManager)
-                
-                // Analytics Tab
                 SocialAnalyticsView()
                     .tag(MoodAppRouter.MainTab.analytics)
-                
-                // Profile Tab
-                NavigationView {
-                    ProfileView()
-                }
-                .navigationViewStyle(StackNavigationViewStyle())
-                .tag(MoodAppRouter.MainTab.profile)
+                ProfileView()
+                    .tag(MoodAppRouter.MainTab.profile)
             }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default dots
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .ignoresSafeArea(.all)
             
-            // Custom tab bar overlay
             VStack {
                 Spacer()
-                if !router.isDetailViewShowing { // Check the router's state
-                    FiveTabBar() //
-                        .transition(.move(edge: .bottom).combined(with: .opacity)) // Optional: animate disappearance
+                if router.tabWithActiveDetailView == nil || router.tabWithActiveDetailView != router.selectedMainTab {
+                    FiveTabBar()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .ignoresSafeArea(edges: .bottom)
@@ -160,13 +149,11 @@ struct MainAppView: View {
     }
 }
 
-// MARK: - Custom 3-Tab Bar with Prominent Check-In Button
-struct FiveTabBar: View { // RENAMED from ThreeTabBar
+struct FiveTabBar: View {
     @EnvironmentObject private var router: MoodAppRouter
     
     var body: some View {
         HStack {
-            // Home Tab
             TabBarButton(
                 tab: .home,
                 isSelected: router.selectedMainTab == .home
@@ -175,10 +162,7 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.home)
                 }
             }
-            
-            Spacer() // Spacer 1
-            
-            // Map Tab (NEW)
+            Spacer()
             TabBarButton(
                 tab: .map,
                 isSelected: router.selectedMainTab == .map
@@ -187,21 +171,14 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.map)
                 }
             }
-            
-            Spacer() // Spacer 2
-            
-            // Check-In Button (Prominent Middle Button)
+            Spacer()
             CheckInButton {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.prepare()
                 impactFeedback.impactOccurred()
-                
                 router.navigateToMoodFlow()
             }
-            
-            Spacer() // Spacer 3
-            
-            // Analytics Tab (NEW)
+            Spacer()
             TabBarButton(
                 tab: .analytics,
                 isSelected: router.selectedMainTab == .analytics
@@ -210,10 +187,7 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.analytics)
                 }
             }
-            
-            Spacer() // Spacer 4
-            
-            // Profile Tab
+            Spacer()
             TabBarButton(
                 tab: .profile,
                 isSelected: router.selectedMainTab == .profile
@@ -223,7 +197,7 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                 }
             }
         }
-        .padding(.horizontal, 20) // Adjusted horizontal padding slightly for more items
+        .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 20)
         .background(
@@ -240,8 +214,6 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
     }
 }
 
-
-// MARK: - Tab Bar Button Component
 struct TabBarButton: View {
     let tab: MoodAppRouter.MainTab
     let isSelected: Bool
@@ -264,7 +236,6 @@ struct TabBarButton: View {
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                     .foregroundColor(isSelected ? .blue : .gray)
                 
-                // Selection indicator
                 Circle()
                     .fill(isSelected ? Color.blue : Color.clear)
                     .frame(width: 4, height: 4)
@@ -274,7 +245,6 @@ struct TabBarButton: View {
     }
 }
 
-// MARK: - Prominent Check-In Button
 struct CheckInButton: View {
     let action: () -> Void
     @State private var isPressed = false
@@ -282,7 +252,6 @@ struct CheckInButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                // Background circle with gradient
                 Circle()
                     .fill(
                         LinearGradient(
@@ -294,12 +263,10 @@ struct CheckInButton: View {
                     .frame(width: 60, height: 60)
                     .shadow(color: .pink.opacity(0.4), radius: 8, x: 0, y: 4)
                 
-                // Plus icon
                 Image(systemName: "plus")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
                 
-                // Pulsing animation ring
                 Circle()
                     .stroke(Color.pink.opacity(0.3), lineWidth: 2)
                     .frame(width: 70, height: 70)
@@ -313,7 +280,6 @@ struct CheckInButton: View {
             isPressed = pressing
         }, perform: {})
         .onAppear {
-            // Continuous subtle pulse animation
             withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
                 isPressed = true
             }
