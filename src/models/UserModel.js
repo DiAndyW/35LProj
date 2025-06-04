@@ -109,6 +109,10 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date
   },
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    default: [],
+  }],
 }, {
   timestamps: true
 });

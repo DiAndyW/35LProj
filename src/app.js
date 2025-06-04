@@ -82,8 +82,9 @@ const startServer = () => {
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
-    console.log('  GET /api/feed?skip=0&limit=20 - Get first 20 global feed check-ins');
+    console.log('  GET /api/feed?skip=0&limit=20 - Get first 20 user feed check-ins');
     console.log('  GET  /api/users/:userId/username - Get username by userId');
+    console.log('  POST  /api/users/:userId/block - Block a user');
     console.log('  GET  /api/map/locations - Get all locations');
     console.log('  POST /api/map/locations - Add new location');
     console.log('  GET  /api/map/locations/nearby/:lat/:lng - Find nearby locations');
