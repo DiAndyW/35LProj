@@ -18,8 +18,8 @@ struct MoodPost: Codable, Identifiable {
     let privacy: String
     let location: LocationData?
     let timestamp: String
-    let likes: [String]?
-    let comments: [PostComment]?
+    let likes: LikesInfo?
+    let comments: CommentsInfo?
     let isAnonymous: Bool
     let createdAt: String
     let updatedAt: String
@@ -50,16 +50,6 @@ struct MoodPost: Codable, Identifiable {
             simpleLocation = nil
         }
         
-        var likesCount = 0
-        for _ in likes ?? [] {
-            likesCount+=1
-        }
-        
-        var commentsCount = 0
-        for _ in comments ?? [] {
-            commentsCount+=1
-        }
-        
         return FeedItem(
             id: self.id,
             userId: self.userId,
@@ -69,17 +59,28 @@ struct MoodPost: Codable, Identifiable {
             activities: self.activities,
             location: simpleLocation,
             timestamp: self.timestamp,
-            likesCount: likesCount,
-            commentsCount: commentsCount,
-            comments: self.comments
+            likes: self.likes,
+            comments: self.comments,
+            likesCount: self.likes?.count ?? 0,
+            commentsCount: self.comments?.count ?? 0
         )
     }
 }
 
-struct PostComment: Codable {
+struct CommentsInfo: Codable {
+    let count: Int
+    let comments: [CommentPosts]
+}
+
+struct CommentPosts: Codable {
     let userID: String
     let content: String
     let timestamp: String
+}
+
+struct LikesInfo: Codable {
+    let count: Int
+    let userIds: [String]
 }
 
 // MARK: - Updated EmotionData struct
@@ -322,7 +323,8 @@ struct FeedItem: Identifiable {
     let activities: [String]?
     let location: SimpleLocation?
     let timestamp: String
-    let likesCount: Int
-    let commentsCount: Int
-    let comments: [PostComment]?
+    let likes: LikesInfo?
+    let comments: CommentsInfo?
+    let likesCount: Int?
+    let commentsCount: Int?
 }

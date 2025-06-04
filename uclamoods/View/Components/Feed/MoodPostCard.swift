@@ -158,6 +158,7 @@ struct MoodPostCard: View {
                     impactFeedback.prepare()
                     impactFeedback.impactOccurred()
                 }) {
+                    /*
                     HStack(spacing: 5) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 18))
@@ -170,6 +171,7 @@ struct MoodPostCard: View {
                             .foregroundColor(.white.opacity(0.7))
                             .animation(nil, value: isLiked)
                     }
+                     */
                 }
                 .buttonStyle(.plain)
 
