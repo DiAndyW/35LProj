@@ -21,7 +21,7 @@ struct ProfileSettingsView: View {
             NavigationLink(destination: BlockedAccountsView()) {
                 SettingsRow(icon: "person.slash", title: "Blocked Accounts", subtitle: "Manage blocked users")
             }
-            SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
+            //SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
             SettingsRow(icon: "arrow.right.square", title: "Sign Out", subtitle: "Sign out of your account", action: {
                 let feedback = UIImpactFeedbackGenerator(style: .medium)
                 feedback.prepare()

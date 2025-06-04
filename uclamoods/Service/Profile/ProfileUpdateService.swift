@@ -1,12 +1,4 @@
 //
-//  ChangeUsernameRequest.swift
-//  uclamoods
-//
-//  Created by Yang Gao on 6/4/25.
-//
-
-
-//
 //  ProfileUpdateService.swift
 //  uclamoods
 //
@@ -33,6 +25,11 @@ struct ChangePasswordRequest: Codable {
 
 struct ChangePasswordResponse: Codable {
     let msg: String
+}
+
+struct DeleteAccountResponse: Codable {
+    let success: Bool
+    let message: String
 }
 
 // MARK: - Profile Update Errors
@@ -134,6 +131,62 @@ class ProfileUpdateService {
             throw error
         } catch {
             print("ProfileUpdateService: Network error during username change - \(error)")
+            throw ProfileUpdateError.networkError(error)
+        }
+    }
+    
+    // MARK: - Delete Account
+    static func deleteAccount() async throws {
+        guard AuthenticationService.shared.isAuthenticated else {
+            throw ProfileUpdateError.notAuthenticated
+        }
+        
+        let url = Config.apiURL(for: "/auth/delete-account")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addAuthenticationIfNeeded()
+        
+        print("ProfileUpdateService: Deleting account")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("ProfileUpdateService: Invalid response type for account deletion")
+                throw ProfileUpdateError.invalidResponse
+            }
+            
+            print("ProfileUpdateService: Account deletion response status: \(httpResponse.statusCode)")
+            
+            if (200...299).contains(httpResponse.statusCode) {
+                do {
+                    let deleteResponse = try JSONDecoder().decode(DeleteAccountResponse.self, from: data)
+                    print("ProfileUpdateService: Account deleted successfully - \(deleteResponse.message)")
+                } catch {
+                    print("ProfileUpdateService: Failed to decode account deletion response - \(error)")
+                    // Still consider it successful if we got 200-level status
+                    print("ProfileUpdateService: Account deletion completed (couldn't decode response but got success status)")
+                }
+            } else {
+                var errorMessage = "Failed to delete account"
+                
+                // Try to decode error response
+                if let errorData = try? JSONDecoder().decode(AuthErrorResponse.self, from: data) {
+                    errorMessage = errorData.msg
+                } else if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
+                    errorMessage = responseString
+                }
+                
+                print("ProfileUpdateService: Account deletion error (\(httpResponse.statusCode)): \(errorMessage)")
+                throw ProfileUpdateError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
+            }
+            
+        } catch let error as ProfileUpdateError {
+            throw error
+        } catch {
+            print("ProfileUpdateService: Network error during account deletion - \(error)")
             throw ProfileUpdateError.networkError(error)
         }
     }
