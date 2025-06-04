@@ -65,7 +65,6 @@ struct ProfileOverviewView: View {
                 let avgIntensity = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.intensity
                 let avgControl = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.control
                 let avgClarity = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.clarity
-                
                 let averageEmotion = Emotion(
                     name: currentSummary.data.weeklySummary.averageMoodForWeek.topEmotion ?? "Average",
                     color: ColorData.calculateMoodColor(pleasantness: avgPleasantness, intensity: avgIntensity) ?? .gray,
@@ -75,15 +74,39 @@ struct ProfileOverviewView: View {
                     control: avgControl,
                     clarity: avgClarity
                 )
-                
-                EmotionRadarChartView(emotion: averageEmotion)
-                    .padding(32)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(16)
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Average Attributes")
+                            .font(.custom("Georgia", size: 16))
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding()
+                    
+                    EmotionRadarChartView(emotion: averageEmotion)
+                        .offset(y: -10)
+                }
+                .frame(maxWidth: .infinity, maxHeight: 300)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(averageEmotion.color.opacity(0.6), lineWidth: 2)
+                )
                 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     WeekStatCard(title: "Top Emotion", value: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "N/A")
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(EmotionDataProvider.getEmotion(byName: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                        )
+                    
                     WeekStatCard(title: "Check-ins", value: "\(currentSummary.data.weeklySummary.weeklyCheckinsCount)")
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(EmotionDataProvider.getEmotion(byName: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                        )
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
                 Text("No summary data available for this week.")
@@ -106,7 +129,7 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        //MoodPostCard(post: post.toFeedItem(), openDetailAction: () -> Void)
+                        MoodPostCard(post: post.toFeedItem(), openDetailAction: {})
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
