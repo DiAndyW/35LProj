@@ -5,7 +5,7 @@ struct MoodPostDetailView: View {
     let onDismiss: () -> Void
     
     @State private var newComment: String = ""
-    @State private var comments: [CommentPosts]=
+    @State private var comments: [CommentPosts]
     @State private var isSendingComment: Bool = false
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCommentFieldFocused: Bool
