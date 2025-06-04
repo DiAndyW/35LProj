@@ -129,6 +129,7 @@ struct MainAppView: View {
                 NavigationView {
                     ProfileView()
                 }
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tag(MoodAppRouter.MainTab.profile)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
