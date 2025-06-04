@@ -93,7 +93,7 @@ struct ProfileAnalyticsView: View {
         if rawPeriodName.lowercased() == AnalyticsPeriod.threeMonths.rawValue {
             return "3 Months"
         }else if rawPeriodName.lowercased() == AnalyticsPeriod.all.rawValue{
-            return "All"
+            return "All Time"
         } else {
             return (rawPeriodName)
         }
@@ -102,14 +102,19 @@ struct ProfileAnalyticsView: View {
     @ViewBuilder
     private func overallAverageMoodMimicSection(_ summary: MoodPeriodSummary, periodName: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if(formattedPeriodTitle(periodName)=="All"){
-                Text("All Time Average Mood.")
+            if(formattedPeriodTitle(periodName)=="All Time"){
+                Text("All Time")
                     .font(.custom("Georgia", size: 24))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 
+            }else if(formattedPeriodTitle(periodName)=="3 Months"){
+                Text("These \(formattedPeriodTitle(periodName))")
+                    .font(.custom("Georgia", size: 24))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
             }else{
-                Text("Average Mood for the past \(formattedPeriodTitle(periodName)).")
+                Text("This \(formattedPeriodTitle(periodName))")
                     .font(.custom("Georgia", size: 24))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
