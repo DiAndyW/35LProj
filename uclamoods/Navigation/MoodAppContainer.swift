@@ -115,42 +115,44 @@ struct AuthFlowView: View {
 struct MainAppView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @StateObject private var locationManager = LocationManager()
-     
+    
     var body: some View {
         ZStack {
             TabView(selection: $router.selectedMainTab) {
                 // Home Tab
                 HomeFeedView()
                     .tag(MoodAppRouter.MainTab.home)
-                 
+                
                 // Map Tab
                 MapView()
                     .tag(MoodAppRouter.MainTab.map)
                     .environmentObject(locationManager)
-                 
+                
                 // Analytics Tab
                 SocialAnalyticsView()
                     .tag(MoodAppRouter.MainTab.analytics)
-
+                
                 // Profile Tab
-                ProfileView()
-                    .tag(MoodAppRouter.MainTab.profile)
+                NavigationView {
+                    ProfileView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tag(MoodAppRouter.MainTab.profile)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default dots
             .ignoresSafeArea(.all)
-             
+            
             // Custom tab bar overlay
             VStack {
                 Spacer()
-                FiveTabBar() // CHANGED from ThreeTabBar
+                FiveTabBar()
             }
             .ignoresSafeArea(edges: .bottom)
         }
-        // Ensure the router has a default selected tab when MainAppView appears
         .onAppear {
-             if router.selectedMainTab == nil { // Or some other logic to ensure a tab is selected
-                 router.selectTab(.home)
-             }
+            if router.selectedMainTab == nil {
+                router.selectTab(.home)
+            }
         }
     }
 }
@@ -158,7 +160,7 @@ struct MainAppView: View {
 // MARK: - Custom 3-Tab Bar with Prominent Check-In Button
 struct FiveTabBar: View { // RENAMED from ThreeTabBar
     @EnvironmentObject private var router: MoodAppRouter
-     
+    
     var body: some View {
         HStack {
             // Home Tab
@@ -170,9 +172,9 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.home)
                 }
             }
-             
+            
             Spacer() // Spacer 1
-             
+            
             // Map Tab (NEW)
             TabBarButton(
                 tab: .map,
@@ -182,20 +184,20 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.map)
                 }
             }
-             
+            
             Spacer() // Spacer 2
-             
+            
             // Check-In Button (Prominent Middle Button)
             CheckInButton {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.prepare()
                 impactFeedback.impactOccurred()
-                 
+                
                 router.navigateToMoodFlow()
             }
-             
+            
             Spacer() // Spacer 3
-             
+            
             // Analytics Tab (NEW)
             TabBarButton(
                 tab: .analytics,
@@ -205,9 +207,9 @@ struct FiveTabBar: View { // RENAMED from ThreeTabBar
                     router.selectTab(.analytics)
                 }
             }
-             
+            
             Spacer() // Spacer 4
-             
+            
             // Profile Tab
             TabBarButton(
                 tab: .profile,

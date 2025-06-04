@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2FA3E46D2DEFFC47006CEDBB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2FA3E46C2DEFFC47006CEDBB /* FirebaseCore */; };
+		2FA3E46F2DF00185006CEDBB /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2FA3E46E2DF00185006CEDBB /* FirebaseMessaging */; };
 		2FC3D98A2DCB4C920062D57C /* FluidGradient in Frameworks */ = {isa = PBXBuildFile; productRef = 2FC3D9892DCB4C920062D57C /* FluidGradient */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +71,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2FA3E46F2DF00185006CEDBB /* FirebaseMessaging in Frameworks */,
+				2FA3E46D2DEFFC47006CEDBB /* FirebaseCore in Frameworks */,
 				2FC3D98A2DCB4C920062D57C /* FluidGradient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -139,6 +143,8 @@
 			name = uclamoods;
 			packageProductDependencies = (
 				2FC3D9892DCB4C920062D57C /* FluidGradient */,
+				2FA3E46C2DEFFC47006CEDBB /* FirebaseCore */,
+				2FA3E46E2DF00185006CEDBB /* FirebaseMessaging */,
 			);
 			productName = uclamoods;
 			productReference = 2FB1ACB92DC5F2550020E348 /* uclamoods.app */;
@@ -224,6 +230,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */,
+				2FA3E46B2DEFFBB2006CEDBB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2FB1ACBA2DC5F2550020E348 /* Products */;
@@ -426,16 +433,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.1;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PBTJSSD9T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Morii;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Morii uses Face ID to help you log in";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -445,8 +448,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.yang.morii;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yang.uclamoods;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -460,16 +463,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.0.1;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PBTJSSD9T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Morii;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Morii uses Face ID to help you log in";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -479,8 +478,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.yang.morii;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yang.uclamoods;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -602,6 +601,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		2FA3E46B2DEFFBB2006CEDBB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
 		2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Cindori/FluidGradient.git";
@@ -613,6 +620,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		2FA3E46C2DEFFC47006CEDBB /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2FA3E46B2DEFFBB2006CEDBB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		2FA3E46E2DF00185006CEDBB /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2FA3E46B2DEFFBB2006CEDBB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		2FC3D9892DCB4C920062D57C /* FluidGradient */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 2FC3D9872DCB4C830062D57C /* XCRemoteSwiftPackageReference "FluidGradient" */;
