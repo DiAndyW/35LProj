@@ -17,40 +17,11 @@ struct ProfileSettingsView: View {
                 SettingsRow(icon: "bell", title: "Notifications", subtitle: "Manage notification preferences")
             }
             SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
-            
-            // Logout button
-            Button(action: {
+            SettingsRow(icon: "arrow.right.square", title: "Sign Out", subtitle: "Sign out of your account", action: {
                 let feedback = UIImpactFeedbackGenerator(style: .medium)
                 feedback.prepare()
                 feedback.impactOccurred()
-                
-                router.signOut()
-            }) {
-                HStack {
-                    Image(systemName: "arrow.right.square")
-                        .font(.system(size: 20))
-                        .foregroundColor(.red)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Log Out")
-                            .font(.custom("Georgia", size: 18))
-                            .fontWeight(.medium)
-                            .foregroundColor(.red)
-                        
-                        Text("Sign out of your account")
-                            .font(.custom("Georgia", size: 14))
-                            .foregroundColor(.red.opacity(0.7))
-                    }
-                    .padding(.leading, 8)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-            }
+                router.signOut()})
         }
     }
-}
-
-#Preview {
-    ProfileSettingsView()
 }
