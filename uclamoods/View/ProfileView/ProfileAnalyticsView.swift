@@ -146,18 +146,41 @@ struct ProfileAnalyticsView: View {
             )
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                WeekStatCard(
-                    title: "Top Emotion",
-                    value: summary.topEmotion ?? "N/A"
-                )
+                VStack(spacing: 8) {
+                    Text(summary.topEmotion ?? "N/A")
+                        .font(.custom("Georgia", size: 20))
+                        .fontWeight(.bold)
+                        .foregroundColor(EmotionDataProvider.getEmotion(byName: summary.topEmotion ?? "Neutral")?.color )
+                    
+                    Text("Top Emotion")
+                        .font(.custom("Georgia", size: 14))
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(EmotionColorMap.getColor(for: summary.topEmotion ?? "Neutral").opacity(0.6), lineWidth: 2)
                 )
-                WeekStatCard(
-                    title: "Check-ins",
-                    value: "\(summary.totalCheckins)"
-                )
+                
+                VStack(spacing: 8) {
+                    Text("\(summary.totalCheckins)")
+                        .font(.custom("Georgia", size: 20))
+                        .fontWeight(.bold)
+                        .foregroundColor(EmotionDataProvider.getEmotion(byName: summary.topEmotion ?? "Neutral")?.color )
+                    
+                    Text("Check-Ins")
+                        .font(.custom("Georgia", size: 14))
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(averageEmotionForChart.color.opacity(0.6), lineWidth: 2)

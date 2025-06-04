@@ -195,6 +195,7 @@ struct MoodPostCard: View {
                     likeAction: handleLikeButtonTapped,
                     commentButtonAction: openDetailAction
                 )
+                .padding(.horizontal, 4)
             }
 
         }

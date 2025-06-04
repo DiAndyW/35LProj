@@ -85,23 +85,47 @@ struct ProfileSummarySectionView: View {
                 
                 // Grid for displaying weekly statistics.
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    WeekStatCard(
-                        title: "Top Emotion",
-                        value: weeklySummary.weeklyTopMood?.name ?? "N/A"
-                    )
+                    
+                    VStack(spacing: 8) {
+                        Text(weeklySummary.weeklyTopMood?.name ?? "N/A")
+                            .font(.custom("Georgia", size: 20))
+                            .fontWeight(.bold)
+                            .foregroundColor(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color ?? Color.pink)
+                        
+                        Text("Top Emotion")
+                            .font(.custom("Georgia", size: 14))
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                     )
                     
-                    WeekStatCard(
-                        title: "Check-ins",
-                        value: "\(weeklySummary.weeklyCheckinsCount)"
-                    )
+                    VStack(spacing: 8) {
+                        Text("\(weeklySummary.weeklyCheckinsCount)")
+                            .font(.custom("Georgia", size: 20))
+                            .fontWeight(.bold)
+                            .foregroundColor(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color ?? Color.pink)
+                        
+                        Text("Check-Ins")
+                            .font(.custom("Georgia", size: 14))
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                     )
+                    
                 }
             } else {
                 Text("No summary data available for this week.")
