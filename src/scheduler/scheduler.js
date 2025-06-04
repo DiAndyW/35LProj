@@ -1,7 +1,7 @@
 // In your main server file or a dedicated scheduler file (e.g., scheduler.js)
 import cron from 'node-cron';
 import admin from 'firebase-admin'; // Assuming firebase-admin is initialized elsewhere
-import UserModel from './models/UserModel.js'; // Adjust path as needed
+import UserModel from '../models/UserModel.js'; // Adjust path as needed
 import moment from 'moment-timezone'; // For robust timezone handling
 
 
