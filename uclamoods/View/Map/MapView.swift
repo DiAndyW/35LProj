@@ -445,7 +445,7 @@ enum MapViewMode {
     case heatmap
 }
 
-// MARK: - Updated MapView
+// MARK: - Optimized MapView
 
 struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
@@ -458,6 +458,8 @@ struct MapView: View {
     )
     @State private var tracking: MapUserTrackingMode = .follow
     @State private var viewMode: MapViewMode = .markers
+    @State private var lastRegionChangeTime = Date()
+    @State private var regionChangeTimer: Timer?
     
     var body: some View {
         ZStack {
@@ -497,6 +499,17 @@ struct MapView: View {
                             .clipShape(Circle())
                     }
                     
+//                    // Clear Cache Button (for debugging/testing)
+//                    Button(action: {
+//                        viewModel.clearCache()
+//                    }) {
+//                        Image(systemName: "trash")
+//                            .foregroundColor(.white)
+//                            .padding()
+//                            .background(Color.red.opacity(0.7))
+//                            .clipShape(Circle())
+//                    }
+                    
                     // User Location Button
                     Button(action: {
                         if let userCoord = locationManager.userCoordinates {
@@ -517,34 +530,37 @@ struct MapView: View {
                 
                 Spacer()
                 
-                // Status text
-                if viewMode == .markers && !viewModel.annotations.isEmpty {
-                    Text("\(viewModel.annotations.count) mood\(viewModel.annotations.count == 1 ? "" : "s") nearby")
-                        .font(.custom("Georgia", size: 13))
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.25))
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                        )
-                        .padding()
-                } else if viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty {
-                    Text("Showing mood intensity heatmap")
-                        .font(.custom("Georgia", size: 13))
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.25))
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                        )
-                        .padding()
+                // Status text with loading indicator
+                HStack {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    }
+                    
+                    if viewMode == .markers && !viewModel.annotations.isEmpty {
+                        Text("\(viewModel.annotations.count) mood\(viewModel.annotations.count == 1 ? "" : "s") nearby")
+                            .font(.custom("Georgia", size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                    } else if viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty {
+                        Text("Showing mood intensity heatmap")
+                            .font(.custom("Georgia", size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.black.opacity(0.25))
+                .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .padding()
+                .opacity((viewMode == .markers && !viewModel.annotations.isEmpty) ||
+                        (viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty) ||
+                        viewModel.isLoading ? 1 : 0)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
             }
         }
         .sheet(isPresented: $showingMoodDetail) {
@@ -557,13 +573,40 @@ struct MapView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        .onChange(of: viewMode) { _ in
-            // Fetch appropriate data when mode changes
-            if viewMode == .heatmap {
-                viewModel.fetchHeatmapData(for: mapRegion)
-            } else {
-                viewModel.fetchMoodPosts(for: mapRegion)
+        .onChange(of: viewMode) { newMode in
+            // Clear previous mode data and fetch new data
+            handleViewModeChange(newMode)
+        }
+        .onAppear {
+            locationManager.startUpdatingMapLocation()
+            if let userCoord = locationManager.userCoordinates {
+                mapRegion.center = userCoord
             }
+            // Initial fetch
+            viewModel.handleRegionChange(mapRegion, viewMode: viewMode)
+        }
+        .onDisappear {
+            locationManager.stopUpdatingMapLocation()
+            regionChangeTimer?.invalidate()
+        }
+    }
+    
+    private func handleViewModeChange(_ newMode: MapViewMode) {
+        // Immediately fetch data for the new mode
+        viewModel.handleRegionChange(mapRegion, viewMode: newMode)
+    }
+    
+    private func handleRegionChange(_ newRegion: MKCoordinateRegion) {
+        // Cancel any existing timer
+        regionChangeTimer?.invalidate()
+        
+        // Update the region immediately for UI responsiveness
+        mapRegion = newRegion
+        lastRegionChangeTime = Date()
+        
+        // Set up debounced API call
+        regionChangeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+            viewModel.handleRegionChange(newRegion, viewMode: viewMode)
         }
     }
     
@@ -586,17 +629,8 @@ struct MapView: View {
                     .preferredColorScheme(.dark)
                 }
             }
-            .onAppear {
-                locationManager.startUpdatingMapLocation()
-                if let userCoord = locationManager.userCoordinates {
-                    mapRegion.center = userCoord
-                }
-            }
-            .onDisappear {
-                locationManager.stopUpdatingMapLocation()
-            }
-            .onChange(of: mapRegion) { _ in
-                viewModel.fetchMoodPosts(for: mapRegion)
+            .onChange(of: mapRegion) { newRegion in
+                handleRegionChange(newRegion)
             }
             .onChange(of: locationManager.userCoordinates) { newCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
@@ -610,21 +644,9 @@ struct MapView: View {
             HeatmapMapView(
                 region: $mapRegion,
                 tracking: $tracking,
-                heatmapData: viewModel.heatmapPoints
+                heatmapData: viewModel.heatmapPoints,
+                onRegionChange: handleRegionChange
             )
-            .onAppear {
-                locationManager.startUpdatingMapLocation()
-                if let userCoord = locationManager.userCoordinates {
-                    mapRegion.center = userCoord
-                }
-                viewModel.fetchHeatmapData(for: mapRegion)
-            }
-            .onDisappear {
-                locationManager.stopUpdatingMapLocation()
-            }
-            .onChange(of: mapRegion) { _ in
-                viewModel.fetchHeatmapData(for: mapRegion)
-            }
             .onChange(of: locationManager.userCoordinates) { newCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
                     withAnimation {
@@ -636,12 +658,13 @@ struct MapView: View {
     }
 }
 
-// MARK: - Heatmap Map View (UIKit Bridge)
+// MARK: - Optimized Heatmap Map View
 
 struct HeatmapMapView: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
     @Binding var tracking: MapUserTrackingMode
     let heatmapData: [HeatmapPoint]
+    let onRegionChange: (MKCoordinateRegion) -> Void
     
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -652,15 +675,23 @@ struct HeatmapMapView: UIViewRepresentable {
     }
     
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Only update region if not currently being interacted with
         if !context.coordinator.isUserInteracting {
-            mapView.setRegion(region, animated: true)
+            let currentRegion = mapView.region
+            if !region.isEqual(to: currentRegion, threshold: 0.0001) {
+                mapView.setRegion(region, animated: true)
+            }
         }
         
-        // Update overlays
-        mapView.removeOverlays(mapView.overlays)
-        if !heatmapData.isEmpty {
-            let overlay = HeatmapOverlay(heatmapData: heatmapData, region: region)
-            mapView.addOverlay(overlay)
+        // Update overlays only if heatmap data changed significantly
+        let coordinator = context.coordinator
+        if !coordinator.heatmapDataEquals(heatmapData) {
+            mapView.removeOverlays(mapView.overlays)
+            if !heatmapData.isEmpty {
+                let overlay = HeatmapOverlay(heatmapData: heatmapData, region: region)
+                mapView.addOverlay(overlay)
+            }
+            coordinator.updateHeatmapData(heatmapData)
         }
     }
     
@@ -671,6 +702,9 @@ struct HeatmapMapView: UIViewRepresentable {
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: HeatmapMapView
         var isUserInteracting = false
+        private var lastRegionChangeTime = Date()
+        private var regionChangeTimer: Timer?
+        private var cachedHeatmapData: [HeatmapPoint] = []
         
         init(_ parent: HeatmapMapView) {
             self.parent = parent
@@ -678,238 +712,82 @@ struct HeatmapMapView: UIViewRepresentable {
         
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
             isUserInteracting = true
+            regionChangeTimer?.invalidate()
         }
         
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            isUserInteracting = false
-            parent.region = mapView.region
+            lastRegionChangeTime = Date()
+            
+            // Debounce region changes
+            regionChangeTimer?.invalidate()
+            regionChangeTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+                self.isUserInteracting = false
+                self.parent.onRegionChange(mapView.region)
+            }
         }
         
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if overlay is HeatmapOverlay {
-                //return HeatmapOverlayRenderer(overlay: overlay)
                 return BlendedEmotionHeatmapRenderer(overlay: overlay)
             }
             return MKOverlayRenderer()
         }
+        
+        func heatmapDataEquals(_ newData: [HeatmapPoint]) -> Bool {
+            guard cachedHeatmapData.count == newData.count else { return false }
+            
+            // Simple comparison - you might want to make this more sophisticated
+            for (index, point) in newData.enumerated() {
+                if index >= cachedHeatmapData.count ||
+                   cachedHeatmapData[index].lat != point.lat ||
+                   cachedHeatmapData[index].lng != point.lng ||
+                   cachedHeatmapData[index].intensity != point.intensity {
+                    return false
+                }
+            }
+            return true
+        }
+        
+        func updateHeatmapData(_ newData: [HeatmapPoint]) {
+            cachedHeatmapData = newData
+        }
     }
 }
 
-// MARK: - Updated View Model
+// MARK: - Region Equality Extension
 
-@MainActor
-class MapViewModel: ObservableObject {
-    @Published var annotations: [MoodPostAnnotation] = []
-    @Published var heatmapPoints: [HeatmapPoint] = []
-    @Published var isLoading = false
-    @Published var showError = false
-    @Published var errorMessage = ""
-
-    private var currentTask: Task<Void, Never>?
-    private var heatmapTask: Task<Void, Never>?
-
-    enum MapError: Error, LocalizedError {
-        case badURL
-        case requestFailed(Error)
-        case badServerResponse(statusCode: Int)
-        case decodingError(Error)
-        case unknown
-
-        var errorDescription: String? {
-            switch self {
-            case .badURL:
-                return "The URL for fetching map data was invalid."
-            case .requestFailed(let error):
-                return "Network request failed: \(error.localizedDescription)"
-            case .badServerResponse(let statusCode):
-                return "Server returned an error: HTTP \(statusCode)."
-            case .decodingError(let error):
-                return "Failed to decode map data: \(error.localizedDescription)"
-            case .unknown:
-                return "An unknown error occurred."
-            }
-        }
+extension MKCoordinateRegion {
+    func isEqual(to other: MKCoordinateRegion, threshold: Double) -> Bool {
+        let centerEqual = abs(center.latitude - other.center.latitude) < threshold &&
+                         abs(center.longitude - other.center.longitude) < threshold
+        let spanEqual = abs(span.latitudeDelta - other.span.latitudeDelta) < threshold &&
+                       abs(span.longitudeDelta - other.span.longitudeDelta) < threshold
+        return centerEqual && spanEqual
     }
+}
 
-    func fetchMoodPosts(for region: MKCoordinateRegion, forceRefresh: Bool = false) {
-        currentTask?.cancel()
+// MARK: - Efficient Annotation Updates
 
-        currentTask = Task {
-            await MainActor.run {
-                if !forceRefresh && isLoading { return }
-                isLoading = true
-            }
-
-            do {
-                let bounds = region.getBounds()
-                let center = region.center
-
-                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
-                guard var validComponents = components else {
-                    throw MapError.badURL
-                }
-
-                validComponents.queryItems = [
-                    URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
-                    URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
-                    URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
-                    URLQueryItem(name: "neLng", value: String(bounds.ne.longitude)),
-                    URLQueryItem(name: "centerLat", value: String(center.latitude)),
-                    URLQueryItem(name: "centerLng", value: String(center.longitude)),
-                    URLQueryItem(name: "limit", value: "200"),
-                    URLQueryItem(name: "cluster", value: "false")
-                ]
-
-                guard let url = validComponents.url else {
-                    throw MapError.badURL
-                }
-
-                var request = URLRequest(url: url)
-                request.addAuthenticationIfNeeded()
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw MapError.unknown
-                }
-
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
-                }
-
-                let decoder = JSONDecoder()
-                let mapMoodsResponse = try decoder.decode(MapMoodsResponse.self, from: data)
-
-                if mapMoodsResponse.success {
-                    let newAnnotations = mapMoodsResponse.data.map { moodPost in
-                        MoodPostAnnotation(
-                            id: moodPost.id,
-                            coordinate: moodPost.location.coordinates.coordinate,
-                            moodPost: moodPost
-                        )
-                    }
-                    await MainActor.run {
-                        self.annotations = newAnnotations
-                    }
-                } else {
-                    await MainActor.run {
-                        self.errorMessage = "Failed to load moods"
-                        self.showError = true
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
-                        return
-                    }
-                    
-                    if let localizedError = error as? LocalizedError {
-                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
-                    } else {
-                        self.errorMessage = error.localizedDescription
-                    }
-                    self.showError = true
-                }
-            }
-            await MainActor.run {
-                self.isLoading = false
-            }
-        }
-    }
-    
-    func fetchHeatmapData(for region: MKCoordinateRegion) {
-        heatmapTask?.cancel()
+extension MapViewModel {
+    func updateAnnotationsEfficiently(with newPosts: [MapMoodPost]) {
+        // Convert to set for O(1) lookup
+        let newPostIds = Set(newPosts.map { $0.id })
+        let existingIds = Set(annotations.map { $0.id })
         
-        heatmapTask = Task {
-            await MainActor.run {
-                isLoading = true
+        // Only update if there are actual changes
+        if newPostIds != existingIds {
+            let newAnnotations = newPosts.map { moodPost in
+                MoodPostAnnotation(
+                    id: moodPost.id,
+                    coordinate: moodPost.location.coordinates.coordinate,
+                    moodPost: moodPost
+                )
             }
             
-            do {
-                let bounds = region.getBounds()
-                
-                var components = URLComponents(url: Config.apiURL(for: "/api/map/moods/heatmap"), resolvingAgainstBaseURL: false)
-                guard var validComponents = components else {
-                    throw MapError.badURL
-                }
-                
-                // Calculate appropriate grid size based on zoom level
-                let gridSize = calculateGridSize(for: region)
-                
-                validComponents.queryItems = [
-                    URLQueryItem(name: "swLat", value: String(bounds.sw.latitude)),
-                    URLQueryItem(name: "swLng", value: String(bounds.sw.longitude)),
-                    URLQueryItem(name: "neLat", value: String(bounds.ne.latitude)),
-                    URLQueryItem(name: "neLng", value: String(bounds.ne.longitude)),
-                    URLQueryItem(name: "gridSize", value: String(gridSize))
-                ]
-                
-                guard let url = validComponents.url else {
-                    throw MapError.badURL
-                }
-                
-                var request = URLRequest(url: url)
-                request.addAuthenticationIfNeeded()
-                
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw MapError.unknown
-                }
-                
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    throw MapError.badServerResponse(statusCode: httpResponse.statusCode)
-                }
-                
-                let decoder = JSONDecoder()
-                let heatmapResponse = try decoder.decode(HeatmapResponse.self, from: data)
-                
-                if heatmapResponse.success {
-                    await MainActor.run {
-                        self.heatmapPoints = heatmapResponse.data
-                    }
-                } else {
-                    await MainActor.run {
-                        self.errorMessage = "Failed to load heatmap data"
-                        self.showError = true
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
-                        return
-                    }
-                    
-                    if let localizedError = error as? LocalizedError {
-                        self.errorMessage = localizedError.errorDescription ?? "An unexpected error occurred."
-                    } else {
-                        self.errorMessage = error.localizedDescription
-                    }
-                    self.showError = true
-                }
+            DispatchQueue.main.async {
+                self.annotations = newAnnotations
             }
-            await MainActor.run {
-                self.isLoading = false
-            }
-        }
-    }
-    
-    private func calculateGridSize(for region: MKCoordinateRegion) -> Int {
-        // Adjust grid size based on zoom level
-        let span = max(region.span.latitudeDelta, region.span.longitudeDelta)
-        
-        if span > 1.0 {
-            return 20 // Very zoomed out
-        } else if span > 0.5 {
-            return 30
-        } else if span > 0.1 {
-            return 40
-        } else if span > 0.05 {
-            return 50
-        } else {
-            return 60 // Very zoomed in
         }
     }
 }
