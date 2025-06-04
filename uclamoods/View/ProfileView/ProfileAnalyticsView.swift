@@ -1,41 +1,206 @@
-//
-//  ProfileAnalyticsView.swift
-//  uclamoods
-//
-//  Created by David Sun on 5/30/25.
-//
 import SwiftUI
 
 struct ProfileAnalyticsView: View {
+    @StateObject private var analyticsService = MoodAnalyticsService()
+    @State private var selectedPeriod: AnalyticsPeriod = .week
+    private let daysOrder = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Placeholder for charts
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
-                .frame(height: 200)
-                .overlay(
-                    VStack {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.4))
-                        Text("Mood trends chart")
-                            .foregroundColor(.white.opacity(0.4))
-                    }
-                )
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
             
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
-                .frame(height: 200)
-                .overlay(
-                    VStack {
-                        Image(systemName: "chart.pie")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.4))
-                        Text("Emotion distribution")
-                            .foregroundColor(.white.opacity(0.4))
+            VStack(spacing: 2) {
+                
+                Picker("Select Period", selection: $selectedPeriod) {
+                    ForEach(AnalyticsPeriod.allCases, id: \.self) { period in
+                        Text(formattedPeriodTitle(period.rawValue.capitalized)).tag(period)
                     }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.vertical, 10)
+                .colorScheme(.dark)
+                .onChange(of: selectedPeriod) { _, newPeriod in
+                    analyticsService.fetchAnalytics(period: newPeriod)
+                }
+                
+                // Content Area
+                ScrollView {
+                    if analyticsService.isLoading {
+                        ProgressView("Loading analytics...")
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .padding(.top, 20)
+                    } else if let errorMessage = analyticsService.errorMessage {
+                        VStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(.orange)
+                            Text("Error Loading Analytics")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            Button("Retry") {
+                                analyticsService.fetchAnalytics(period: selectedPeriod)
+                            }
+                            .padding(.top)
+                            .buttonStyle(.borderedProminent)
+                            .tint(.pink)
+                        }
+                        .padding(.top, 50)
+                        .padding(.horizontal, 20)
+                    } else if let analytics = analyticsService.analyticsData {
+                        analyticsContent(analytics)
+                            .padding(.bottom, 80)
+                    } else {
+                        Text("No analytics data available for the selected period.")
+                            .foregroundColor(.gray)
+                            .padding(.top, 50)
+                            .padding(.horizontal, 20)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            analyticsService.fetchAnalytics(period: selectedPeriod)
+        }
+    }
+    
+    @ViewBuilder
+    private func analyticsContent(_ data: AnalyticsData) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            /*
+            if let startDate = data.dateRange.start, let endDate = data.dateRange.end {
+                let dateFormatter: DateFormatter = {
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .medium
+                    return formatter
+                }()
+                Text("Displaying data for: \(dateFormatter.string(from: startDate)) - \(dateFormatter.string(from: endDate))")
+                    .font(.custom("Georgia", size: 14))
+                    .foregroundColor(.white.opacity(0.7))
+            }*/
+
+            overallAverageMoodMimicSection(data.averageMoodForPeriod, periodName: data.period.capitalized)
+            Divider().background(Color.white.opacity(0.5))
+            moodByDayOfWeekSection(data.averageMoodByDayOfWeek)
+        }
+    }
+    
+    private func formattedPeriodTitle(_ rawPeriodName: String) -> String {
+        if rawPeriodName.lowercased() == AnalyticsPeriod.threeMonths.rawValue {
+            return "3 Months"
+        }else if rawPeriodName.lowercased() == AnalyticsPeriod.all.rawValue{
+            return "All"
+        } else {
+            return (rawPeriodName)
+        }
+    }
+    
+    @ViewBuilder
+    private func overallAverageMoodMimicSection(_ summary: MoodPeriodSummary, periodName: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if(formattedPeriodTitle(periodName)=="All"){
+                Text("All Time Average Mood.")
+                    .font(.custom("Georgia", size: 24))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                
+            }else{
+                Text("Average Mood for the past \(formattedPeriodTitle(periodName)).")
+                    .font(.custom("Georgia", size: 24))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+            }
+
+            let averageEmotionForChart = Emotion(
+                name: summary.topEmotion ?? "Average",
+                color: EmotionColorMap.getColor(for: summary.topEmotion ?? "Neutral"),
+                description: "Average mood attributes for the period.",
+                pleasantness: summary.averageAttributes.pleasantness ?? 0.5,
+                intensity: summary.averageAttributes.intensity ?? 0.5,
+                control: summary.averageAttributes.control ?? 0.5,
+                clarity: summary.averageAttributes.clarity ?? 0.5
+            )
+            
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Average Attributes")
+                        .font(.custom("Georgia", size: 16))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .padding()
+                EmotionRadarChartView(emotion: averageEmotionForChart, showText: true)
+                    .offset(y: -10)
+            }
+            .frame(maxWidth: .infinity, idealHeight: 280, maxHeight: 300)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(averageEmotionForChart.color.opacity(0.6), lineWidth: 2)
+            )
+            
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                WeekStatCard(
+                    title: "Top Emotion",
+                    value: summary.topEmotion ?? "N/A"
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(EmotionColorMap.getColor(for: summary.topEmotion ?? "Neutral").opacity(0.6), lineWidth: 2)
+                )
+                WeekStatCard(
+                    title: "Check-ins",
+                    value: "\(summary.totalCheckins)"
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(averageEmotionForChart.color.opacity(0.6), lineWidth: 2)
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func dayDetailContent(for dayName: String, from summaries: [MoodDaySummary]) -> some View {
+        if let summary = summaries.first(where: { $0.dayOfWeek == dayName }) {
+            DetailedDailyMoodCardView(daySummary: summary)
+                .padding(.bottom, 5)
+        } else {
+            VStack(alignment: .leading) {
+                Text(dayName)
+                    .font(.custom("Georgia", size: 18).bold())
+                    .foregroundColor(.gray)
+                Text("No check-ins for this day.")
+                    .font(.custom("Chivo", size: 14))
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.03))
+            .cornerRadius(12)
+            .padding(.bottom, 5)
+        }
+    }
+    
+    @ViewBuilder
+    private func moodByDayOfWeekSection(_ dailySummaries: [MoodDaySummary]) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Daily Breakdown:")
+                .font(.custom("Georgia", size: 20))
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+            
+            let sortedSummaries = dailySummaries.sorted { $0.dayNumber < $1.dayNumber }
+            
+            ForEach(daysOrder, id: \.self) { dayName in
+                self.dayDetailContent(for: dayName, from: sortedSummaries)
+            }
         }
     }
 }

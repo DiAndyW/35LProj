@@ -46,22 +46,22 @@ struct EmotionRadarChartView: View {
                 
                 // Dimension labels
                 if(showText){
-                    Text("Pleasantness")
+                    Text("Pleasantness (\(Int(emotion.pleasantness*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x, y: center.y - radius - 15)
                     
-                    Text("Intensity")
+                    Text("Intensity \n (\(Int(emotion.pleasantness*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x + radius + 35, y: center.y)
                     
-                    Text("Control")
+                    Text("Control (\(Int(emotion.pleasantness*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x, y: center.y + radius + 15)
                     
-                    Text("Clarity")
+                    Text("Clarity \n (\(Int(emotion.pleasantness*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x - radius - 35, y: center.y)
