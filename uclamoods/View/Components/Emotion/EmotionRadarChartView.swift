@@ -48,7 +48,6 @@ struct EmotionRadarChartView: View {
                 if(showText){
                     Text("Pleasantness")
                         .font(.custom("Georgia", size: 12))
-                    //.font(.caption)
                         .foregroundColor(.white)
                         .position(x: center.x, y: center.y - radius - 15)
                     

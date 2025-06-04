@@ -146,38 +146,26 @@ struct CoordinatesObject: Codable {
     let type: String
     let coordinates: [Double]
 
-    // Define CodingKeys for when it's an object.
-    // These are used by the custom init and the encoder.
     enum ObjectCodingKeys: String, CodingKey {
         case type
         case coordinates
     }
 
-    // Convenience initializer if you need to create this programmatically
     init(type: String = "Point", coordinates: [Double]) {
         self.type = type
         self.coordinates = coordinates
     }
 
     init(from decoder: Decoder) throws {
-        // First, try to decode it as an object (the GeoJSON-like structure)
-        // This will attempt to get a keyed container. If the JSON value is not an object, it will fail.
         if let container = try? decoder.container(keyedBy: ObjectCodingKeys.self) {
-            // Check if keys exist before decoding to handle partial objects gracefully, if necessary.
-            // For this specific structure, both are non-optional, so direct decoding is fine.
             self.type = try container.decode(String.self, forKey: .type)
             self.coordinates = try container.decode([Double].self, forKey: .coordinates)
         }
-        // If decoding as an object fails (e.g., because the JSON value is an array),
-        // then try to decode it as a simple array of Doubles using a single value container.
         else if let container = try? decoder.singleValueContainer(),
                   let coordsArray = try? container.decode([Double].self) {
-            // If it's just an array, assume the type is "Point".
-            // Adjust this logic if a different default or error handling is needed.
             self.type = "Point"
             self.coordinates = coordsArray
         }
-        // If both attempts fail, the data is not in a format we can understand.
         else {
             throw DecodingError.dataCorrupted(DecodingError.Context(
                 codingPath: decoder.codingPath,
@@ -187,8 +175,6 @@ struct CoordinatesObject: Codable {
     }
 
     func encode(to encoder: Encoder) throws {
-        // When encoding, always write it out as the full object structure
-        // for consistency. This ensures predictable output if you ever send this object back to a server.
         var container = encoder.container(keyedBy: ObjectCodingKeys.self)
         try container.encode(self.type, forKey: .type)
         try container.encode(self.coordinates, forKey: .coordinates)
@@ -196,7 +182,6 @@ struct CoordinatesObject: Codable {
 }
 
 // Helper struct to represent Color in a Codable way (RGBA components)
-// This can be placed in the same file or a separate utility file.
 struct RGBAColor: Codable {
     let red: Double
     let green: Double
@@ -281,7 +266,6 @@ struct SimpleEmotion: Codable {
         clarity = try container.decodeIfPresent(Float.self, forKey: .clarity)
         control = try container.decodeIfPresent(Float.self, forKey: .control)
 
-        // Use the emotion name to get color from map
         self.color = EmotionColorMap.getColor(for: self.name)
     }
 

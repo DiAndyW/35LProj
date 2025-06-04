@@ -15,7 +15,6 @@ struct EmotionColorMap {
     private static let colorMap: [String: Color] = {
         var map: [String: Color] = [:]
         
-        // Build map from all emotion arrays
         let allEmotions = EmotionDataProvider.highEnergyEmotions + 
                          EmotionDataProvider.mediumEnergyEmotions + 
                          EmotionDataProvider.lowEnergyEmotions
@@ -27,14 +26,11 @@ struct EmotionColorMap {
         return map
     }()
     
-    // Get color for emotion name
     static func color(for emotionName: String) -> Color {
         return colorMap[emotionName] ?? Color.gray
     }
     
-    // Alternative: Pre-computed static map for better performance
     static let staticColorMap: [String: Color] = [
-        // High Energy Emotions
         "Enraged": ColorData.calculateMoodColor(pleasantness: 0.05, intensity: 0.9) ?? .gray,
         "Terrified": ColorData.calculateMoodColor(pleasantness: 0.1, intensity: 0.95) ?? .gray,
         "Panicked": ColorData.calculateMoodColor(pleasantness: 0.15, intensity: 0.9) ?? .gray,
@@ -91,7 +87,6 @@ struct EmotionColorMap {
         "Blessed": ColorData.calculateMoodColor(pleasantness: 0.9, intensity: 0.35) ?? .gray
     ]
     
-    // Simple lookup function
     static func getColor(for emotionName: String) -> Color {
         return staticColorMap[emotionName] ?? Color.gray
     }

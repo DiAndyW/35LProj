@@ -24,7 +24,7 @@ struct DateFormatterUtility {
     
     private static let absoluteDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d, YYYY"
+        formatter.dateFormat = "MMMM d, YYYY"
         return formatter
     }()
     

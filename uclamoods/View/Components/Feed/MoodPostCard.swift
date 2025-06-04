@@ -24,15 +24,15 @@ struct MoodPostCard: View {
                 Text(displayUsername)
                     .font(.custom("Georgia", size: 16))
                     .fontWeight(.semibold)
-                    .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white)
+                    .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white.opacity(0.9))
                     .lineLimit(1).truncationMode(.tail)
             }
             
             if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: post.timestamp) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(timestampParts.relativeDate)
-                        .font(.custom("Georgia", size: 14))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white.opacity(0.6))
                     Text(timestampParts.absoluteDate)
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white.opacity(0.6))
@@ -46,31 +46,32 @@ struct MoodPostCard: View {
     private var MoodPostEmotion: some View {
         VStack(spacing: 0) {
             EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: post.emotion.name)!, showText: false)
-                .frame(width: 100, height: 100)
+                .frame(width:100, height: 100)
             Text(post.emotion.name)
-                .font(.custom("Georgia", size: 14))
-                .fontWeight(.medium)
+                .font(.custom("Georgia", size: 12))
+                .fontWeight(.bold)
                 .foregroundColor(post.emotion.color ?? .white)
                 .lineLimit(1)
+                .offset(y: -4)
         }
-        .padding(0)
-        .frame(width:100, height:120)
+        //.frame(width:80, height:90)
     }
     
     @ViewBuilder
     private var MoodPostText: some View {
         if let reasonText = post.content, !reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(reasonText)
-                .font(.custom("Georgia", size: 16))
-                .foregroundColor(.white.opacity(0.9))
-                .lineLimit(nil)
+                .font(.custom("HelveticaNeue", size: 14))
+                .foregroundColor(.white)
+                .lineLimit(6).truncationMode(.tail)
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
     
     @ViewBuilder
     private var MoodPostLocation: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .trailing, spacing: 5) {
             // Location
             if let locationName = post.location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 5) {
@@ -80,6 +81,7 @@ struct MoodPostCard: View {
                     Text(locationName)
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(1).truncationMode(.tail)
                 }
             }
             
@@ -103,34 +105,40 @@ struct MoodPostCard: View {
         let hasLocation = post.location?.name != nil && !(post.location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let hasPeople = post.people != nil && !(post.people?.isEmpty ?? true)
         
-        VStack(alignment: .leading, spacing: 6) {
-            // MARK: - Header Section
-            HStack(){
-                //Username and Timestamp
-                MoodPostHeader
-                Spacer()
-                // MARK: - Location and People Info
-                if hasLocation || hasPeople {
-                    MoodPostLocation
-                }
-            }
+        VStack(alignment: .leading, spacing: 2) {
             
-            HStack(spacing: 10) {
-                
-                // MARK: - Post Content Text (Reason)
-                MoodPostText
-                Spacer()
-                // Emotion Display
-                MoodPostEmotion
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1))
+            //Main Post
+            Group {
+                //Username, Timestamp, Location, People
+                HStack(){
+                    MoodPostHeader
+                    Spacer()
+                    if hasLocation || hasPeople {
+                        MoodPostLocation
+                            .padding(4)
+                    }
+                }
+                //Post Content and Emotion Circle
+                HStack(spacing: 0) {
+                    
+                    VStack(spacing: 0) {
+                        MoodPostEmotion
+                            //.offset(y: -4)
+                        Spacer()
+                    }
+                    Spacer()
+                    VStack(spacing: 0) {
+                        MoodPostText
+                            .padding(4)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
+                        Spacer()
+                    }
+                    .padding(4)
+                }
+                .frame(maxWidth: .infinity)
+                //.overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
             }
-            .padding(8)
-            .frame(maxWidth: .infinity)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1) )
 
             // MARK: - Interaction Buttons
             HStack(spacing: 25) {
@@ -184,14 +192,13 @@ struct MoodPostCard: View {
                 
                 Spacer()
             }
-            .padding(.top, (hasLocation || hasPeople || hasContent) ? 8 : 0) // Add padding if there's any content above buttons
         }
-        .padding(16)
+        .padding(8)
         .background(Color.white.opacity(0.075))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(post.emotion.color ?? Color.white.opacity(0.1), lineWidth: 2))
+                .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2))
         .onAppear(){
             // Initialize local like state if your FeedItem has this info
             // self.isLiked = post.isLikedByCurrentUser ?? false
