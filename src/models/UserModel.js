@@ -107,6 +107,11 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date
   },
+  fcmToken: {
+    type: String,
+    trim: true,
+    default: null, // Optional: allows the field to be null if no token is provided
+  },
 }, {
   timestamps: true
 });

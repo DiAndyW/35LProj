@@ -9,6 +9,8 @@ cron.schedule('* * * * *', async () => {
   const nowPST = moment().tz("America/Los_Angeles");
   const currentHourPST = nowPST.hour();
   const currentMinutePST = nowPST.minute();
+  
+  console.log(currentHourPST, currentMinutePST);
 
   console.log(`[Cron Job] Running at: ${nowPST.format('YYYY-MM-DD HH:mm:ss')} PST. Checking for notifications for ${currentHourPST}:${currentMinutePST}.`);
 
