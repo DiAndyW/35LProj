@@ -8,6 +8,7 @@ import feedRouter from './routes/feed.js';
 import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
 import mapRouter from './routes/mapRoutes.js';
+import reportRouter from './routes/report.js';
 
 const app = express();
 app.use(cors());
@@ -67,6 +68,9 @@ console.log('User routes mounted at /api/users');
 app.use('/api/map', mapRouter);
 console.log('Map routes mounted at /api/map');
 
+app.use('/api/report', reportRouter);
+console.log('Report routes mounted at /api/report');
+
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
   const server = app.listen(PORT, () => {
@@ -90,6 +94,9 @@ const startServer = () => {
     console.log('  GET  /api/map/locations/nearby/:lat/:lng - Find nearby locations');
     console.log('  POST /api/map/locations/search - Search locations');
     console.log('  POST /api/map/routes/calculate - Calculate route');
+    console.log('  GET /api/report/ - Get all reports (admin only)')
+    console.log('  POST /api/report/:id - Report a user or check-in');
+    console.log('  PATCH /api/report/:id/review - Review a report (admin only)');
   });
 
   process.on('SIGINT', () => shutdown(server));

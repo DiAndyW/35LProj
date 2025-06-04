@@ -1,7 +1,7 @@
 import MoodCheckIn from '../models/CheckIn.js';
 import User from '../models/UserModel.js';
 
-const getBlockedUsers = async (userId) => {
+export const getBlockedUsers = async (userId) => {
     // returns ids of blocked users and users blocked by the user
     
     // first get ids blocked by user

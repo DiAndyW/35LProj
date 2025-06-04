@@ -43,8 +43,8 @@ export const login = async (req, res) => {
   if (!ok) return res.status(401).json({ msg: 'Invalid credentials' });
   console.log('Password match:', ok);
 
-  const access = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '365d' });
-  const refresh = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const access = jwt.sign({ sub: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '365d' });
+  const refresh = jwt.sign({ sub: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({ access, refresh });
 };
 
@@ -71,14 +71,14 @@ export const refreshToken = async (req, res) => {
 
     // Generate new tokens
     const access = jwt.sign(
-      { sub: user.id },
+      { sub: user.id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
     );
 
     // Refresh token gets renewed each time it's used
     const refresh = jwt.sign(
-      { sub: user.id },
+      { sub: user.id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET,
       { expiresIn: '30d' } // 30 days from NOW
     );
