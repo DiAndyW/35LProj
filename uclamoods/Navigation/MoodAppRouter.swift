@@ -208,7 +208,7 @@ class MoodAppRouter: ObservableObject {
         } else {
             moodFlowTransitionOrigin = CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.75)
         }
-        moodFlowTransitionStyle = .blobToTop(emotion: emotion)
+        moodFlowTransitionStyle = .bubbleExpand
         performMoodFlowTransition(to: .completeCheckIn(emotion: emotion))
     }
     

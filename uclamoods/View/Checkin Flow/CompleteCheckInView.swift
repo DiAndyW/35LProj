@@ -58,7 +58,11 @@ struct SocialTagSectionView: View {
     @State private var newTagText: String = ""
     @FocusState private var isTextFieldFocused: Bool
     
-    // Helper to get sorted custom tags that are already selected
+    // Profanity Filter and Toast State
+    @StateObject private var profanityFilter = ProfanityFilterService()
+    @State private var showProfanityToast: Bool = false
+    @State private var toastMessage: String = ""
+    
     private var customSelectedTags: [String] {
         selectedTags.filter { !predefinedTags.contains($0) }.sorted()
     }
@@ -80,60 +84,58 @@ struct SocialTagSectionView: View {
                             } else {
                                 selectedTags.insert(tag)
                             }
-                            // Dismiss keyboard if a predefined tag is tapped
                             isTextFieldFocused = false
                         }
                     }
                     
-                    // Custom selected tags (already added)
+                    // Custom selected tags
                     ForEach(customSelectedTags, id: \.self) { tag in
-                        PillTagView(text: tag, isSelected: true) { // These are always "selected" as they are from the selectedTags set
-                            selectedTags.remove(tag) // Action is to remove
-                            isTextFieldFocused = false // Dismiss keyboard
+                        PillTagView(text: tag, isSelected: true) {
+                            selectedTags.remove(tag)
+                            isTextFieldFocused = false
                         }
                     }
                     
                     // "Input Pill" TextField
                     TextField("+ Add tag", text: $newTagText)
                         .font(.custom("Chivo", size: 14))
-                    // Dynamic foreground color: placeholder is dimmer, input text is brighter
                         .foregroundColor(newTagText.isEmpty ? Color.white.opacity(0.6) : .white)
                         .padding(.horizontal, 15)
                         .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.3)) // Pill background
-                        .cornerRadius(20) // Pill corner radius
-                        .frame(minWidth: 100, idealWidth: 100) // Give it some initial width, can expand
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(20)
+                        .frame(minWidth: 100, idealWidth: 100)
                         .focused($isTextFieldFocused)
-                        .onSubmit { // Called when Return key is pressed
-                            addCustomTagFromInput()
-                        }
-                    // Add a subtle border to the input pill if it's focused
+                        .onSubmit { addCustomTagFromInput() }
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
                                 .stroke(isTextFieldFocused ? Color.white.opacity(0.5) : Color.clear, lineWidth: 1)
                         )
                 }
-                .padding(.vertical, 5) // Padding for the HStack content within ScrollView
+                .padding(.vertical, 5)
             }
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
-        // Tapping the VStack background will dismiss the keyboard
-        .contentShape(Rectangle()) // Ensure the whole VStack area is tappable
+        .contentShape(Rectangle())
         .onTapGesture {
-            if isTextFieldFocused { // Only dismiss if the text field was focused
-                isTextFieldFocused = false
-            }
+            if isTextFieldFocused { isTextFieldFocused = false }
         }
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Apply toast modifier
     }
     
     private func addCustomTagFromInput() {
         let trimmedTag = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedTag.isEmpty {
-            selectedTags.insert(trimmedTag)
-            newTagText = "" // Clear the input field, making it "blank" for the next tag
-            // Optionally, you might want to keep the TextField focused for rapid entry:
-            // isTextFieldFocused = true
+            if profanityFilter.isContentAcceptable(text: trimmedTag) {
+                selectedTags.insert(trimmedTag)
+                newTagText = ""
+                // isTextFieldFocused = true // Optionally keep focus
+            } else {
+                toastMessage = "This tag contains offensive language."
+                showProfanityToast = true
+                // Do not add the tag, newTagText can remain for user to edit
+            }
         }
     }
 }
@@ -428,6 +430,10 @@ struct CompleteCheckInView: View {
         "Friends", "Family", "By Myself"
     ]
     
+    @StateObject private var profanityFilter = ProfanityFilterService()
+    @State private var showProfanityToast: Bool = false
+    @State private var toastMessage: String = ""
+    
     @State private var selectedActivities: Set<ActivityTag> = []
     @State private var predefinedActivities: [ActivityTag] = [
         ActivityTag(name: "Driving"), ActivityTag(name: "Resting"), ActivityTag(name: "Hobbies"),
@@ -438,20 +444,18 @@ struct CompleteCheckInView: View {
     @State private var showingAddCustomActivityField = false
     
     enum PrivacySetting: String, CaseIterable, Identifiable {
-        //case friends = "Friends"
-        case isPublic = "Public" // Consider renaming to "public" to avoid "is" prefix if not boolean
-        case isPrivate = "Private" // Consider "private"
+        case isPublic = "Public"
+        case isPrivate = "Private"
         var id: String { self.rawValue }
     }
     @State private var selectedPrivacy: PrivacySetting = .isPublic
     
     // MARK: - Location State
     @State private var showLocation: Bool = true
-    @StateObject private var locationManager = LocationManager() // New Location Manager
-    // This will hold the landmark name or status messages from LocationManager
+    @StateObject private var locationManager = LocationManager()
     @State private var displayableLocationName: String = "Fetching location..."
     
-    let emotion: Emotion // Passed in
+    let emotion: Emotion
     
     // MARK: - Saving State
     @State private var isSaving: Bool = false
@@ -467,83 +471,84 @@ struct CompleteCheckInView: View {
     
     // MARK: - Body
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Main content stack
-                VStack(spacing: 0) {
-                    EmotionHeaderView(
-                        emotion: emotion,
-                        timeFormatter: timeFormatter,
-                        currentDisplayLocation: getFormattedLocationForHeader(),
-                        geometry: geometry
-                    )
-                    .padding(.bottom, 30) // Adjust these offsets as per your original design
-                    .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48) // Example offset
-                    
-                    CheckInFormView(
-                        reasonText: $reasonText,
-                        isTextFieldFocused: $isTextFieldFocused,
-                        selectedSocialTags: $selectedSocialTags,
-                        predefinedSocialTags: predefinedSocialTags,
-                        selectedPrivacy: $selectedPrivacy,
-                        showLocation: $showLocation,
-                        currentLocation: $displayableLocationName, // Pass the displayable name
-                        emotion: emotion,
-                        geometry: geometry,
-                        isSaving: $isSaving,
-                        saveError: $saveError,
-                        isLocationLoading: .constant(locationManager.isLoading),
-                        saveAction: saveCheckIn
-                    )
-                    .padding(.top, -geometry.size.height * 0.56)
-                    .padding(.horizontal, geometry.size.width * 0.24)
-                }
-                .ignoresSafeArea(edges: .top)
-                .onTapGesture {
-                    isTextFieldFocused = false // Dismiss keyboard
-                }
-                .offset(y: -geometry.size.width * 0.0)
-                .offset(x: -geometry.size.width * 0.25)
-                
-                // Back Button Overlay
-                VStack {
-                    HStack {
-                        Button(action: {
-                            // Your navigation logic
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.prepare()
-                            impactFeedback.impactOccurred()
-                            router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 22, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44) // Ensure good tap area
-                        }
-                        .padding(.leading, 25)
-                        .padding(.top, -geometry.size.height * 0.02)
+        ZStack {
+            // Main content with GeometryReader
+            GeometryReader { geometry in
+                ZStack {
+                    // Main content stack
+                    VStack(spacing: 0) {
+                        EmotionHeaderView(
+                            emotion: emotion,
+                            timeFormatter: timeFormatter,
+                            currentDisplayLocation: getFormattedLocationForHeader(),
+                            geometry: geometry
+                        )
+                        .padding(.bottom, 30)
+                        .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48)
                         
+                        CheckInFormView(
+                            reasonText: $reasonText,
+                            isTextFieldFocused: $isTextFieldFocused,
+                            selectedSocialTags: $selectedSocialTags,
+                            predefinedSocialTags: predefinedSocialTags,
+                            selectedPrivacy: $selectedPrivacy,
+                            showLocation: $showLocation,
+                            currentLocation: $displayableLocationName,
+                            emotion: emotion,
+                            geometry: geometry,
+                            isSaving: $isSaving,
+                            saveError: $saveError,
+                            isLocationLoading: .constant(locationManager.isLoading),
+                            saveAction: saveCheckIn
+                        )
+                        .padding(.top, -geometry.size.height * 0.56)
+                        .padding(.horizontal, geometry.size.width * 0.24)
+                    }
+                    .ignoresSafeArea(edges: .top)
+                    .onTapGesture {
+                        isTextFieldFocused = false
+                    }
+                    .offset(y: -geometry.size.width * 0.0)
+                    .offset(x: -geometry.size.width * 0.25)
+                    
+                    // Back Button Overlay
+                    VStack {
+                        HStack {
+                            Button(action: {
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                impactFeedback.prepare()
+                                impactFeedback.impactOccurred()
+                                router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .padding(.leading, 25)
+                            .padding(.top, -geometry.size.height * 0.02)
+                            
+                            Spacer()
+                        }
                         Spacer()
                     }
-                    Spacer()
                 }
-            }
-            // Alert for save success
-            .alert("Success!", isPresented: $showSaveSuccessAlert) {
-                Button("OK", role: .cancel) {
-                    router.navigateToMainApp()
-                }
-            } message: {
-                Text("Your check-in has been saved successfully.")
             }
         }
+        // Apply toast to the entire ZStack container, not inside GeometryReader
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
+        .alert("Success!", isPresented: $showSaveSuccessAlert) {
+            Button("OK", role: .cancel) {
+                router.navigateToMainApp()
+            }
+        } message: {
+            Text("Your check-in has been saved successfully.")
+        }
         .onAppear {
-            // Start location fetch immediately if needed
             if showLocation {
                 displayableLocationName = "Fetching location..."
                 locationManager.requestLocationAccessIfNeeded()
                 
-                // Small delay to allow authorization if needed, then fetch
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     locationManager.fetchCurrentLocationAndLandmark()
                 }
@@ -557,7 +562,7 @@ struct CompleteCheckInView: View {
                 locationManager.fetchCurrentLocationAndLandmark()
             } else {
                 displayableLocationName = "Location Hidden"
-                locationManager.stopUpdatingMapLocation() // Stop any ongoing updates
+                locationManager.stopUpdatingMapLocation()
             }
         }
         .onChange(of: locationManager.landmarkName) { newLandmark in
@@ -580,13 +585,14 @@ struct CompleteCheckInView: View {
             }
         }
     }
+    
     // MARK: - Helper Methods
     private func getFormattedLocationForHeader() -> String {
         if !showLocation {
             return "Location Hidden"
         }
         if displayableLocationName.isEmpty || displayableLocationName == "Fetching location..." || displayableLocationName == "Location unavailable" {
-            return displayableLocationName // Show status
+            return displayableLocationName
         }
         return "@ \(displayableLocationName)"
     }
@@ -598,13 +604,13 @@ struct CompleteCheckInView: View {
         }
         if let name = landmark, !name.isEmpty {
             displayableLocationName = name
-        } else if coordinates != nil { // Have coords but no name (or name fetch failed)
+        } else if coordinates != nil {
             displayableLocationName = "Near your current location"
         } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
             displayableLocationName = "Location access needed"
         }
         else {
-            displayableLocationName = "Location unavailable" // Fallback
+            displayableLocationName = "Location unavailable"
         }
     }
     
@@ -617,9 +623,36 @@ struct CompleteCheckInView: View {
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
         
+        let trimmedReasonText = self.reasonText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let customSocialTags = selectedSocialTags.filter { !predefinedSocialTags.contains($0) }
+        let customActivityNames = selectedActivities.filter { $0.isCustom }.map { $0.name }
+        
+        // --- PROFANITY CHECKS ---
+        if !profanityFilter.isContentAcceptable(text: trimmedReasonText) {
+            isSaving = false
+            toastMessage = "Your reason contains offensive language."
+            showProfanityToast = true
+            return
+        }
+        if !customSocialTags.allSatisfy({ profanityFilter.isContentAcceptable(text: $0) }) {
+            isSaving = false
+            toastMessage = "A social tag contains offensive language."
+            showProfanityToast = true
+            return
+        }
+        if !customActivityNames.allSatisfy({ profanityFilter.isContentAcceptable(text: $0) }) {
+            isSaving = false
+            toastMessage = "A custom activity contains offensive language."
+            showProfanityToast = true
+            return
+        }
+        
+        isSaving = true
+        saveError = nil
+        showSaveSuccessAlert = false
+        
         Task {
             do {
-                // Get the latest landmark name and coordinates from the locationManager
                 let landmarkToSave = showLocation ? locationManager.landmarkName : nil
                 let coordinatesToSave = showLocation ? locationManager.userCoordinates : nil
                 
@@ -627,12 +660,12 @@ struct CompleteCheckInView: View {
                 
                 let response = try await CheckInService.createCheckIn(
                     emotion: self.emotion,
-                    reasonText: self.reasonText,
+                    reasonText: trimmedReasonText,
                     socialTags: self.selectedSocialTags,
                     selectedActivities: self.selectedActivities,
-                    landmarkName: landmarkToSave,         // Pass fetched landmark name
-                    userCoordinates: coordinatesToSave,   // Pass fetched coordinates
-                    showLocation: self.showLocation,      // User's intent
+                    landmarkName: landmarkToSave,
+                    userCoordinates: coordinatesToSave,
+                    showLocation: self.showLocation,
                     privacySetting: self.selectedPrivacy,
                     userDataProvider: self.userDataProvider
                 )
@@ -647,8 +680,6 @@ struct CompleteCheckInView: View {
                     isSaving = false
                     if let serviceError = error as? CheckInServiceError {
                         saveError = serviceError.errorDescription ?? "An unknown error occurred."
-                    } else if let localizedError = error as? LocalizedError {
-                        saveError = localizedError.errorDescription ?? error.localizedDescription
                     } else {
                         saveError = error.localizedDescription
                     }
