@@ -365,3 +365,106 @@ export const updateFCMToken = async (req, res) => {
     res.status(500).json({ msg: 'Server error while updating FCM token', details: error.message });
   }
 };
+
+// Add these endpoints to your authController.js
+
+export const changeUsername = async (req, res) => {
+  const userId = req.user.sub;
+  const { newUsername, currentPassword } = req.body;
+
+  if (!newUsername || !currentPassword) {
+    return res.status(400).json({ msg: 'New username and current password are required' });
+  }
+
+  if (newUsername.trim().length < 3) {
+    return res.status(400).json({ msg: 'Username must be at least 3 characters long' });
+  }
+
+  try {
+    // Get user with password for verification
+    const user = await UserModel.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    // Verify current password
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ msg: 'Current password is incorrect' });
+    }
+
+    // Check if username is already taken
+    const existingUser = await UserModel.findOne({ 
+      username: newUsername.trim(),
+      _id: { $ne: userId } // Exclude current user
+    });
+    
+    if (existingUser) {
+      return res.status(409).json({ msg: 'Username is already taken' });
+    }
+
+    // Update username
+    user.username = newUsername.trim();
+    await user.save();
+
+    res.json({
+      msg: 'Username updated successfully',
+      username: user.username
+    });
+
+  } catch (error) {
+    console.error('Error updating username:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ msg: 'Username is already taken' });
+    }
+    res.status(500).json({ msg: 'Server error while updating username' });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  const userId = req.user.sub;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ msg: 'Current password and new password are required' });
+  }
+
+  if (!strongPwd.test(newPassword)) {
+    return res.status(400).json({ 
+      msg: 'New password must be at least 10 characters long and include uppercase, lowercase, digit, and special character' 
+    });
+  }
+
+  try {
+    // Get user with password for verification
+    const user = await UserModel.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    // Verify current password
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ msg: 'Current password is incorrect' });
+    }
+
+    // Check if new password is same as current
+    const samePassword = await bcrypt.compare(newPassword, user.password);
+    if (samePassword) {
+      return res.status(400).json({ msg: 'New password must be different from current password' });
+    }
+
+    // Update password (pre-save hook will hash it)
+    user.password = newPassword;
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.json({
+      msg: 'Password updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ msg: 'Server error while updating password' });
+  }
+};

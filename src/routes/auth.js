@@ -8,7 +8,9 @@ import {
   resetPasswordWithCode,
   deleteAccount,
   updateNotificationPreferences,
-  updateFCMToken
+  updateFCMToken,
+  changeUsername, 
+  changePassword
 } from '../controllers/authController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import UserModel from '../models/UserModel.js';
@@ -29,5 +31,7 @@ authRouter.post('/reset-password-with-code', resetPasswordWithCode);
 authRouter.delete('/delete-account', requireAuth, deleteAccount);
 authRouter.put('/me/preferences', requireAuth, updateNotificationPreferences);
 authRouter.put('/me/fcm-token', requireAuth, updateFCMToken);
+authRouter.put('/me/username', requireAuth, changeUsername);
+authRouter.put('/me/password', requireAuth, changePassword);
 
 export default authRouter;
