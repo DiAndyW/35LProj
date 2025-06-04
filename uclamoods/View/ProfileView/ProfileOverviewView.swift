@@ -106,7 +106,7 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        MoodPostCard(post: post.toFeedItem())
+                        //MoodPostCard(post: post.toFeedItem(), openDetailAction: () -> Void)
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {

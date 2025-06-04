@@ -567,7 +567,7 @@ struct MapView: View {
         }
         .sheet(isPresented: $showingMoodDetail) {
             if let moodPost = selectedMoodPost {
-                MoodPostDetailView(moodPost: moodPost)
+                MapPostDetailView(moodPost: moodPost)
             }
         }
         .alert("Error", isPresented: $viewModel.showError) {
@@ -908,7 +908,7 @@ struct MoodPostPreview: View {
 
 // MARK: - Mood Post Detail View
 
-struct MoodPostDetailView: View {
+struct MapPostDetailView: View {
     let moodPost: MapMoodPost
     @Environment(\.dismiss) var dismiss
     
@@ -922,7 +922,7 @@ struct MoodPostDetailView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         // Use the existing MoodPostCard for consistent styling
-                        MoodPostCard(post: moodPost.asFeedItem)
+                        MoodPostCard(post: moodPost.asFeedItem, openDetailAction: {})
                             .padding(.horizontal)
                         
                         // Mini Map

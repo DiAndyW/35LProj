@@ -92,7 +92,7 @@ extension AnyTransition {
     }
 }
 
-// MARK: - Auth Flow (Same as before)
+// MARK: - Auth Flow
 struct AuthFlowView: View {
     @EnvironmentObject private var router: MoodAppRouter
     
@@ -145,7 +145,10 @@ struct MainAppView: View {
             // Custom tab bar overlay
             VStack {
                 Spacer()
-                FiveTabBar()
+                if !router.isDetailViewShowing { // Check the router's state
+                    FiveTabBar() //
+                        .transition(.move(edge: .bottom).combined(with: .opacity)) // Optional: animate disappearance
+                }
             }
             .ignoresSafeArea(edges: .bottom)
         }

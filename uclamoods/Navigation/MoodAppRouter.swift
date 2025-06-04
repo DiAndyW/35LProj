@@ -2,8 +2,8 @@ import SwiftUI
 
 enum MoodAppScreen: Equatable {
     case energySelection
-    case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel) // Placeholder for EmotionDataProvider.EnergyLevel
-    case completeCheckIn(emotion: Emotion) // Placeholder for Emotion
+    case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel)
+    case completeCheckIn(emotion: Emotion)
     case home
     case signIn
     case settings
@@ -19,7 +19,7 @@ enum TransitionStyle {
     case bubbleExpand
     case revealMask
     case moodMorph
-    case blobToTop(emotion: Emotion) // Placeholder for Emotion
+    case blobToTop(emotion: Emotion)
     case custom((Bool) -> AnyTransition)
 }
 
@@ -34,8 +34,6 @@ enum AuthScreen: String, CaseIterable {
     case signUp = "signUp"
 }
 
-// This MainScreen enum seems like a more detailed breakdown of screens,
-// distinct from the MainTab enum used for the TabView. No changes needed here for the tab bar itself.
 enum MainScreen: String, CaseIterable, Hashable {
     case home = "home"
     case settings = "settings"
@@ -45,8 +43,8 @@ enum MainScreen: String, CaseIterable, Hashable {
 
 enum MoodFlowScreen: Equatable {
     case energySelection
-    case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel) // Placeholder
-    case completeCheckIn(emotion: Emotion) // Placeholder
+    case emotionSelection(energyLevel: EmotionDataProvider.EnergyLevel)
+    case completeCheckIn(emotion: Emotion)
 }
 
 // MARK: - Updated Router for 5-Item Navigation
@@ -54,7 +52,7 @@ class MoodAppRouter: ObservableObject {
     // MARK: - Published Properties
     @Published var currentSection: AppSection = .auth
     @Published var currentAuthScreen: AuthScreen = .signIn
-    @Published var selectedMainTab: MainTab = .home // Default to home
+    @Published var selectedMainTab: MainTab = .home
     @Published var currentMoodFlowScreen: MoodFlowScreen = .energySelection
      
     // MARK: - Custom Transition Properties (for mood flow only)
@@ -62,6 +60,8 @@ class MoodAppRouter: ObservableObject {
     @Published var moodFlowTransitionProgress: CGFloat = 0
     @Published var moodFlowTransitionOrigin: CGPoint = .zero
     @Published var moodFlowTransitionStyle: TransitionStyle = .bubbleExpand
+    
+    @Published var isDetailViewShowing: Bool = false
      
     // MARK: - Screen size for calculations
     private var screenSize: CGSize = .zero
@@ -71,13 +71,11 @@ class MoodAppRouter: ObservableObject {
     let fadeInDuration: Double = 0.5
      
     // MARK: - 5-Item Tab Structure (MODIFIED)
-    // This enum defines all items that can appear in the tab bar.
-    // .checkIn is an action button, others are views.
     enum MainTab: String, CaseIterable, Identifiable {
         case home = "home"
-        case map = "map"                // NEW
-        case checkIn = "checkIn"        // This is the "Plus Button" action
-        case analytics = "analytics" // NEW
+        case map = "map"
+        case checkIn = "checkIn"
+        case analytics = "analytics"
         case profile = "profile"
          
         var id: String { self.rawValue }
@@ -86,7 +84,7 @@ class MoodAppRouter: ObservableObject {
             switch self {
             case .home: return "Feed"
             case .map: return "Map"
-            case .checkIn: return "Check In" // Title for the plus button itself if needed
+            case .checkIn: return "Check In"
             case .analytics: return "Analytics"
             case .profile: return "Profile"
             }
@@ -96,7 +94,7 @@ class MoodAppRouter: ObservableObject {
             switch self {
             case .home: return "house"
             case .map: return "map"
-            case .checkIn: return "plus.circle" // Icon for the plus button
+            case .checkIn: return "plus.circle"
             case .analytics: return "chart.bar"
             case .profile: return "person.circle"
             }
@@ -106,7 +104,7 @@ class MoodAppRouter: ObservableObject {
             switch self {
             case .home: return "house.fill"
             case .map: return "map.fill"
-            case .checkIn: return "plus.circle.fill" // Filled icon for plus button
+            case .checkIn: return "plus.circle.fill"
             case .analytics: return "chart.bar.fill"
             case .profile: return "person.circle.fill"
             }
@@ -135,7 +133,7 @@ class MoodAppRouter: ObservableObject {
     func navigateToMainApp() {
         withAnimation(.easeInOut(duration: 0.5)) {
             currentSection = .main
-            selectedMainTab = .home // Reset to home when entering main app
+            selectedMainTab = .home
         }
     }
      
@@ -149,34 +147,29 @@ class MoodAppRouter: ObservableObject {
      
     func signOut() {
         print("[MoodAppRouter] signOut: Initiating logout process.")
-        AuthenticationService.shared.logout() // Assuming this method exists
+        AuthenticationService.shared.logout()
          
         withAnimation(.easeInOut(duration: 0.3)) {
             self.currentSection = .auth
             self.currentAuthScreen = .signIn
-            self.selectedMainTab = .home // Reset to home
+            self.selectedMainTab = .home
             print("[MoodAppRouter] signOut: UI state updated to show SignIn screen.")
         }
     }
      
     // MARK: - Main App Tab Navigation
-    // This function is called when a TabBarButton is tapped.
     func selectTab(_ tab: MainTab) {
         if tab == .checkIn {
-            // If the "CheckIn" (Plus) button is tapped, navigate to mood flow
-            // and do NOT change selectedMainTab.
             navigateToMoodFlow()
         } else {
-            // update the selectedMainTab to switch the view in TabView.
-            if selectedMainTab != tab { // Optional: only animate/update if it's a different tab
-                 withAnimation(.easeInOut(duration: 0.2)) { // Add a subtle animation if desired
+            if selectedMainTab != tab {
+                 withAnimation(.easeInOut(duration: 0.2)) {
                     selectedMainTab = tab
                 }
             }
         }
     }
      
-    // Programmatic navigation to specific view tabs
     func navigateToHome() {
         if currentSection != .main { currentSection = .main }
         selectTab(.home)
@@ -240,7 +233,6 @@ class MoodAppRouter: ObservableObject {
         case .emotionSelection:
             performMoodFlowTransition(to: .energySelection)
         case .completeCheckIn:
-            // Could go back to emotionSelection or energySelection depending on your flow
             performMoodFlowTransition(to: .energySelection)
         case .energySelection:
             withAnimation(.easeInOut(duration: 0.5)) {
@@ -252,7 +244,6 @@ class MoodAppRouter: ObservableObject {
     // MARK: - Private Helpers
     private func getTransitionOriginForEnergyLevel(_ energyLevel: EmotionDataProvider.EnergyLevel) -> CGPoint {
         guard screenSize.width > 0 && screenSize.height > 0 else {
-            // Fallback to UIScreen.main.bounds if screenSize isn't set yet, though it should be.
             let bounds = UIScreen.main.bounds
             return CGPoint(x: bounds.width / 2, y: bounds.height / 2)
         }
@@ -264,7 +255,6 @@ class MoodAppRouter: ObservableObject {
             return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.6)
         case .low:
             return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.8)
-        // Add default or handle all cases if EmotionDataProvider.EnergyLevel has more
         }
     }
      
@@ -272,15 +262,15 @@ class MoodAppRouter: ObservableObject {
         guard !isAnimatingMoodFlow else { return }
          
         isAnimatingMoodFlow = true
-        let currentTransitionStyle = moodFlowTransitionStyle // Capture current style for the whole transition
+        let currentTransitionStyle = moodFlowTransitionStyle
          
         withAnimation(.easeInOut(duration: fadeOutDuration)) {
             moodFlowTransitionProgress = 1 // Animate out
         }
          
-        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration + 0.05) { // Delay for fade out
+        DispatchQueue.main.asyncAfter(deadline: .now() + fadeOutDuration + 0.05) {
             self.currentMoodFlowScreen = screen
-            self.moodFlowTransitionStyle = currentTransitionStyle // Ensure style is set before animating in
+            self.moodFlowTransitionStyle = currentTransitionStyle
              
             // Ensure this runs on the main thread for UI updates
             DispatchQueue.main.async {
