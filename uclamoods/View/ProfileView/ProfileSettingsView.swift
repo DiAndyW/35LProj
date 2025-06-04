@@ -12,7 +12,9 @@ struct ProfileSettingsView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            SettingsRow(icon: "person.circle", title: "Edit Profile", subtitle: "Update your information")
+            NavigationLink(destination: EditProfileView()) {
+                SettingsRow(icon: "person.circle", title: "Edit Profile", subtitle: "Update your information")
+            }
             NavigationLink(destination: NotificationSettingsView()) {
                 SettingsRow(icon: "bell", title: "Notifications", subtitle: "Manage notification preferences")
             }
