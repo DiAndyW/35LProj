@@ -431,6 +431,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Morii;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Morii uses Face ID to help you log in";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";
@@ -464,6 +465,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Morii;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Morii uses Face ID to help you log in";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We use your location to identify nearby landmarks for your check-ins and record on the map, enhancing your experience. If you choose to set a private location, your data will NOT be stored.";

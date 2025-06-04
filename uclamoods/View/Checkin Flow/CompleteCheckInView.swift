@@ -346,6 +346,7 @@ struct CheckInFormView: View {
     
     @Binding var isSaving: Bool
     @Binding var saveError: String?
+    @Binding var isLocationLoading: Bool
     
     let saveAction: () -> Void
     
@@ -378,6 +379,15 @@ struct CheckInFormView: View {
                 isDisabled: reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             )
         }
+    }
+    private func shouldDisableSaveButton() -> Bool {
+        // Disable if reason text is empty
+        let isReasonEmpty = reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        
+        // Disable if location is enabled but still loading
+        let isLocationPending = showLocation && isLocationLoading
+        
+        return isReasonEmpty || isLocationPending
     }
 }
 
@@ -457,6 +467,7 @@ struct CompleteCheckInView: View {
                             geometry: geometry,
                             isSaving: $isSaving,
                             saveError: $saveError,
+                            isLocationLoading: .constant(locationManager.isLoading),
                             saveAction: saveCheckIn
                         )
                         .padding(.top, -geometry.size.height * 0.56)
