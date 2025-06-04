@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var isLoading = false
     @State private var feedbackMessage = ""
     @State private var showForgotPassword = false // This state variable controls the sheet
+    @State private var showTermsOfService = false
     
     // Styling constants
     private let primaryButtonHeight: CGFloat = 52
@@ -70,6 +71,9 @@ struct SignInView: View {
             NavigationView { // Assuming ForgotPasswordView might need a navigation bar
                 ForgotPasswordView()
             }
+        }
+        .sheet(isPresented: $showTermsOfService) { // Sheet for Terms of Service
+            TermsOfServiceView() // Your TermsOfServiceView
         }
     }
     
@@ -169,6 +173,24 @@ struct SignInView: View {
             }
         }
         .padding(.top, mainStackSpacing / 1.5)
+        
+        // Terms of Service Link - Placed after Sign Up and before the final Spacer
+        HStack(spacing: 3) {
+            Text("By using Morii, you agree to our")
+                .font(.system(size: 12))
+                .foregroundColor(Color.white.opacity(0.5))
+            Button(action: {
+                performHapticFeedback(style: .light)
+                showTermsOfService = true
+            }) {
+                Text("Terms of Service.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color.white.opacity(0.75))
+                    .underline()
+            }
+        }
+        .padding(.top, mainStackSpacing)
+        .padding(.horizontal, formHorizontalPadding)
         
         Spacer()
     }

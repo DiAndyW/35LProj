@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MoodPostDetailView: View {
-    let post: FeedItem
+    let post: FeedItem // Assumed to have id: String, and emotion: Emotion? (where Emotion has color: Color?)
     let onDismiss: () -> Void
     
     @State private var newComment: String = ""
-    @State private var comments: [CommentPosts]
+    @State private var comments: [CommentPosts] // Assumed CommentPosts and its timestamp parsing are correct
     @State private var isSendingComment: Bool = false
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCommentFieldFocused: Bool
@@ -18,6 +18,10 @@ struct MoodPostDetailView: View {
     @State private var statusMessage = ""
     @State private var showStatusMessage = false
     
+    // Delete states
+    @State private var showingDeleteConfirmation = false
+    @State private var isDeleting = false
+    
     @EnvironmentObject private var userDataProvider: UserDataProvider
 
     // MARK: - Profanity Filter and Toast State
@@ -26,14 +30,20 @@ struct MoodPostDetailView: View {
     @State private var toastMessage: String = ""
     
     private var accentColor: Color {
-        post.emotion.color ?? .blue
+        post.emotion.color ?? .blue // Assumes FeedItem.emotion.color exists
+    }
+    
+    // Check if current user is the author of the post
+    private var isCurrentUserAuthor: Bool {
+        guard let currentUserId = userDataProvider.currentUser?.id else { return false }
+        return currentUserId == post.userId
     }
 
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
         let initialData = post.comments?.data ?? []
-         let initialDataToSort = post.comments?.data ?? []
+         let initialDataToSort = post.comments?.data ?? [] // Assuming FeedItem now has optional 'comments: CommentsResponse?'
          self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
              guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
                    let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
@@ -53,14 +63,20 @@ struct MoodPostDetailView: View {
                         .foregroundColor(.white)
                     Spacer()
                     
-                    // Options dropdown menu
+                    // Conditional Options menu based on post ownership
                     Menu {
-                        Button("Report Post") {
-                            showingReportMenu = true
-                        }
-                        
-                        Button("Block User", role: .destructive) {
-                            blockUser()
+                        if isCurrentUserAuthor {
+                            Button("Delete Post", role: .destructive) {
+                                showingDeleteConfirmation = true
+                            }
+                        } else {
+                            Button("Report Post") {
+                                showingReportMenu = true
+                            }
+                            
+                            Button("Block User", role: .destructive) {
+                                blockUser()
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -98,7 +114,7 @@ struct MoodPostDetailView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            MoodPostCard(
+                            MoodPostCard( // This assumes MoodPostCard can handle the 'post: FeedItem'
                                 post: post,
                                 openDetailAction: {}
                             )
@@ -119,7 +135,7 @@ struct MoodPostDetailView: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding()
                             } else {
-                                ForEach(comments) { comment in
+                                ForEach(comments) { comment in // Assumes CommentPosts is Identifiable
                                     CommentView(comment: comment)
                                         .padding(.horizontal)
                                 }
@@ -210,6 +226,16 @@ struct MoodPostDetailView: View {
                 }
             }
             
+            // Delete confirmation alert
+            .alert("Delete Post", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deletePost()
+                }
+            } message: {
+                Text("Are you sure you want to delete this post? This action cannot be undone.")
+            }
+            
             // Report reason dropdown overlay
             if showingReportMenu {
                 ZStack {
@@ -298,18 +324,60 @@ struct MoodPostDetailView: View {
                 isSendingComment = false
                 switch result {
                     case .success(let response):
+                        // Assuming response.comment is of type CommentPosts
                         self.comments.append(response.comment)
                         self.comments.sort { comment1, comment2 in
                             guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
                                   let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
                                 return false
                             }
-                            return date1 > date2
+                            return date1 > date2 // Assuming newest first
                         }
                         self.newComment = ""
                         self.isCommentFieldFocused = false // Dismiss keyboard
                     case .failure(let error):
                         print("Error sending comment: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func deletePost() {
+        guard let currentUserId = userDataProvider.currentUser?.id else {
+            showStatus("Please log in to delete posts")
+            return
+        }
+        
+        guard !isDeleting else { return }
+        
+        isDeleting = true
+        showStatus("Deleting post...")
+        
+        DeleteService.deletePost(postId: post.id, userId: currentUserId) { result in
+            DispatchQueue.main.async {
+                self.isDeleting = false
+                switch result {
+                case .success(let response):
+                    self.showStatus("Post deleted successfully")
+                    HapticFeedbackManager.shared.successNotification()
+                    
+                    // Dismiss the detail view after successful deletion
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.onDismiss()
+                    }
+                    
+                case .failure(let error):
+                    var errorMessage: String
+                    switch error {
+                    case .unauthorized:
+                        errorMessage = "You can only delete your own posts"
+                    case .notFound:
+                        errorMessage = "This post no longer exists"
+                    default:
+                        errorMessage = error.localizedDescription
+                    }
+                    self.showStatus("Failed to delete post: \(errorMessage)")
+                    HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }
@@ -332,11 +400,14 @@ struct MoodPostDetailView: View {
                 switch result {
                 case .success:
                     self.showStatus("User blocked successfully")
+                    HapticFeedbackManager.shared.successNotification()
+                    // Optionally dismiss the detail view after blocking
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.onDismiss()
                     }
                 case .failure(let error):
                     self.showStatus("Failed to block user: \(error.localizedDescription)")
+                    HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }
@@ -359,8 +430,10 @@ struct MoodPostDetailView: View {
                 switch result {
                 case .success:
                     self.showStatus("Post reported successfully")
+                    HapticFeedbackManager.shared.successNotification()
                 case .failure(let error):
                     self.showStatus("Failed to report post: \(error.localizedDescription)")
+                    HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }

@@ -120,9 +120,9 @@ struct SocialAnalyticsView: View {
                 emotionBreakdownSection(data.overallStats.emotionBreakdown)
                 
                 // Activity & Trends
-                if let trends = data.trends {
-                    trendsSection(trends)
-                }
+//                if let trends = data.trends {
+//                    trendsSection(trends)
+//                }
                 
                 // Engagement Metrics
                 engagementSection(data.overallStats)
