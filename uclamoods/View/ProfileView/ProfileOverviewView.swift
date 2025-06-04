@@ -23,7 +23,7 @@ struct ProfileOverviewView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                         .font(.largeTitle)
-                    Text("Failed to load overview")
+                    Text("Try posting some moods first!")
                         .font(.headline)
                     Text(error)
                         .font(.caption)
