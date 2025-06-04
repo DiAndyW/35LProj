@@ -13,6 +13,7 @@ struct User: Codable {
     let lastLogin: Date?
     let createdAt: Date?
     let updatedAt: Date?
+    var fcmToken: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -25,6 +26,7 @@ struct User: Codable {
         case lastLogin
         case createdAt
         case updatedAt
+        case fcmToken = ""
     }
 
     struct Preferences: Codable {

@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.yang.uclamoods</string>
+	<string>com.yang.morii</string>
 	<key>PROJECT_ID</key>
 	<string>morii-f282b</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:512817724309:ios:1b02ea7be86ecc5065949c</string>
+	<string>1:512817724309:ios:2c1b2131324bb3f465949c</string>
 </dict>
 </plist>

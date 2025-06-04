@@ -25,6 +25,13 @@ struct NotificationSettingsView: View {
     private var defaultPSTHour: Int = 13
     private var defaultPSTMinute: Int = 0
     
+    private var hasFCMToken: Bool {
+                if let token = userDataProvider.currentUser?.fcmToken, !token.isEmpty {
+                    return true
+                }
+        return false
+    }
+    
     var body: some View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all)
@@ -33,6 +40,14 @@ struct NotificationSettingsView: View {
                 Section(header: Text("General").foregroundColor(.gray)) {
                     Toggle("Enable Push Notifications", isOn: $pushNotificationsEnabled)
                         .tint(.pink)
+                        .onChange(of: pushNotificationsEnabled) { _, newValue in // ⓷ onChange modifier
+                            if newValue == true {
+                                // User toggled notifications ON
+                                checkAndRequestPermissionsIfNeeded()
+                            }
+                            // If newValue is false, user is disabling.
+                            // savePreferences() will handle saving this intent.
+                        }
                 }
                 
                 if pushNotificationsEnabled {
@@ -106,6 +121,75 @@ struct NotificationSettingsView: View {
         localComponents.minute = pstMinute ?? defaultPSTMinute
         return Calendar.current.date(from: localComponents) ?? Date()
     }
+    
+    private func checkAndRequestPermissionsIfNeeded() {
+        guard pushNotificationsEnabled else { return } // Only proceed if trying to enable
+        
+        if !hasFCMToken {
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                DispatchQueue.main.async {
+                    switch settings.authorizationStatus {
+                    case .notDetermined:
+                        // Permission not yet requested
+                        self.requestNotificationPermission()
+                    case .denied:
+                        // Permission was denied previously
+                        self.errorMessage = "Notification permissions are denied. Please enable them in your phone's Settings app."
+                        self.pushNotificationsEnabled = false // Revert toggle
+                        HapticFeedbackManager.shared.errorNotification()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.errorMessage = nil }
+                    case .authorized, .provisional, .ephemeral:
+                        // Permissions are already granted, but no FCM token found.
+                        // This could mean the token registration failed or wasn't saved.
+                        print("Permissions granted, but FCM token missing. Attempting to re-register for remote notifications.")
+                        UIApplication.shared.registerForRemoteNotifications()
+                        // You might want to inform the user if the token still doesn't arrive after a while.
+                    @unknown default:
+                        self.errorMessage = "Unknown notification authorization status."
+                        self.pushNotificationsEnabled = false // Revert toggle
+                        HapticFeedbackManager.shared.errorNotification()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.errorMessage = nil }
+                    }
+                }
+            }
+        } else {
+            // User has an FCM token, implies permissions were already granted and handled.
+            print("FCM token exists. No permission request needed from this view.")
+        }
+    }
+    
+    private func requestNotificationPermission() {
+        // ⓹ Requesting actual permission
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.errorMessage = "Error requesting permissions: \(error.localizedDescription)"
+                    self.pushNotificationsEnabled = false // Revert toggle on error
+                    HapticFeedbackManager.shared.errorNotification()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.errorMessage = nil }
+                    return
+                }
+                
+                if granted {
+                    print("Notification permission granted by user.")
+                    // Crucial step: After permission is granted, your app needs to register for remote notifications.
+                    // This is typically done by calling:
+                    UIApplication.shared.registerForRemoteNotifications()
+                    // The AppDelegate (or equivalent) will then receive the device token,
+                    // which is used by Firebase to generate an FCM token.
+                    // That FCM token needs to be sent to your backend and saved with the user.
+                    // This view initiates the process; the token handling is usually elsewhere.
+                } else {
+                    print("Notification permission denied by user.")
+                    self.errorMessage = "Push notifications are required for this feature. You can enable them in Settings."
+                    self.pushNotificationsEnabled = false // Revert toggle
+                    HapticFeedbackManager.shared.errorNotification()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.errorMessage = nil }
+                }
+            }
+        }
+    }
+    
     
     
     private func loadPreferences() {
