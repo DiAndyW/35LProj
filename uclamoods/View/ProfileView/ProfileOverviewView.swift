@@ -60,13 +60,14 @@ struct ProfileOverviewView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
             
-            if let currentSummary = summary {
-                let avgPleasantness = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.pleasantness
-                let avgIntensity = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.intensity
-                let avgControl = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.control
-                let avgClarity = currentSummary.data.weeklySummary.averageMoodForWeek.averageAttributes.clarity
+            if let currentSummaryData = summary?.data {
+                let weeklySummary = currentSummaryData.weeklySummary
+                let avgPleasantness = weeklySummary.averageMoodForWeek.averageAttributes.pleasantness
+                let avgIntensity = weeklySummary.averageMoodForWeek.averageAttributes.intensity
+                let avgControl = weeklySummary.averageMoodForWeek.averageAttributes.control
+                let avgClarity = weeklySummary.averageMoodForWeek.averageAttributes.clarity
                 let averageEmotion = Emotion(
-                    name: currentSummary.data.weeklySummary.averageMoodForWeek.topEmotion ?? "Average",
+                    name: weeklySummary.averageMoodForWeek.topEmotion ?? "Average",
                     color: ColorData.calculateMoodColor(pleasantness: avgPleasantness, intensity: avgIntensity) ?? .gray,
                     description: "Average mood for the week.",
                     pleasantness: avgPleasantness,
@@ -96,16 +97,16 @@ struct ProfileOverviewView: View {
                 )
                 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    WeekStatCard(title: "Top Emotion", value: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "N/A")
+                    WeekStatCard(title: "Top Emotion", value: weeklySummary.weeklyTopMood?.name ?? "N/A")
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(EmotionDataProvider.getEmotion(byName: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                                .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                         )
                     
-                    WeekStatCard(title: "Check-ins", value: "\(currentSummary.data.weeklySummary.weeklyCheckinsCount)")
+                    WeekStatCard(title: "Check-ins", value: "\(weeklySummary.weeklyCheckinsCount)")
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(EmotionDataProvider.getEmotion(byName: currentSummary.data.weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                                .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                         )
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
@@ -114,6 +115,10 @@ struct ProfileOverviewView: View {
                     .foregroundColor(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 30)
+            } else if isLoadingContent {
+                ProgressView("Loading weekly summary...")
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .padding()
             }
         }
     }
@@ -129,7 +134,7 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        MoodPostCard(post: post.toFeedItem(), openDetailAction: {})
+                        ProfilePostCard(post: post.toFeedItem(), openDetailAction: {})
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {

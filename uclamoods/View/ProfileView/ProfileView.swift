@@ -82,8 +82,6 @@ struct ProfileView: View {
     @State private var tabTransitionDirection: TabTransitionDirection = .none
     @State private var overviewRefreshID = UUID()
     
-    @State private var isLoadingProfileData: Bool = true
-    
     enum ProfileTab: String, CaseIterable, Identifiable {
         case overview = "Overview"
         case analytics = "Analytics"
@@ -96,19 +94,16 @@ struct ProfileView: View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all)
             
-            if isLoadingProfileData {
-                ProgressView()
+            if userDataProvider.currentUser == nil && !AuthenticationService.shared.isAuthenticated {
+                ProgressView("Not authenticated or loading user...")
+                    .foregroundColor(.white)
+            } else if userDataProvider.currentUser == nil && AuthenticationService.shared.isAuthenticated {
+                ProgressView("Loading Profile...")
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .onAppear {
-                        if isLoadingProfileData {
-                            Task {
-                                print("ProfileView: Initial data fetch started.")
-                                await userDataProvider.refreshUserData()
-                                await MainActor.run {
-                                    isLoadingProfileData = false
-                                    print("ProfileView: Initial data fetch complete. Showing content.")
-                                }
-                            }
+                        Task {
+                            print("ProfileView: currentUser is nil, attempting refreshUserData.")
+                            await userDataProvider.refreshUserData()
                         }
                     }
             } else {

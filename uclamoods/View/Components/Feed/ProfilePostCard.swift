@@ -1,47 +1,32 @@
+//
+//  ProfilePostCard.swift
+//  uclamoods
+//
+//  Created by David Sun on 6/4/25.
+//
+
 import SwiftUI
 
-struct MoodPostCardHeaderView: View {
-    let displayUsername: String
-    let isLoadingUsername: Bool
-    let usernameFetchFailed: Bool
+struct ProfilePostHeaderView: View {
     let timestamp: String
     let location: SimpleLocation?
     let people: [String]?
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
-                if isLoadingUsername {
-                    ProgressView().scaleEffect(0.7).frame(height: 18)
-                } else {
-                    Text(displayUsername)
-                        .font(.custom("Georgia", size: 16))
-                        .fontWeight(.semibold)
-                        .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white.opacity(0.9))
-                        .lineLimit(1).truncationMode(.tail)
-                }
-                
+            VStack(){
                 if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(timestampParts.relativeDate)
-                            .font(.custom("Georgia", size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                        Text(timestampParts.absoluteDate)
-                            .font(.custom("Georgia", size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
+                    Text("\(timestampParts.relativeDate), \(timestampParts.absoluteDate)")
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white.opacity(0.6))
                 }
                 Spacer()
             }
-            .padding([.leading, .top, .bottom], 8)
-            
             
             Spacer()
             
             let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            let hasPeople = people != nil && !(people?.isEmpty ?? true)
-            
-            if hasLocation || hasPeople {
+            if hasLocation{
                 VStack(alignment: .trailing, spacing: 5) {
                     // Location
                     if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -55,108 +40,52 @@ struct MoodPostCardHeaderView: View {
                                 .lineLimit(1).truncationMode(.tail)
                         }
                     }
-                    // People (Social Tags)
-                    if let peopleArray = people, !peopleArray.isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(peopleArray.joined(separator: ", "))
-                                .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(2).truncationMode(.tail)
-                        }
-                    }
                     Spacer()
                 }
-                .padding([.trailing, .top, .bottom], 8)
+            }
+        }
+    }
+}
+struct ProfilePostPeopleView: View {
+    let people: [String]?
+
+    var body: some View {
+        let hasPeople = people != nil && !(people?.isEmpty ?? true)
+        if hasPeople{
+            if let peopleArray = people, !peopleArray.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text(peopleArray.joined(separator: ", "))
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(2).truncationMode(.tail)
+                }
             }
         }
     }
 }
 
-struct MoodPostCardEmotionView: View {
+
+struct ProfilePostCardEmotionView: View {
     let emotion: SimpleEmotion
     
     var body: some View {
         VStack(spacing: 0) {
-            EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: emotion.name)!, showText: false) //
-                .frame(width:100, height: 100)
             Text(emotion.name)
-                .font(.custom("Georgia", size: 12))
+                .font(.custom("Georgia", size: 18))
                 .fontWeight(.bold)
                 .foregroundColor(emotion.color ?? .white)
                 .lineLimit(1)
-                .offset(y: -4)
-            Spacer()
+            EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: emotion.name)!, showText: false)
+                .frame(width:100, height: 100)
+                .offset(y: -3)
         }
     }
 }
 
-struct MoodPostCardContentView: View {
-    let content: String?
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            if let reasonText = content, !reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(reasonText)
-                    .font(.custom("HelveticaNeue", size: 14))
-                    .foregroundColor(.white)
-                    .lineLimit(6).truncationMode(.tail)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
-            }
-            Spacer()
-        }
-        .padding(4)
-    }
-}
-
-struct MoodPostCardActionsView: View {
-    @Binding var isLiked: Bool
-    @Binding var currentLikesCount: Int
-    let commentsCount: Int
-    let likeAction: () -> Void
-    let commentButtonAction: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Button(action: likeAction) {
-                HStack(spacing: 5) {
-                    Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 18))
-                        .foregroundColor(isLiked ? .red : .white.opacity(0.7))
-                        .scaleEffect(isLiked ? 1.15 : 1.0)
-                        .animation(.spring(response: 0.4, dampingFraction: 0.5), value: isLiked)
-                    Text("\(currentLikesCount)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                        .animation(nil, value: currentLikesCount)
-                }
-            }
-            .buttonStyle(.plain)
-            
-            Button(action: commentButtonAction) {
-                HStack(spacing: 5) {
-                    Image(systemName: "bubble.right")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white.opacity(0.7))
-                    Text("\(commentsCount)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.leading, 8)
-    }
-}
-
-
-struct MoodPostCard: View {
+struct ProfilePostCard: View {
     let post: FeedItem
     let openDetailAction: () -> Void
     
@@ -170,23 +99,24 @@ struct MoodPostCard: View {
     @State private var isPressed: Bool = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            MoodPostCardHeaderView(
-                displayUsername: displayUsername,
-                isLoadingUsername: isLoadingUsername,
-                usernameFetchFailed: usernameFetchFailed,
+        VStack(alignment: .leading, spacing: 0) {
+            
+            ProfilePostHeaderView(
                 timestamp: post.timestamp,
                 location: post.location,
                 people: post.people
             )
+            .padding(.horizontal, 16)
             
             HStack(spacing: 0) {
-                MoodPostCardEmotionView(emotion: post.emotion)
+                ProfilePostCardEmotionView(emotion: post.emotion)
                 MoodPostCardContentView(content: post.content)
             }
             .frame(maxHeight: 120)
             
+            
             HStack(){
+                ProfilePostPeopleView(people: post.people)
                 Spacer()
                 MoodPostCardActionsView(
                     isLiked: $isLiked,
@@ -196,7 +126,7 @@ struct MoodPostCard: View {
                     commentButtonAction: openDetailAction
                 )
             }
-
+            .padding(.horizontal, 16)
         }
         .padding(8)
         .background(Color.white.opacity(0.075))
