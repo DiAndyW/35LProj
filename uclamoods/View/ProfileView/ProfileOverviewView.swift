@@ -77,7 +77,7 @@ struct ProfileOverviewView: View {
                 )
                 
                 EmotionRadarChartView(emotion: averageEmotion)
-                    .padding(16)
+                    .padding(32)
                     .background(Color.white.opacity(0.05))
                     .cornerRadius(16)
                 
@@ -106,7 +106,7 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        ActivityCard(post: post.toFeedItem())
+                        MoodPostCard(post: post.toFeedItem())
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
@@ -150,7 +150,7 @@ struct ProfileOverviewView: View {
             }
         } catch {
             await MainActor.run {
-                self.contentLoadingError = error.localizedDescription
+                self.contentLoadingError = "No data available!"
                 self.isLoadingContent = false
                 print("ProfileOverviewView: Error loading content - \(error.localizedDescription)")
             }

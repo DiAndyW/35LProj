@@ -12,118 +12,125 @@ struct MoodPostCard: View {
     @State private var displayUsername: String = ""
     @State private var isLoadingUsername: Bool = false
     @State private var usernameFetchFailed: Bool = false
-    
-    // Helper to format the timestamp string into a relative date string
-    private func formatRelativeTimestamp(from timestampString: String) -> String {
-        let isoFormatter = ISO8601DateFormatter()
-        // Ensure the formatter can handle various ISO8601 fractional seconds precision
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        guard let date = isoFormatter.date(from: timestampString) else {
-            // Fallback for invalid timestamp format
-            // Try parsing without fractional seconds if the first attempt fails
-            isoFormatter.formatOptions = [.withInternetDateTime]
-            guard let dateWithoutFractions = isoFormatter.date(from: timestampString) else {
-                // If still fails, provide a generic fallback
-                return "Recently"
+
+    @ViewBuilder
+    private var MoodPostHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if isLoadingUsername {
+                ProgressView()
+                    .scaleEffect(0.7)
+                    .frame(height: 18)
+            } else {
+                Text(displayUsername)
+                    .font(.custom("Georgia", size: 16))
+                    .fontWeight(.semibold)
+                    .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white)
+                    .lineLimit(1).truncationMode(.tail)
             }
-            // Use the date parsed without fractions if that succeeded
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .abbreviated // e.g., "1 hr. ago", "2 days ago", "In 3 min."
-            formatter.dateTimeStyle = .named // e.g., "yesterday", "today", "now"
-            return formatter.localizedString(for: dateWithoutFractions, relativeTo: Date())
+            
+            if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: post.timestamp) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(timestampParts.relativeDate)
+                        .font(.custom("Georgia", size: 14))
+                        .foregroundColor(.white.opacity(0.8))
+                    Text(timestampParts.absoluteDate)
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
         }
-
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated // e.g., "1 hr. ago", "2 days ago", "now"
-        formatter.dateTimeStyle = .named   // This provides "yesterday", "today", etc.
-                                           // For "now" or very recent times, it's quite effective.
-        return formatter.localizedString(for: date, relativeTo: Date())
+        .padding(8)
     }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // MARK: - Header Section
-            HStack(spacing: 10) {
-                // Username and Timestamp
-                VStack(alignment: .leading, spacing: 2) {
-                    if isLoadingUsername {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .frame(height: 18)
-                    } else {
-                        Text(displayUsername)
-                            .font(.custom("Georgia", size: 16))
-                            .fontWeight(.semibold)
-                            .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white)
-                            .lineLimit(1).truncationMode(.tail)
-                    }
-                    
-                    Text(formatRelativeTimestamp(from: post.timestamp))
-                        .font(.custom("Georgia", size: 13))
+    
+    @ViewBuilder
+    private var MoodPostEmotion: some View {
+        VStack(spacing: 0) {
+            EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: post.emotion.name)!, showText: false)
+                .frame(width: 100, height: 100)
+            Text(post.emotion.name)
+                .font(.custom("Georgia", size: 14))
+                .fontWeight(.medium)
+                .foregroundColor(post.emotion.color ?? .white)
+                .lineLimit(1)
+        }
+        .padding(0)
+        .frame(width:100, height:120)
+    }
+    
+    @ViewBuilder
+    private var MoodPostText: some View {
+        if let reasonText = post.content, !reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text(reasonText)
+                .font(.custom("Georgia", size: 16))
+                .foregroundColor(.white.opacity(0.9))
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    
+    @ViewBuilder
+    private var MoodPostLocation: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            // Location
+            if let locationName = post.location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text(locationName)
+                        .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white.opacity(0.7))
                 }
-                
+            }
+            
+            // People (Social Tags)
+            if let peopleArray = post.people, !peopleArray.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text(peopleArray.joined(separator: ", "))
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(2).truncationMode(.tail)
+                }
+            }
+        }
+    }
+    
+    var body: some View {
+        let hasContent = post.content != nil && !(post.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let hasLocation = post.location?.name != nil && !(post.location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let hasPeople = post.people != nil && !(post.people?.isEmpty ?? true)
+        
+        VStack(alignment: .leading, spacing: 6) {
+            // MARK: - Header Section
+            HStack(){
+                //Username and Timestamp
+                MoodPostHeader
                 Spacer()
+                // MARK: - Location and People Info
+                if hasLocation || hasPeople {
+                    MoodPostLocation
+                }
+            }
+            
+            HStack(spacing: 10) {
                 
+                // MARK: - Post Content Text (Reason)
+                MoodPostText
+                Spacer()
                 // Emotion Display
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(post.emotion.color ?? Color.gray) // Uses SimpleEmotion.color
-                        .frame(width: 10, height: 10)
-                    
-                    Text(post.emotion.name) // Uses SimpleEmotion.name
-                        .font(.custom("Georgia", size: 14))
-                        .fontWeight(.medium)
-                        .foregroundColor(post.emotion.color ?? .white)
-                }
+                MoodPostEmotion
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1))
             }
-            
-            // MARK: - Post Content Text (Reason)
-            if let reasonText = post.content, !reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(reasonText)
-                    .font(.custom("Georgia", size: 15))
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            
-            // MARK: - Location and People Info
-            let hasContent = post.content != nil && !(post.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            let hasLocation = post.location?.name != nil && !(post.location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            let hasPeople = post.people != nil && !(post.people?.isEmpty ?? true)
-
-            if hasLocation || hasPeople { // Only show this VStack if there's location or people
-                VStack(alignment: .leading, spacing: 5) {
-                    // Location
-                    if let locationName = post.location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(locationName)
-                                .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(1).truncationMode(.tail)
-                        }
-                    }
-
-                    // People (Social Tags)
-                    if let peopleArray = post.people, !peopleArray.isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(peopleArray.joined(separator: ", "))
-                                .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(2).truncationMode(.tail)
-                        }
-                    }
-                }
-                .padding(.top, hasContent ? 8 : 0) // Add top padding only if there's main content above
-            }
-
+            .padding(8)
+            .frame(maxWidth: .infinity)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1) )
 
             // MARK: - Interaction Buttons
             HStack(spacing: 25) {
@@ -180,12 +187,11 @@ struct MoodPostCard: View {
             .padding(.top, (hasLocation || hasPeople || hasContent) ? 8 : 0) // Add padding if there's any content above buttons
         }
         .padding(16)
-        .background(Color.black.opacity(0.25))
+        .background(Color.white.opacity(0.05))
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
+                .stroke(post.emotion.color ?? Color.white.opacity(0.1), lineWidth: 2))
         .onAppear(){
             // Initialize local like state if your FeedItem has this info
             // self.isLiked = post.isLikedByCurrentUser ?? false

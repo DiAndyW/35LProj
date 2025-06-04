@@ -134,6 +134,7 @@ struct EmotionSelectionView: View {
                     EmotionRadarChartView(
                         emotion: selectedEmotion ?? EmotionDataProvider.defaultEmotion
                     )
+                    .padding(16)
                     .frame(height: availableHeight * 0.3) // 30% of screen height
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     .id((selectedEmotion?.id ?? EmotionDataProvider.defaultEmotion.id).uuidString + "-chart")

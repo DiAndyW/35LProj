@@ -42,6 +42,11 @@ struct EmotionDataProvider {
         }
     }
     
+    static func getEmotion(byName name: String) -> Emotion? {
+        let allEmotions = highEnergyEmotions + mediumEnergyEmotions + lowEnergyEmotions
+        return allEmotions.first { $0.name.lowercased() == name.lowercased() } ?? fallbackEmotion
+    }
+    
     static let highEnergyEmotions: [Emotion] = [
         Emotion(name: "Enraged",
                 color: ColorData.calculateMoodColor(pleasantness: 0.05, intensity: 0.9) ?? .gray,

@@ -9,6 +9,12 @@ import SwiftUI
 
 struct EmotionRadarChartView: View {
     let emotion: Emotion
+    let showText: Bool
+    
+    init(emotion: Emotion, showText: Bool = true) {
+        self.emotion = emotion
+        self.showText = showText
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -39,26 +45,28 @@ struct EmotionRadarChartView: View {
                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
                 
                 // Dimension labels
-                Text("Pleasantness")
-                    .font(.custom("Georgia", size: 12))
+                if(showText){
+                    Text("Pleasantness")
+                        .font(.custom("Georgia", size: 12))
                     //.font(.caption)
-                    .foregroundColor(.white)
-                    .position(x: center.x, y: center.y - radius - 15)
-                
-                Text("Intensity")
-                    .font(.custom("Georgia", size: 12))
-                    .foregroundColor(.white)
-                    .position(x: center.x + radius + 35, y: center.y)
-                
-                Text("Control")
-                    .font(.custom("Georgia", size: 12))
-                    .foregroundColor(.white)
-                    .position(x: center.x, y: center.y + radius + 15)
-                
-                Text("Clarity")
-                    .font(.custom("Georgia", size: 12))
-                    .foregroundColor(.white)
-                    .position(x: center.x - radius - 35, y: center.y)
+                        .foregroundColor(.white)
+                        .position(x: center.x, y: center.y - radius - 15)
+                    
+                    Text("Intensity")
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white)
+                        .position(x: center.x + radius + 35, y: center.y)
+                    
+                    Text("Control")
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white)
+                        .position(x: center.x, y: center.y + radius + 15)
+                    
+                    Text("Clarity")
+                        .font(.custom("Georgia", size: 12))
+                        .foregroundColor(.white)
+                        .position(x: center.x - radius - 35, y: center.y)
+                }
                 
                 // Data polygon
                 EmotionDataPolygon(
@@ -70,7 +78,6 @@ struct EmotionRadarChartView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .aspectRatio(1, contentMode: .fit)
-        .padding()
     }
 }
 
