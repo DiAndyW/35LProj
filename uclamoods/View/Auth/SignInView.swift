@@ -9,7 +9,6 @@ struct SignInView: View {
     
     @State private var isLoading = false
     @State private var feedbackMessage = ""
-    @State private var showBiometricOption = false
     @State private var showForgotPassword = false // This state variable controls the sheet
     
     // Styling constants
@@ -34,37 +33,12 @@ struct SignInView: View {
                 
                 await MainActor.run {
                     isLoading = false
-                    // Navigation is handled by the authentication state observer in MoodAppContainer
-                    // Enable biometric auth option after successful login
-                    if BiometricAuthManager.shared.isBiometricsAvailable() {
-                        UserDefaults.standard.isBiometricAuthEnabled = true
-                    }
                 }
             } catch {
                 await MainActor.run {
                     isLoading = false
                     feedbackMessage = error.localizedDescription
                 }
-            }
-        }
-    }
-    
-    private func attemptBiometricLogin() {
-        guard UserDefaults.standard.isBiometricAuthEnabled,
-              BiometricAuthManager.shared.isBiometricsAvailable() else {
-            return
-        }
-        
-        BiometricAuthManager.shared.authenticateWithBiometrics { success, error in
-            if success {
-                // Check if we have stored credentials
-                if AuthenticationService.shared.isAuthenticated {
-                    router.navigateToMainApp()
-                } else {
-                    feedbackMessage = "Please sign in with your credentials first"
-                }
-            } else if let error = error {
-                feedbackMessage = "Biometric authentication failed: \(error.localizedDescription)"
             }
         }
     }
@@ -91,16 +65,6 @@ struct SignInView: View {
         .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.65, blendDuration: 0.2), value: email)
         .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.65, blendDuration: 0.2), value: password)
         .animation(.easeInOut(duration: 0.3), value: isLoading)
-        .onAppear {
-            // Check if biometric auth is available and enabled
-            showBiometricOption = UserDefaults.standard.isBiometricAuthEnabled &&
-            BiometricAuthManager.shared.isBiometricsAvailable()
-            
-            // Attempt biometric login on appear if enabled
-            if showBiometricOption {
-                attemptBiometricLogin()
-            }
-        }
         // Attach the sheet modifier to a View in the body
         .sheet(isPresented: $showForgotPassword) {
             NavigationView { // Assuming ForgotPasswordView might need a navigation bar
@@ -122,44 +86,6 @@ struct SignInView: View {
             .font(.system(size: 26, weight: .semibold))
             .foregroundColor(Color.white.opacity(0.85))
             .padding(.bottom, mainStackSpacing / 2)
-        
-        // Biometric login button (if available)
-        if showBiometricOption {
-            Button(action: attemptBiometricLogin) {
-                HStack {
-                    Image(systemName: "faceid") // Or "touchid" depending on available biometrics
-                        .font(.system(size: 24))
-                    Text("Sign in with Face ID") // Or "Sign in with Touch ID"
-                        .font(.system(size: 16, weight: .medium))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(22)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                )
-            }
-            .padding(.horizontal, formHorizontalPadding)
-            .padding(.bottom, 10)
-            
-            HStack {
-                Rectangle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(height: 1)
-                Text("OR")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color.white.opacity(0.5))
-                    .padding(.horizontal, 10)
-                Rectangle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(height: 1)
-            }
-            .padding(.horizontal, formHorizontalPadding)
-            .padding(.bottom, 10)
-        }
         
         VStack(alignment: .center, spacing: 18) {
             FormField(
