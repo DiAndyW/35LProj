@@ -47,6 +47,16 @@ struct DateFormatterUtility {
         return (absoluteDate: absoluteDateString, relativeDate: relativeDateString)
     }
     
+    static func parseCommentTimestamp(_ timestampString: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timestampString) {
+            return date
+        }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: timestampString)
+    }
+    
     private static func parseDate(from timestampString: String) -> Date? {
         if let date = isoFormatter.date(from: timestampString) {
             return date

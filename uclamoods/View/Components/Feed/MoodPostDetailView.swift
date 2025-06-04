@@ -19,7 +19,14 @@ struct MoodPostDetailView: View {
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
-        self._comments = State(initialValue: post.comments?.data ?? [])
+        let initialData = post.comments?.data ?? []
+        self._comments = State(initialValue: initialData.sorted(by: { comment1, comment2 in
+            guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
+                  let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
+                return false
+            }
+            return date1 > date2
+        }))
     }
     
     var body: some View {
@@ -113,19 +120,26 @@ struct MoodPostDetailView: View {
     }
     
     func sendComment() {
-        guard let currentUserId = userDataProvider.currentUser?.id, //
+        guard let currentUserId = userDataProvider.currentUser?.id,
               !newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             print("User not logged in or comment is empty.")
             return
         }
         
         isSendingComment = true
-        CommentService.addComment(postId: post.id, userId: currentUserId, content: newComment) { result in //
+        CommentService.addComment(postId: post.id, userId: currentUserId, content: newComment) { result in
             DispatchQueue.main.async {
                 isSendingComment = false
                 switch result {
                     case .success(let response):
                         self.comments.append(response.comment)
+                        self.comments.sort { comment1, comment2 in
+                            guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
+                                  let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
+                                return false
+                            }
+                            return date1 > date2
+                        }
                         self.newComment = ""
                     case .failure(let error):
                         print("Error sending comment: \(error.localizedDescription)")
