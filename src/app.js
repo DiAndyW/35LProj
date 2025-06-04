@@ -9,7 +9,7 @@ import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
 import mapRouter from './routes/mapRoutes.js';
 import admin from 'firebase-admin'; // Import Firebase Admin SDK
-//import serviceAccount from '../morii-f282b-firebase-adminsdk-fbsvc-a0778aafe6.json' with { type: 'json' };
+import './scheduler/scheduler.js';
 
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.SERVICE_ACCOUNT_JSON)),
