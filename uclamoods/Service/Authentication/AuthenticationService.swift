@@ -72,6 +72,7 @@ enum AuthenticationError: LocalizedError {
 private enum HTTPMethod: String {
     case get = "GET"
     case post = "POST"
+    case put = "PUT"
 }
 
 // MARK: - Authentication Service
@@ -213,8 +214,8 @@ class AuthenticationService: ObservableObject {
                 // It was previously "/api/users/me/preferences" in the backend example.
                 // Ensure Config.apiURL(for: "/users/me/preferences") generates the correct full URL.
                 let (data, httpResponse) = try await performRequest(
-                    endpoint: "/users/me/preferences", // Ensure this is the correct path
-                    method: .post,
+                    endpoint: "/auth/me/preferences", // Ensure this is the correct path
+                    method: .put,
                     body: requestBody,
                     requiresAuth: true
                 )
@@ -627,8 +628,8 @@ class AuthenticationService: ObservableObject {
                     // Assuming your endpoint is /api/users/me/fcm-token as discussed
                     // and it's a PUT request.
                     let (data, httpResponse) = try await performRequest(
-                        endpoint: "/users/me/fcm-token", // Make sure this path matches your Express route EXACTLY
-                        method: .post,                     // Or .post, depending on your backend
+                        endpoint: "/auth/me/fcm-token", // Make sure this path matches your Express route EXACTLY
+                        method: .put,
                         body: requestBody,
                         requiresAuth: true
                     )
