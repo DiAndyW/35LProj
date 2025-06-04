@@ -39,7 +39,6 @@ struct MoodPostCard: View {
                 }
             }
         }
-        .padding(8)
     }
     
     @ViewBuilder
@@ -101,21 +100,28 @@ struct MoodPostCard: View {
     }
     
     var body: some View {
-        let hasContent = post.content != nil && !(post.content?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let hasLocation = post.location?.name != nil && !(post.location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let hasPeople = post.people != nil && !(post.people?.isEmpty ?? true)
         
         VStack(alignment: .leading, spacing: 2) {
-            
             //Main Post
             Group {
                 //Username, Timestamp, Location, People
                 HStack(){
-                    MoodPostHeader
+                    VStack(){
+                        MoodPostHeader
+                        Spacer()
+                    }
+                    .padding(8)
+
                     Spacer()
+                    
                     if hasLocation || hasPeople {
-                        MoodPostLocation
-                            .padding(4)
+                        VStack(){
+                            MoodPostLocation
+                            Spacer()
+                        }
+                        .padding(8)
                     }
                 }
                 //Post Content and Emotion Circle
@@ -129,7 +135,7 @@ struct MoodPostCard: View {
                     Spacer()
                     VStack(spacing: 0) {
                         MoodPostText
-                            .padding(4)
+                            .padding(8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
                         Spacer()
@@ -236,6 +242,7 @@ extension FeedItem {
 }
 
 // MARK: - Preview
+/*
 struct MoodPostCard_Previews: PreviewProvider {
     static var sampleEmotion = SimpleEmotion(
         name: "Joyful",
@@ -296,3 +303,4 @@ struct MoodPostCard_Previews: PreviewProvider {
         .preferredColorScheme(.dark)
     }
 }
+*/

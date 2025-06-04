@@ -68,8 +68,9 @@ struct MapMoodPost: Identifiable, Codable {
             activities: activities,
             location: SimpleLocation(name: location.landmarkName),
             timestamp: timestamp,
-            likesCount: likesCount,     // Pass through
-            commentsCount: commentsCount  // Pass through
+            likesCount: likesCount,
+            commentsCount: commentsCount,
+            comments: nil
         )
     }
 }

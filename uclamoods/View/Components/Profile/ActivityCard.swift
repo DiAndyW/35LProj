@@ -49,6 +49,7 @@ struct ActivityCard: View {
     }
 }
 
+/*
 struct ActivityCard_Previews: PreviewProvider {
     static var sampleFeedItem: FeedItem {
         // Create a sample SimpleEmotion
@@ -92,3 +93,4 @@ struct ActivityCard_Previews: PreviewProvider {
             .previewLayout(.sizeThatFits) // Make the preview canvas fit the content
     }
 }
+*/
