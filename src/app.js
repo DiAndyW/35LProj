@@ -9,6 +9,13 @@ import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
 import mapRouter from './routes/mapRoutes.js';
 import reportRouter from './routes/report.js';
+import admin from 'firebase-admin'; // Import Firebase Admin SDK
+import './scheduler/scheduler.js';
+
+admin.initializeApp({
+  credential: admin.credential.cert(JSON.parse(process.env.SERVICE_ACCOUNT_JSON)),
+});
+
 
 const app = express();
 app.use(cors());
