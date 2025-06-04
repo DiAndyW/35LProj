@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MoodPostDetailView: View {
-    let post: FeedItem // Assumed to have id: String, and emotion: Emotion? (where Emotion has color: Color?)
+    let post: FeedItem
     let onDismiss: () -> Void
     
     @State private var newComment: String = ""
-    @State private var comments: [CommentPosts] // Assumed CommentPosts and its timestamp parsing are correct
+    @State private var comments: [CommentPosts]=
     @State private var isSendingComment: Bool = false
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCommentFieldFocused: Bool
@@ -26,14 +26,14 @@ struct MoodPostDetailView: View {
     @State private var toastMessage: String = ""
     
     private var accentColor: Color {
-        post.emotion.color ?? .blue // Assumes FeedItem.emotion.color exists
+        post.emotion.color ?? .blue
     }
 
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
         let initialData = post.comments?.data ?? []
-         let initialDataToSort = post.comments?.data ?? [] // Assuming FeedItem now has optional 'comments: CommentsResponse?'
+         let initialDataToSort = post.comments?.data ?? []
          self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
              guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
                    let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
@@ -98,7 +98,7 @@ struct MoodPostDetailView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            MoodPostCard( // This assumes MoodPostCard can handle the 'post: FeedItem'
+                            MoodPostCard(
                                 post: post,
                                 openDetailAction: {}
                             )
@@ -119,7 +119,7 @@ struct MoodPostDetailView: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding()
                             } else {
-                                ForEach(comments) { comment in // Assumes CommentPosts is Identifiable
+                                ForEach(comments) { comment in
                                     CommentView(comment: comment)
                                         .padding(.horizontal)
                                 }
@@ -298,14 +298,13 @@ struct MoodPostDetailView: View {
                 isSendingComment = false
                 switch result {
                     case .success(let response):
-                        // Assuming response.comment is of type CommentPosts
                         self.comments.append(response.comment)
                         self.comments.sort { comment1, comment2 in
                             guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
                                   let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
                                 return false
                             }
-                            return date1 > date2 // Assuming newest first
+                            return date1 > date2
                         }
                         self.newComment = ""
                         self.isCommentFieldFocused = false // Dismiss keyboard
@@ -333,7 +332,6 @@ struct MoodPostDetailView: View {
                 switch result {
                 case .success:
                     self.showStatus("User blocked successfully")
-                    // Optionally dismiss the detail view after blocking
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.onDismiss()
                     }

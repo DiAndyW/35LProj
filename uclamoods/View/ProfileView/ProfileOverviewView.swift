@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ProfileOverviewView: View {
-    // Data states
     @State private var posts: [MoodPost] = []
     @State private var summary: UserSummary? = nil
     
@@ -19,7 +18,7 @@ struct ProfileOverviewView: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.vertical, 50)
-            } else if let error = contentLoadingError {
+            } else if let error = contentLoadingError, summary == nil && posts.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
@@ -40,7 +39,11 @@ struct ProfileOverviewView: View {
                 .padding()
             } else {
                 VStack(spacing: 20) {
-                    summarySection
+                    ProfileSummarySectionView(
+                        summary: self.summary,
+                        isLoading: self.isLoadingContent && self.summary == nil,
+                        loadingError: self.summary == nil ? self.contentLoadingError : nil
+                    )
                     postsSection
                 }
                 .padding(.vertical)
@@ -49,77 +52,6 @@ struct ProfileOverviewView: View {
         }
         .task(id: refreshID) {
             await loadContent(isRefresh: summary != nil || !posts.isEmpty)
-        }
-    }
-    
-    @ViewBuilder
-    private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("This Week")
-                .font(.custom("Georgia", size: 24))
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-            
-            if let currentSummaryData = summary?.data {
-                let weeklySummary = currentSummaryData.weeklySummary
-                let avgPleasantness = weeklySummary.averageMoodForWeek.averageAttributes.pleasantness
-                let avgIntensity = weeklySummary.averageMoodForWeek.averageAttributes.intensity
-                let avgControl = weeklySummary.averageMoodForWeek.averageAttributes.control
-                let avgClarity = weeklySummary.averageMoodForWeek.averageAttributes.clarity
-                let averageEmotion = Emotion(
-                    name: weeklySummary.averageMoodForWeek.topEmotion ?? "Average",
-                    color: ColorData.calculateMoodColor(pleasantness: avgPleasantness, intensity: avgIntensity) ?? .gray,
-                    description: "Average mood for the week.",
-                    pleasantness: avgPleasantness,
-                    intensity: avgIntensity,
-                    control: avgControl,
-                    clarity: avgClarity
-                )
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Average Attributes")
-                            .font(.custom("Georgia", size: 16))
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding()
-                    
-                    EmotionRadarChartView(emotion: averageEmotion)
-                        .offset(y: -10)
-                }
-                .frame(maxWidth: .infinity, maxHeight: 300)
-                .background(Color.white.opacity(0.05))
-                .cornerRadius(16)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(averageEmotion.color.opacity(0.6), lineWidth: 2)
-                )
-                
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    WeekStatCard(title: "Top Emotion", value: weeklySummary.weeklyTopMood?.name ?? "N/A")
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
-                        )
-                    
-                    WeekStatCard(title: "Check-ins", value: "\(weeklySummary.weeklyCheckinsCount)")
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
-                        )
-                }
-            } else if contentLoadingError == nil && !isLoadingContent {
-                Text("No summary data available for this week.")
-                    .font(.custom("Georgia", size: 16))
-                    .foregroundColor(.white.opacity(0.7))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 30)
-            } else if isLoadingContent {
-                ProgressView("Loading weekly summary...")
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .padding()
-            }
         }
     }
     
@@ -134,13 +66,18 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        ProfilePostCard(post: post.toFeedItem(), openDetailAction: {})
+                        MoodPostCard(post: post.toFeedItem(), openDetailAction: {})
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
                 Text("No recent activity to display.")
                     .font(.custom("Georgia", size: 16))
                     .foregroundColor(.white.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 30)
+            } else if isLoadingContent && posts.isEmpty {
+                ProgressView("Loading posts...")
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 30)
             }
@@ -153,7 +90,7 @@ struct ProfileOverviewView: View {
                 isLoadingContent = true
                 contentLoadingError = nil
             }
-        } else {
+        } else if isRefresh {
             await MainActor.run {
                 isLoadingContent = true
                 contentLoadingError = nil
@@ -178,9 +115,11 @@ struct ProfileOverviewView: View {
             }
         } catch {
             await MainActor.run {
-                self.contentLoadingError = "No data available!"
-                self.isLoadingContent = false
-                print("ProfileOverviewView: Error loading content - \(error.localizedDescription)")
+                if self.summary == nil && self.posts.isEmpty {
+                    self.isLoadingContent = false
+                    self.contentLoadingError = "Failed to load profile data. Please try again."
+                    print("ProfileOverviewView: Error loading content - \(error.localizedDescription)")
+                }
             }
         }
     }
@@ -188,7 +127,7 @@ struct ProfileOverviewView: View {
     private func fetchSummaryData() async throws -> UserSummary {
         try await Task.sleep(for: .milliseconds(50))
         return try await withCheckedThrowingContinuation { continuation in
-            ProfileService.fetchSummary { result in //
+            ProfileService.fetchSummary { result in
                 switch result {
                     case .success(let summary):
                         continuation.resume(returning: summary)
@@ -205,7 +144,7 @@ struct ProfileOverviewView: View {
             throw NSError(domain: "DataFetching", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid or missing user ID for fetching posts."])
         }
         return try await withCheckedThrowingContinuation { continuation in
-            MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)") { result in //
+            MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)") { result in
                 switch result {
                     case .success(let posts):
                         continuation.resume(returning: posts)

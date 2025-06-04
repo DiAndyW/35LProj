@@ -35,7 +35,7 @@ struct ProfileTabViewSelector: View {
     @Namespace private var selectedTabNamespace
     
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 3) {
             ForEach(tabs, id: \.self) { tab in
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.35)) {
