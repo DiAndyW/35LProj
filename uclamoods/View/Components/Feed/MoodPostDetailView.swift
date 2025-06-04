@@ -118,7 +118,6 @@ struct MoodPostDetailView: View {
                                 post: post,
                                 openDetailAction: {}
                             )
-                            .scaledToFit()
                             .padding(12)
                             
                             Divider().background(Color.gray.opacity(0.9)).padding(.horizontal)
