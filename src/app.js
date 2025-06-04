@@ -8,12 +8,14 @@ import feedRouter from './routes/feed.js';
 import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
 import mapRouter from './routes/mapRoutes.js';
+import reportRouter from './routes/report.js';
 import admin from 'firebase-admin'; // Import Firebase Admin SDK
 import './scheduler/scheduler.js';
 
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.SERVICE_ACCOUNT_JSON)),
 });
+
 
 const app = express();
 app.use(cors());
@@ -73,6 +75,9 @@ console.log('User routes mounted at /api/users');
 app.use('/api/map', mapRouter);
 console.log('Map routes mounted at /api/map');
 
+app.use('/api/report', reportRouter);
+console.log('Report routes mounted at /api/report');
+
 const startServer = () => {
   const PORT = process.env.PORT || 3000;
   const server = app.listen(PORT, () => {
@@ -88,13 +93,17 @@ const startServer = () => {
     console.log('  POST /auth/register - Register new user');
     console.log('  POST /auth/login - User login');
     console.log('  GET  /auth/profile - Get user profile (requires auth)');
-    console.log('  GET /api/feed?skip=0&limit=20 - Get first 20 global feed check-ins');
+    console.log('  GET /api/feed?skip=0&limit=20 - Get first 20 user feed check-ins');
     console.log('  GET  /api/users/:userId/username - Get username by userId');
+    console.log('  POST  /api/users/:userId/block - Block a user');
     console.log('  GET  /api/map/locations - Get all locations');
     console.log('  POST /api/map/locations - Add new location');
     console.log('  GET  /api/map/locations/nearby/:lat/:lng - Find nearby locations');
     console.log('  POST /api/map/locations/search - Search locations');
     console.log('  POST /api/map/routes/calculate - Calculate route');
+    console.log('  GET /api/report/ - Get all reports (admin only)')
+    console.log('  POST /api/report/:id - Report a user or check-in');
+    console.log('  PATCH /api/report/:id/review - Review a report (admin only)');
   });
 
   process.on('SIGINT', () => shutdown(server));

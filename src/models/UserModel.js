@@ -107,6 +107,14 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date
   },
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    default: [],
+  }],
+  isAdmin: {
+    type: Boolean, 
+    default: false,
+  }
   fcmToken: {
     type: String,
     trim: true,
