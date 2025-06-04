@@ -69,13 +69,19 @@ struct MoodPost: Codable, Identifiable {
 
 struct CommentsInfo: Codable {
     let count: Int
-    let comments: [CommentPosts]
+    let data: [CommentPosts]
 }
 
-struct CommentPosts: Codable {
-    let userID: String
+struct CommentPosts: Codable, Identifiable {
+    let id = UUID()
+    let userId: String
     let content: String
     let timestamp: String
+    
+    enum CodingKeys: String, CodingKey {
+        case userId
+        case content, timestamp
+    }
 }
 
 struct LikesInfo: Codable {
@@ -150,11 +156,11 @@ struct LocationData: Codable {
     let landmarkName: String?
     let coordinatesData: CoordinatesObject
     let isShared: Bool?
-
+    
     var coordinates: [Double] {
         return coordinatesData.coordinates
     }
-
+    
     enum CodingKeys: String, CodingKey {
         case landmarkName = "name"
         case coordinatesData = "coordinates"
@@ -165,24 +171,24 @@ struct LocationData: Codable {
 struct CoordinatesObject: Codable {
     let type: String
     let coordinates: [Double]
-
+    
     enum ObjectCodingKeys: String, CodingKey {
         case type
         case coordinates
     }
-
+    
     init(type: String = "Point", coordinates: [Double]) {
         self.type = type
         self.coordinates = coordinates
     }
-
+    
     init(from decoder: Decoder) throws {
         if let container = try? decoder.container(keyedBy: ObjectCodingKeys.self) {
             self.type = try container.decode(String.self, forKey: .type)
             self.coordinates = try container.decode([Double].self, forKey: .coordinates)
         }
         else if let container = try? decoder.singleValueContainer(),
-                  let coordsArray = try? container.decode([Double].self) {
+                let coordsArray = try? container.decode([Double].self) {
             self.type = "Point"
             self.coordinates = coordsArray
         }
@@ -193,7 +199,7 @@ struct CoordinatesObject: Codable {
             ))
         }
     }
-
+    
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: ObjectCodingKeys.self)
         try container.encode(self.type, forKey: .type)
@@ -207,47 +213,47 @@ struct RGBAColor: Codable {
     let green: Double
     let blue: Double
     let alpha: Double
-
+    
     // Initialize from SwiftUI.Color
     // Returns nil if color components cannot be extracted (e.g., on unsupported platforms or for invalid colors)
     init?(color: Color?) {
         guard let existingColor = color else { return nil }
-
+        
         // Use UIColor (iOS/tvOS/watchOS/visionOS) or NSColor (macOS) to extract RGBA components
-        #if canImport(UIKit)
-            let platformColor = UIColor(existingColor)
-        #elseif canImport(AppKit)
-            // Ensure the NSColor is in a device-independent color space (e.g., sRGB) before extracting components
-            guard let platformColor = NSColor(existingColor).usingColorSpace(.sRGB) else {
-                // Fallback if color conversion fails
-                // print("Warning: Could not convert NSColor to sRGB for serialization.")
-                return nil
-            }
-        #else
-            // Fallback for platforms where neither UIKit nor AppKit is available.
-            // Direct component extraction from SwiftUI.Color is not universally supported.
-            // print("Warning: Color serialization is not fully supported on this platform.")
-            return nil // Or define a default/error color representation
-        #endif
-
+#if canImport(UIKit)
+        let platformColor = UIColor(existingColor)
+#elseif canImport(AppKit)
+        // Ensure the NSColor is in a device-independent color space (e.g., sRGB) before extracting components
+        guard let platformColor = NSColor(existingColor).usingColorSpace(.sRGB) else {
+            // Fallback if color conversion fails
+            // print("Warning: Could not convert NSColor to sRGB for serialization.")
+            return nil
+        }
+#else
+        // Fallback for platforms where neither UIKit nor AppKit is available.
+        // Direct component extraction from SwiftUI.Color is not universally supported.
+        // print("Warning: Color serialization is not fully supported on this platform.")
+        return nil // Or define a default/error color representation
+#endif
+        
         var r: CGFloat = 0
         var g: CGFloat = 0
         var b: CGFloat = 0
         var a: CGFloat = 0
-
+        
         // Extract components
-        #if canImport(UIKit) || canImport(AppKit)
-            platformColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-            self.red = Double(r)
-            self.green = Double(g)
-            self.blue = Double(b)
-            self.alpha = Double(a)
-        #else
-            // Should not be reached if the earlier #else for platformColor assignment returned nil
-            return nil
-        #endif
+#if canImport(UIKit) || canImport(AppKit)
+        platformColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        self.red = Double(r)
+        self.green = Double(g)
+        self.blue = Double(b)
+        self.alpha = Double(a)
+#else
+        // Should not be reached if the earlier #else for platformColor assignment returned nil
+        return nil
+#endif
     }
-
+    
     // Convert back to SwiftUI.Color
     var swiftUIColor: Color {
         Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
@@ -261,7 +267,7 @@ struct SimpleEmotion: Codable {
     let clarity: Float?
     let control: Float?
     let color: Color?
-
+    
     init(name: String, pleasantness: Float?, intensity: Float?, clarity: Float?, control: Float?, color: Color? = nil) {
         self.name = name
         self.pleasantness = pleasantness
@@ -272,12 +278,12 @@ struct SimpleEmotion: Codable {
         // Use the emotion name to get color from map
         self.color = EmotionColorMap.getColor(for: name)
     }
-
+    
     enum CodingKeys: String, CodingKey {
         case name, pleasantness, intensity, clarity, control
         case colorData = "color"
     }
-
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decode(String.self, forKey: .name)
@@ -285,10 +291,10 @@ struct SimpleEmotion: Codable {
         intensity = try container.decodeIfPresent(Float.self, forKey: .intensity)
         clarity = try container.decodeIfPresent(Float.self, forKey: .clarity)
         control = try container.decodeIfPresent(Float.self, forKey: .control)
-
+        
         self.color = EmotionColorMap.getColor(for: self.name)
     }
-
+    
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
@@ -296,7 +302,7 @@ struct SimpleEmotion: Codable {
         try container.encodeIfPresent(intensity, forKey: .intensity)
         try container.encodeIfPresent(clarity, forKey: .clarity)
         try container.encodeIfPresent(control, forKey: .control)
-
+        
         // Encode the color from the map
         if let existingColor = self.color {
             if let rgbaRepresentation = RGBAColor(color: existingColor) {

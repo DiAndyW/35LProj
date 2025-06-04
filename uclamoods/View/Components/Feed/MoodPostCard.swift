@@ -5,7 +5,9 @@ import SwiftUI
 
 struct MoodPostCard: View {
     let post: FeedItem // Using your defined FeedItem struct
-    @State private var isLiked = false // Local state for UI, ideally fetch/sync real like state
+    @EnvironmentObject private var userDataProvider: UserDataProvider
+    @State private var isLiked: Bool = false
+    @State private var currentLikesCount: Int = 0
     // let initialLikeCount: Int // Would come from post.likesCount
     // let initialCommentCount: Int // Would come from post.commentsCount
 
@@ -147,31 +149,28 @@ struct MoodPostCard: View {
             }
 
             // MARK: - Interaction Buttons
-            HStack(spacing: 25) {
+            HStack(spacing: 10) {
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        isLiked.toggle()
-                        // TODO: Call backend to update like status and fetch new like count
+                        handleLikeButtonTapped()
                     }
                     // Haptic feedback
                     let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                     impactFeedback.prepare()
                     impactFeedback.impactOccurred()
                 }) {
-                    /*
                     HStack(spacing: 5) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 18))
                             .foregroundColor(isLiked ? .red : .white.opacity(0.7))
                             .scaleEffect(isLiked ? 1.15 : 1.0)
                             .animation(.spring(response: 0.4, dampingFraction: 0.5), value: isLiked)
-                        // Displaying likesCount from FeedItem + local optimistic update
-                        Text("\(post.likesCount + (isLiked && !(post.isLikedByCurrentUser ?? false) ? 1 : (!isLiked && (post.isLikedByCurrentUser ?? false) ? -1 : 0)))")
+                        Text("\(currentLikesCount)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
-                            .animation(nil, value: isLiked)
+                            .animation(nil, value: currentLikesCount)
                     }
-                     */
+                     
                 }
                 .buttonStyle(.plain)
 
@@ -182,24 +181,14 @@ struct MoodPostCard: View {
                         Image(systemName: "bubble.right")
                             .font(.system(size: 18))
                             .foregroundColor(.white.opacity(0.7))
-                        Text("\(post.commentsCount)") // Displaying commentsCount from FeedItem
+                        Text("\(post.commentsCount ?? 0)") // Displaying commentsCount from FeedItem
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
                 }
                 .buttonStyle(.plain)
-                
-                Button(action: {
-                    // TODO: Share post
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
             }
+            .padding(.leading, 8)
         }
         .padding(8)
         .background(Color.white.opacity(0.075))
@@ -208,8 +197,12 @@ struct MoodPostCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2))
         .onAppear(){
-            // Initialize local like state if your FeedItem has this info
-            // self.isLiked = post.isLikedByCurrentUser ?? false
+            if let userId = userDataProvider.currentUser?.id {
+                self.isLiked = post.likes?.userIds.contains(userId) ?? false
+            } else {
+                self.isLiked = false
+            }
+            self.currentLikesCount = post.likes?.count ?? post.likesCount ?? 0
             loadUsername()
         }
     }
@@ -231,6 +224,45 @@ struct MoodPostCard: View {
                     print("Failed to fetch username for \(post.userId): \(error.localizedDescription)")
                     self.displayUsername = "User" // Fallback or use post.userId if appropriate
                     self.usernameFetchFailed = true
+            }
+        }
+    }
+    
+    private func handleLikeButtonTapped() {
+        guard let currentUserID = userDataProvider.currentUser?.id else {
+            return
+        }
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            isLiked.toggle()
+            if isLiked {
+                currentLikesCount += 1
+            } else {
+                currentLikesCount -= 1
+            }
+        }
+        
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.prepare()
+        impactFeedback.impactOccurred()
+        
+        LikeService.updateLikeStatus(for: post.id, userId: currentUserID) { result in
+            switch result {
+                case .success(let updateResponse):
+                    self.currentLikesCount = updateResponse.likesCount
+                    // Potentially update self.isLiked based on a more detailed response if needed
+                    print("Like status successfully updated via LikeService for post \(post.id). New count: \(updateResponse.likesCount)")
+                case .failure(let error):
+                    print("Failed to update like status via LikeService for post \(post.id): \(error.localizedDescription)")
+                    // Revert optimistic UI update
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        isLiked.toggle()
+                        if isLiked {
+                            currentLikesCount += 1
+                        } else {
+                            currentLikesCount -= 1
+                        }
+                    }
             }
         }
     }

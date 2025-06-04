@@ -7,6 +7,7 @@ struct HomeFeedView: View {
     @State private var isLoading = false
     @State private var showingCompose = false
     
+    
     var body: some View {
         ZStack {
             Color.black
