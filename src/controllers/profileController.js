@@ -211,27 +211,13 @@ const getWeeklySummary = async (userId) => {
       });
     }
 
-    //determine when the start of the week was
-    const currentDate = new Date();
-    const currentDay = currentDate.getDay();
-    //if currentday is 0, then its sunday, return 6, otherwise return currenday-1
-    const daysSinceMonday = (currentDay === 0 ? 6 : currentDay - 1);
-  
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - daysSinceMonday);
-    startOfWeek.setHours(0, 0, 0, 0); // Start of this Monday
-  
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 7); // next monday
-    endOfWeek.setHours(0, 0, 0, 0);
-
     // Use aggregation pipeline to get both count and top mood for week
     const weeklyCheckins = await MoodCheckIn.aggregate([
       { $match: { 
           userId: new mongoose.Types.ObjectId(userId),
           timestamp: {
-            $gte: startOfWeek,
-            $lt: endOfWeek
+            $gte: dateRange.start,
+            $lt: dateRange.end
           }
         }
       },
@@ -262,7 +248,8 @@ const getWeeklySummary = async (userId) => {
     if (topEmotionResult.length === 0) {
       return {
         weeklyCheckinsCount,
-        weeklyTopMood: null
+        weeklyTopMood: null,
+        averageMoodForWeek
       };
     }
 
@@ -321,14 +308,7 @@ const getAverageMoodForPeriod = async (userId, period, dateRange) => {
   }
 
   // Calculate most common emotion for this period
-  // possibly unnecessary, included currently if Frontend needs it
-  const emotionCounts = {};
-  avgMood[0].emotions.forEach(emotion => {
-    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
-  });
-  
-  const topEmotion = Object.entries(emotionCounts)
-    .sort(([,a], [,b]) => b - a)[0];
+  const topEmotionData = calculateTopEmotion(avgMood[0].emotions);
 
   return {
     averageAttributes: {
@@ -338,8 +318,8 @@ const getAverageMoodForPeriod = async (userId, period, dateRange) => {
       clarity: Math.round((avgMood[0].avgClarity || 0) * 100) / 100
     },
     totalCheckins: avgMood[0].totalCheckins,
-    topEmotion: topEmotion ? topEmotion[0] : null,
-    topEmotionCount: topEmotion ? topEmotion[1] : 0
+    topEmotion: topEmotionData?.name || null,
+    topEmotionCount: topEmotionData?.count || 0
   };
 };
 
@@ -396,13 +376,7 @@ const getAverageMoodByDayOfWeek = async (userId, period, dateRange) => {
     const dayIndex = dayData._id - 1; // Convert 1-7 -> 0-6 for array indexing
     
     // Calculate most common emotion for this day
-    const emotionCounts = {};
-    dayData.emotions.forEach(emotion => {
-      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
-    });
-    
-    const topEmotion = Object.entries(emotionCounts)
-      .sort(([,a], [,b]) => b - a)[0];
+    const topEmotionData = calculateTopEmotion(dayData.emotions);
 
     result[dayIndex] = {
       dayOfWeek: dayNames[dayIndex],
@@ -414,8 +388,8 @@ const getAverageMoodByDayOfWeek = async (userId, period, dateRange) => {
         clarity: Math.round((dayData.avgClarity || 0) * 100) / 100
       },
       totalCheckins: dayData.totalCheckins,
-      topEmotion: topEmotion ? topEmotion[0] : null,
-      topEmotionCount: topEmotion ? topEmotion[1] : 0
+      topEmotion: topEmotionData?.name || null,
+      topEmotionCount: topEmotionData?.count || 0
     };
   });
 
@@ -463,13 +437,7 @@ const getAverageMoodByContext = async (userId, period, dateRange, contextType) =
   ]);
 
   const processedData = contextMoodData.map(contextData => {
-    const emotionCounts = {};
-    contextData.emotions.forEach(emotion => {
-      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
-    });
-    
-    const topEmotion = Object.entries(emotionCounts)
-      .sort(([,a], [,b]) => b - a)[0];
+    const topEmotionData = calculateTopEmotion(contextData.emotions);
 
     return {
       [contextType]: contextData._id,
@@ -480,8 +448,8 @@ const getAverageMoodByContext = async (userId, period, dateRange, contextType) =
         clarity: Math.round((contextData.avgClarity || 0) * 100) / 100
       },
       totalCheckins: contextData.totalCheckins,
-      topEmotion: topEmotion ? topEmotion[0] : null,
-      topEmotionCount: topEmotion ? topEmotion[1] : 0,
+      topEmotion: topEmotionData?.name || null,
+      topEmotionCount: topEmotionData?.count || 0,
       percentageOfTotal: overallStats[0] ? 
         Math.round((contextData.totalCheckins / overallStats[0].totalCheckinsWithContext) * 10000) / 100 : 0
     };
@@ -495,6 +463,22 @@ const getAverageMoodByContext = async (userId, period, dateRange, contextType) =
     }
   };
 };
+
+// Helper function to calculate most common emotion from array
+const calculateTopEmotion = (emotions) => {
+  if (!emotions || emotions.length === 0) return null;
+  
+  const emotionCounts = {};
+  emotions.forEach(emotion => {
+    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+  });
+  
+  const topEmotion = Object.entries(emotionCounts)
+    .sort(([,a], [,b]) => b - a)[0];
+    
+  return topEmotion ? { name: topEmotion[0], count: topEmotion[1] } : null;
+};
+
 
 // Helper function to calculate date ranges
 const getDateRange = (period) => {
