@@ -6,7 +6,9 @@ import {
   logout, 
   forgotPassword, 
   resetPasswordWithCode,
-  deleteAccount
+  deleteAccount,
+  updateNotificationPreferences,
+  updateFCMToken
 } from '../controllers/authController.js';
 import requireAuth from '../middleware/requireAuth.js';
 import UserModel from '../models/UserModel.js';
@@ -21,9 +23,11 @@ authRouter.get('/profile', requireAuth, async (req, res) => {
   res.json(me);
 });
 authRouter.post('/refresh', refreshToken);
-authRouter.post('/logout', requireAuth, logout); // requireAuth is your auth middleware
+authRouter.post('/logout', requireAuth, logout);
 authRouter.post('/forgot-password', forgotPassword);
 authRouter.post('/reset-password-with-code', resetPasswordWithCode);
 authRouter.delete('/delete-account', requireAuth, deleteAccount);
+authRouter.put('/me/preferences', requireAuth, updateNotificationPreferences);
+authRouter.put('/me/fcm-token', requireAuth, updateFCMToken);
 
 export default authRouter;

@@ -2,6 +2,7 @@
 node_modules/
 .pnp/
 .pnp.js
+morii-f282b-firebase-adminsdk-fbsvc-a0778aafe6.json
 
 # Environment Variables
 .env
