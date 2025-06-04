@@ -9,79 +9,70 @@ enum MoodPostServiceError: Error {
     case serverError(statusCode: Int, message: String?)
 }
 
+import Foundation
+
 class MoodPostService {
-    private var posts: [MoodPost] = []
-    
-    static func fetchMoodPosts(endpoint: String, completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
-        let url = Config.apiURL(for: endpoint)
+    // Enhanced method with pagination parameters
+    static func fetchMoodPosts(
+        skip: Int = 0,
+        limit: Int = 20,
+        sort: String = "timestamp", // "timestamp" or "hottest"
+        completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void
+    ) {
+        // Construct URL with query parameters
+        guard var components = URLComponents(url: Config.apiURL(for: "/api/feed"), resolvingAgainstBaseURL: false) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        components.queryItems = [
+            URLQueryItem(name: "skip", value: String(skip)),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "sort", value: sort)
+        ]
+        
+        guard let url = components.url else {
+            completion(.failure(.invalidURL))
+            return
+        }
         
         print("MoodPostService: Fetching posts from \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        
         request.addAuthenticationIfNeeded()
         
-        if let authorizationHeader = request.value(forHTTPHeaderField: "Authorization") {
-            print("MoodPostService: Authorization Header being sent: \(authorizationHeader)")
-        } else {
-            print("MoodPostService: Authorization Header is NOT set on the request.")
-        }
-        
         URLSession.shared.dataTask(with: request) { data, response, error in
-            
-            if let error = error {
-                print("MoodPostService: Network request error - \(error.localizedDescription)")
-                completion(.failure(.networkError(error)))
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("MoodPostService: Invalid response object received.")
-                completion(.failure(.invalidResponse))
-                return
-            }
-            
-            print("MoodPostService: Received HTTP status code \(httpResponse.statusCode)")
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                var serverMessage: String? = "Unknown server error."
-                if let responseData = data, let errorMessage = String(data: responseData, encoding: .utf8) {
-                    serverMessage = errorMessage
-                    print("MoodPostService: Server error message - \(errorMessage)")
+            // ... rest of existing networking code
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(.networkError(error)))
+                    return
                 }
-                completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
-                return
-            }
-            
-            guard let data = data else {
-                print("MoodPostService: No data received from server.")
-                completion(.failure(.noData))
-                return
-            }
-            do {
-                let decoder = JSONDecoder()
-                let moodPosts = try decoder.decode([MoodPost].self, from: data)
-                print("MoodPostService: Successfully decoded \(moodPosts.count) mood posts.")
-                completion(.success(moodPosts))
-            } catch let decodingError {
-                print("MoodPostService: JSON decoding error - \(decodingError.localizedDescription)")
-                if let decodingError = decodingError as? DecodingError {
-                    switch decodingError {
-                    case .typeMismatch(let type, let context):
-                        print("  Type mismatch for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                    case .valueNotFound(let type, let context):
-                        print("  Value not found for type \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                    case .keyNotFound(let key, let context):
-                        print("  Key not found: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                    case .dataCorrupted(let context):
-                        print("  Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")) - \(context.debugDescription)")
-                    @unknown default:
-                        print("  Unknown decoding error.")
-                    }
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    completion(.failure(.invalidResponse))
+                    return
                 }
-                completion(.failure(.decodingError(decodingError)))
+                
+                guard let data = data else {
+                    completion(.failure(.noData))
+                    return
+                }
+                
+                do {
+                    let moodPosts = try JSONDecoder().decode([MoodPost].self, from: data)
+                    completion(.success(moodPosts))
+                } catch {
+                    completion(.failure(.decodingError(error)))
+                }
             }
         }.resume()
+    }
+    
+    // Convenience method for backward compatibility
+    static func fetchMoodPosts(endpoint: String, completion: @escaping (Result<[MoodPost], MoodPostServiceError>) -> Void) {
+        fetchMoodPosts(skip: 0, limit: 20, sort: "timestamp", completion: completion)
     }
 }
