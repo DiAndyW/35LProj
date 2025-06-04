@@ -9,10 +9,10 @@ import userRouter from './routes/userRoutes.js';
 import cors from 'cors';
 import mapRouter from './routes/mapRoutes.js';
 import admin from 'firebase-admin'; // Import Firebase Admin SDK
-import serviceAccount from '../morii-f282b-firebase-adminsdk-fbsvc-a0778aafe6.json' with { type: 'json' };
+//import serviceAccount from '../morii-f282b-firebase-adminsdk-fbsvc-a0778aafe6.json' with { type: 'json' };
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(JSON.parse(process.env.SERVICE_ACCOUNT_JSON)),
 });
 
 const app = express();
