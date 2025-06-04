@@ -4,10 +4,16 @@
 <dict>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Morii sends notifications to keep you updated on new comments, likes, and checkins.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Chivo-VariableFont_wght.ttf</string>
 		<string>Gambetta-Variable.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
 	</array>
 </dict>
 </plist>

@@ -13,7 +13,10 @@ struct ProfileSettingsView: View {
     var body: some View {
         VStack(spacing: 16) {
             SettingsRow(icon: "person.circle", title: "Edit Profile", subtitle: "Update your information")
-            SettingsRow(icon: "bell", title: "Notifications", subtitle: "Manage notification preferences")
+            NavigationLink(destination: NotificationSettingsView()) { // Embed NotificationSettingsView
+                            SettingsRow(icon: "bell", title: "Notifications", subtitle: "Manage notification preferences")
+                        }
+                        .buttonStyle(PlainButtonStyle())
             SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
             
             // Logout button

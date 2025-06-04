@@ -28,6 +28,13 @@ struct AuthErrorResponse: Codable {
     let details: String?
 }
 
+struct UpdatePreferencesRequest: Codable {
+    let pushNotificationsEnabled: Bool
+    let notificationHourPST: Int
+    let notificationMinutePST: Int
+}
+
+
 // MARK: - Errors
 enum AuthenticationError: LocalizedError {
     case invalidURL(String)
@@ -177,6 +184,73 @@ class AuthenticationService: ObservableObject {
         }
     }
     
+    func updateUserPreferences(
+            pushEnabled: Bool,
+            notificationHourPST: Int,
+            notificationMinutePST: Int
+            // Add other preference parameters here if your backend expects them
+            // shareLocation: Bool? = nil,
+            // showMoodToStrangers: Bool? = nil,
+            // anonymousSharing: Bool? = nil
+        ) async throws {
+            guard isAuthenticated, let userId = self.currentUserId else {
+                print("[AuthService][Preferences] User not authenticated or no user ID. Cannot update preferences.")
+                throw AuthenticationError.sessionExpired
+            }
+
+            print("[AuthService][Preferences] Attempting to update preferences for user: \(userId)")
+            print("[AuthService][Preferences] Data to send: PushEnabled: \(pushEnabled), HourPST: \(notificationHourPST), MinutePST: \(notificationMinutePST)")
+
+            let requestBody = UpdatePreferencesRequest(
+                pushNotificationsEnabled: pushEnabled,
+                notificationHourPST: notificationHourPST,
+                notificationMinutePST: notificationMinutePST
+                // Map other parameters if you add them
+            )
+
+            do {
+                // The endpoint path should match your backend route exactly (e.g., "/users/me/preferences")
+                // It was previously "/api/users/me/preferences" in the backend example.
+                // Ensure Config.apiURL(for: "/users/me/preferences") generates the correct full URL.
+                let (data, httpResponse) = try await performRequest(
+                    endpoint: "/users/me/preferences", // Ensure this is the correct path
+                    method: .post,
+                    body: requestBody,
+                    requiresAuth: true
+                )
+
+                if (200...299).contains(httpResponse.statusCode) {
+                    print("[AuthService][Preferences] Successfully updated preferences on backend.")
+                    // Optionally, decode response if backend sends back the updated user/preferences
+                    // For now, we assume success means the backend updated it.
+
+                    // IMPORTANT: Refresh local user data to reflect the changes
+                    // This will also update UserDataProvider.shared.currentUser
+                    // because UserDataProvider subscribes to AuthenticationService.shared.$currentUser
+                    _ = try await fetchUserProfile() // Re-fetch profile to get the latest data
+                    print("[AuthService][Preferences] User profile refreshed after preference update.")
+
+                } else {
+                    // Try to decode an error message from the backend
+                    var errorMessage = "Failed to update preferences with status \(httpResponse.statusCode)."
+                    if let errorData = try? jsonDecoder.decode(AuthErrorResponse.self, from: data) {
+                        errorMessage = errorData.msg
+                    } else if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
+                        errorMessage = responseString // Fallback to raw string if AuthErrorResponse fails
+                    }
+                    print("[AuthService][Preferences] Error updating preferences: \(errorMessage)")
+                    throw AuthenticationError.serverError(statusCode: httpResponse.statusCode, message: errorMessage, httpResponse.url)
+                }
+            } catch let error as AuthenticationError {
+                print("[AuthService][Preferences] AuthenticationError during preference update: \(error.localizedDescription)")
+                throw error
+            } catch {
+                print("[AuthService][Preferences] Unexpected error during preference update: \(error.localizedDescription)")
+                throw AuthenticationError.underlying(error)
+            }
+        }
+
+    
     // MARK: - Public API
     func register(username: String, email: String, password: String) async throws -> RegisterResponse {
         print("[AuthService][Register] Attempting registration for username: \(username), email: \(email)")
@@ -272,19 +346,24 @@ class AuthenticationService: ObservableObject {
     
     func loginAndFetchProfile(email: String, password: String) async throws {
         print("[AuthService][LoginFlow] Initiating login and profile fetch for email: \(email)")
-        _ = try await login(email: email, password: password)
-        
+        _ = try await login(email: email, password: password) // login() already handles setting isAuthenticated
+
         if self.isAuthenticated {
-            print("[AuthService][LoginFlow] Login successful (isAuthenticated is true), proceeding to fetch profile.")
+            print("[AuthService][LoginFlow] Login successful (isAuthenticated is true), proceeding to fetch profile and send pending FCM token.")
+            // Send any pending FCM token now that user is authenticated
+            sendPendingFCMTokenIfNeeded()
+            
             do {
-                let user = try await fetchUserProfile()
+                _ = try await fetchUserProfile()
                 print("[AuthService][LoginFlow] loginAndFetchProfile: Profile fetch returned. CurrentUser in AuthSvc: \(self.currentUser?.username ?? "nil")")
             } catch {
                 print("[AuthService][LoginFlow] ERROR: fetchUserProfile failed AFTER successful login token acquisition: \(error.localizedDescription)")
-                throw error
+                // Don't re-throw here if you want to allow login to "succeed" even if profile fetch fails initially
+                // but do log it. The UI should handle a nil currentUser.
             }
         } else {
             print("[AuthService][LoginFlow] CRITICAL Error: Login attempt finished, but user is NOT authenticated before profile fetch. This indicates an issue in login() state update logic if login didn't throw.")
+            // This case should ideally not be hit if login() correctly updates isAuthenticated and throws on failure.
             throw AuthenticationError.underlying(NSError(domain: "AuthFlow", code: -1, userInfo: [NSLocalizedDescriptionKey: "Internal authentication flow error: isAuthenticated was false after login() completed without error."]))
         }
     }
@@ -527,6 +606,66 @@ class AuthenticationService: ObservableObject {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
+    
+    func sendFCMTokenToBackend(fcmToken: String) {
+            // Only send if the user is authenticated and we have a user ID
+            guard isAuthenticated, let userId = self.currentUserId else {
+                print("[AuthService][FCM] User not authenticated or no user ID. FCM token not sent yet. Token: \(fcmToken)")
+                // You might want to store the token locally and send it once the user logs in.
+                UserDefaults.standard.set(fcmToken, forKey: "pendingFCMToken")
+                return
+            }
+            
+            // Clear any pending token if we are about to send one
+            UserDefaults.standard.removeObject(forKey: "pendingFCMToken")
+
+            print("[AuthService][FCM] Attempting to send FCM token to backend for user: \(userId). Token: \(fcmToken)")
+
+            Task {
+                do {
+                    let requestBody = ["fcmToken": fcmToken]
+                    // Assuming your endpoint is /api/users/me/fcm-token as discussed
+                    // and it's a PUT request.
+                    let (data, httpResponse) = try await performRequest(
+                        endpoint: "/users/me/fcm-token", // Make sure this path matches your Express route EXACTLY
+                        method: .post,                     // Or .post, depending on your backend
+                        body: requestBody,
+                        requiresAuth: true
+                    )
+
+                    if (200...299).contains(httpResponse.statusCode) {
+                        if let responseString = String(data: data, encoding: .utf8) {
+                            print("[AuthService][FCM] Successfully sent FCM token to backend. Response: \(responseString)")
+                        } else {
+                            print("[AuthService][FCM] Successfully sent FCM token to backend (no response body).")
+                        }
+                        // You could store a flag indicating the token was successfully sent
+                        // UserDefaults.standard.set(fcmToken, forKey: "lastSentFCMToken")
+                    } else {
+                        let errorResponse = try? jsonDecoder.decode(AuthErrorResponse.self, from: data)
+                        let message = errorResponse?.msg ?? "Failed to send FCM token with status \(httpResponse.statusCode)."
+                        print("[AuthService][FCM] Error sending FCM token: \(message)")
+                        // Store the token to retry later if it failed
+                        UserDefaults.standard.set(fcmToken, forKey: "pendingFCMToken")
+                    }
+                } catch {
+                    print("[AuthService][FCM] Network or other error sending FCM token: \(error.localizedDescription)")
+                    // Store the token to retry later
+                    UserDefaults.standard.set(fcmToken, forKey: "pendingFCMToken")
+                }
+            }
+        }
+
+        // Call this after successful login or when app foregrounds if a token is pending
+        func sendPendingFCMTokenIfNeeded() {
+            if let pendingToken = UserDefaults.standard.string(forKey: "pendingFCMToken") {
+                print("[AuthService][FCM] Found pending FCM token. Attempting to send.")
+                sendFCMTokenToBackend(fcmToken: pendingToken)
+            }
+        }
+
+
+
     
     // MARK: - Debug Helpers
 //    private func printUserObjectDetails(_ user: User, context: String) {
