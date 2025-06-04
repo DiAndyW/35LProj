@@ -1,9 +1,3 @@
-//
-//  MoodPostDetailView.swift
-//  uclamoods
-//
-//  Created by David Sun on 6/3/25.
-//
 import SwiftUI
 
 struct MoodPostDetailView: View {
@@ -13,8 +7,10 @@ struct MoodPostDetailView: View {
     @State private var newComment: String = ""
     @State private var comments: [CommentPosts]
     @State private var isSendingComment: Bool = false
+    @State private var keyboardHeight: CGFloat = 0
+    @FocusState private var isCommentFieldFocused: Bool
     
-    @EnvironmentObject private var userDataProvider: UserDataProvider //
+    @EnvironmentObject private var userDataProvider: UserDataProvider
     
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
@@ -31,6 +27,7 @@ struct MoodPostDetailView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Header
             HStack {
                 Text("Post Details")
                     .font(.title2.bold())
@@ -49,37 +46,62 @@ struct MoodPostDetailView: View {
             
             Divider().background(Color.gray.opacity(0.3))
             
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    MoodPostCard(
-                        post: post,
-                        openDetailAction: {}
-                    )
-                    .scaledToFit()
-                    .padding(12)
-                    
-                    Divider().background(Color.gray.opacity(0.9)).padding(.horizontal)
-                    
-                    Text("Comments (\(comments.count))")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                    
-                    if comments.isEmpty {
-                        Text("No comments yet.")
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-                    } else {
-                        ForEach(comments) { comment in
-                            CommentView(comment: comment)
-                                .padding(.horizontal)
+            // Content with ScrollViewReader for auto-scroll
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        MoodPostCard(
+                            post: post,
+                            openDetailAction: {}
+                        )
+                        .scaledToFit()
+                        .padding(12)
+                        
+                        Divider().background(Color.gray.opacity(0.9)).padding(.horizontal)
+                        
+                        Text("Comments (\(comments.count))")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                        
+                        if comments.isEmpty {
+                            Text("No comments yet.")
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding()
+                        } else {
+                            ForEach(comments) { comment in
+                                CommentView(comment: comment)
+                                    .padding(.horizontal)
+                            }
+                        }
+                        
+                        // Invisible anchor for scrolling to bottom
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: 1)
+                            .id("bottom")
+                    }
+                    .padding(.top)
+                    .padding(.bottom, max(80, keyboardHeight + 20)) // Dynamic bottom padding
+                }
+                .onChange(of: isCommentFieldFocused) { focused in
+                    if focused {
+                        // Scroll to bottom when keyboard appears
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("bottom", anchor: .bottom)
                         }
                     }
                 }
-                .padding(.top)
-                .padding(.bottom, 80)
+                .onChange(of: keyboardHeight) { height in
+                    if isCommentFieldFocused && height > 0 {
+                        // Keep scrolled to bottom when keyboard height changes
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("bottom", anchor: .bottom)
+                        }
+                    }
+                }
             }
             
             // Comment Input Area
@@ -91,6 +113,13 @@ struct MoodPostDetailView: View {
                     .cornerRadius(10)
                     .foregroundColor(.white)
                     .accentColor(.blue)
+                    .focused($isCommentFieldFocused)
+                    .onSubmit {
+                        if !newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            sendComment()
+                        }
+                    }
+                    .submitLabel(.send)
                 
                 if isSendingComment {
                     ProgressView().tint(.white)
@@ -104,8 +133,9 @@ struct MoodPostDetailView: View {
                 }
             }
             .padding()
-            .background(Color.black.opacity(0.5)) // Background for the input bar
+            .background(Color.black.opacity(0.5))
         }
+        .offset(y: -keyboardHeight) // Move entire view up by keyboard height
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color.black.opacity(0.5))
@@ -115,8 +145,26 @@ struct MoodPostDetailView: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(post.emotion.color?.opacity(0.9) ?? Color.white.opacity(0.1), lineWidth: 2)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20)) // Apply corner radius to the whole view
-        .shadow(color: .black.opacity(0.5), radius: 25, x: 0, y: 15) // Enhanced shadow for floating effect
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.5), radius: 25, x: 0, y: 15)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                keyboardHeight = 0
+            }
+        }
+        // Dismiss keyboard when tapping outside
+        .onTapGesture {
+            if isCommentFieldFocused {
+                isCommentFieldFocused = false
+            }
+        }
     }
     
     func sendComment() {
@@ -141,6 +189,8 @@ struct MoodPostDetailView: View {
                             return date1 > date2
                         }
                         self.newComment = ""
+                        // Dismiss keyboard after sending
+                        self.isCommentFieldFocused = false
                     case .failure(let error):
                         print("Error sending comment: \(error.localizedDescription)")
                 }
@@ -148,7 +198,6 @@ struct MoodPostDetailView: View {
         }
     }
 }
-
 
 struct CommentView: View {
     let comment: CommentPosts

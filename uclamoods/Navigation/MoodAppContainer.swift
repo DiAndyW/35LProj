@@ -153,49 +153,63 @@ struct FiveTabBar: View {
     @EnvironmentObject private var router: MoodAppRouter
     
     var body: some View {
-        HStack {
-            TabBarButton(
-                tab: .home,
-                isSelected: router.selectedMainTab == .home
-            ) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    router.selectTab(.home)
+        HStack(spacing: 0) {
+            // Left side - Home and Map
+            HStack(spacing: 0) {
+                TabBarButton(
+                    tab: .home,
+                    isSelected: router.selectedMainTab == .home
+                ) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        router.selectTab(.home)
+                    }
                 }
-            }
-            Spacer()
-            TabBarButton(
-                tab: .map,
-                isSelected: router.selectedMainTab == .map
-            ) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    router.selectTab(.map)
+                .frame(maxWidth: .infinity)
+                
+                TabBarButton(
+                    tab: .map,
+                    isSelected: router.selectedMainTab == .map
+                ) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        router.selectTab(.map)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
-            Spacer()
+            .frame(maxWidth: .infinity)
+            
+            // Center - Check-In Button
             CheckInButton {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.prepare()
                 impactFeedback.impactOccurred()
                 router.navigateToMoodFlow()
             }
-            Spacer()
-            TabBarButton(
-                tab: .analytics,
-                isSelected: router.selectedMainTab == .analytics
-            ) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    router.selectTab(.analytics)
+            .frame(width: 80)
+            
+            // Right side - Analytics and Profile
+            HStack(spacing: 0) {
+                TabBarButton(
+                    tab: .analytics,
+                    isSelected: router.selectedMainTab == .analytics
+                ) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        router.selectTab(.analytics)
+                    }
                 }
-            }
-            Spacer()
-            TabBarButton(
-                tab: .profile,
-                isSelected: router.selectedMainTab == .profile
-            ) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    router.selectTab(.profile)
+                .frame(maxWidth: .infinity)
+                
+                TabBarButton(
+                    tab: .profile,
+                    isSelected: router.selectedMainTab == .profile
+                ) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        router.selectTab(.profile)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -214,6 +228,7 @@ struct FiveTabBar: View {
     }
 }
 
+// MARK: - Tab Bar Button Component
 struct TabBarButton: View {
     let tab: MoodAppRouter.MainTab
     let isSelected: Bool

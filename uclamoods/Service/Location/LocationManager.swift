@@ -11,116 +11,201 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var authorizationStatus: CLAuthorizationStatus
     @Published var isLoading: Bool = false
     
-    // For MapView to observe and react to region changes initiated by location updates
     @Published var mapRegion: MKCoordinateRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 34.0689, longitude: -118.4452), // Default (e.g., UCLA)
+        center: CLLocationCoordinate2D(latitude: 34.0689, longitude: -118.4452),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     
     private var isProcessingOneTimeFetchWithLandmark: Bool = false
+    private var locationTimer: Timer?
+    private let locationTimeout: TimeInterval = 10.0 // 10 second timeout
+    
+    // Cache recent location to avoid redundant fetches
+    private var lastKnownLocation: CLLocation?
+    private let locationCacheTimeout: TimeInterval = 300 // 5 minutes
+    private var lastLocationTime: Date?
     
     override init() {
         authorizationStatus = manager.authorizationStatus
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBest // Changed for better map tracking
+        
+        // Optimize for faster location acquisition
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Reduced from Best
+        manager.distanceFilter = 100 // Only update if moved 100m
     }
     
-    func requestLocationAccessIfNeeded() { // Renamed for clarity
+    func requestLocationAccessIfNeeded() {
         if authorizationStatus == .notDetermined {
             print("LocationManager: Requesting 'When In Use' authorization.")
             manager.requestWhenInUseAuthorization()
         }
     }
     
-    // Call this when the MapView appears and needs continuous updates
     func startUpdatingMapLocation() {
         isProcessingOneTimeFetchWithLandmark = false
-        isLoading = true // Indicate activity
+        isLoading = true
         print("LocationManager: startUpdatingMapLocation called. Auth status: \(authorizationStatus.rawValue)")
+        
         switch authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             print("LocationManager: Starting continuous location updates for map.")
             manager.startUpdatingLocation()
+            startLocationTimeout()
         case .notDetermined:
             print("LocationManager: Authorization not determined. Requesting access.")
-            manager.requestWhenInUseAuthorization() // Will trigger didChangeAuthorization
+            manager.requestWhenInUseAuthorization()
         case .restricted, .denied:
-            print("LocationManager: Location access denied or restricted. Cannot start map updates.")
-            self.landmarkName = "Location access denied" // Keep existing behavior
-            self.userCoordinates = nil
-            self.isLoading = false
+            print("LocationManager: Location access denied or restricted.")
+            handleLocationFailure(message: "Location access denied")
         @unknown default:
-            self.isLoading = false
-            break
+            handleLocationFailure(message: "Unknown location error")
         }
     }
     
-    // Call this when the MapView disappears
     func stopUpdatingMapLocation() {
         print("LocationManager: Stopping continuous location updates for map.")
         manager.stopUpdatingLocation()
-        isLoading = false // No longer actively fetching
+        stopLocationTimeout()
+        isLoading = false
         isProcessingOneTimeFetchWithLandmark = false
     }
     
-    // Your one-time fetch for landmark (can remain as is if used elsewhere)
-    func fetchCurrentLocationAndLandmark() { // Renamed for clarity
+    func fetchCurrentLocationAndLandmark() {
+        // Check if we have a recent cached location
+        if let cachedLocation = getCachedLocationIfValid() {
+            print("LocationManager: Using cached location")
+            userCoordinates = cachedLocation.coordinate
+            updateMapRegion(for: cachedLocation.coordinate)
+            
+            // Still fetch landmark for cached location if needed
+            if landmarkName == nil || landmarkName == "Fetching location..." {
+                fetchLandmark(for: cachedLocation)
+            }
+            return
+        }
+        
         isLoading = true
         isProcessingOneTimeFetchWithLandmark = true
-        print("LocationManager: Starting to fetch one-time location and landmark. Auth status: \(authorizationStatus.rawValue)")
+        print("LocationManager: Starting fresh location fetch. Auth status: \(authorizationStatus.rawValue)")
+        
         switch authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
-            manager.requestLocation() // For a one-time location update
+            // Use requestLocation for one-time fetch - it's faster than startUpdatingLocation
+            manager.requestLocation()
+            startLocationTimeout()
         case .restricted, .denied:
             print("LocationManager: Location access denied or restricted.")
-            self.landmarkName = "Location access denied"
-            self.userCoordinates = nil
-            self.isLoading = false
-            isProcessingOneTimeFetchWithLandmark = false
+            handleLocationFailure(message: "Location access denied")
         @unknown default:
-            self.isLoading = false
-            isProcessingOneTimeFetchWithLandmark = false
-            break
+            handleLocationFailure(message: "Unknown location error")
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func getCachedLocationIfValid() -> CLLocation? {
+        guard let lastLocation = lastKnownLocation,
+              let lastTime = lastLocationTime,
+              Date().timeIntervalSince(lastTime) < locationCacheTimeout else {
+            return nil
+        }
+        return lastLocation
+    }
+    
+    private func startLocationTimeout() {
+        stopLocationTimeout() // Clear any existing timer
+        locationTimer = Timer.scheduledTimer(withTimeInterval: locationTimeout, repeats: false) { [weak self] _ in
+            self?.handleLocationTimeout()
+        }
+    }
+    
+    private func stopLocationTimeout() {
+        locationTimer?.invalidate()
+        locationTimer = nil
+    }
+    
+    private func handleLocationTimeout() {
+        print("LocationManager: Location fetch timed out")
+        manager.stopUpdatingLocation()
+        
+        // Use last known location if available
+        if let cachedLocation = lastKnownLocation {
+            print("LocationManager: Using last known location due to timeout")
+            userCoordinates = cachedLocation.coordinate
+            updateMapRegion(for: cachedLocation.coordinate)
+            landmarkName = "Near your last known location"
+        } else {
+            handleLocationFailure(message: "Location timeout")
+        }
+        
+        finishLocationFetch()
+    }
+    
+    private func handleLocationFailure(message: String) {
+        landmarkName = message
+        userCoordinates = nil
+        finishLocationFetch()
+    }
+    
+    private func finishLocationFetch() {
+        stopLocationTimeout()
+        isLoading = false
+        isProcessingOneTimeFetchWithLandmark = false
+    }
+    
+    private func updateMapRegion(for coordinate: CLLocationCoordinate2D) {
+        mapRegion = MKCoordinateRegion(
+            center: coordinate,
+            span: mapRegion.span
+        )
     }
     
     // MARK: - CLLocationManagerDelegate Methods
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else {
-            // If it was a one-time fetch and we didn't get a location somehow
             if isProcessingOneTimeFetchWithLandmark {
-                self.isLoading = false
-                isProcessingOneTimeFetchWithLandmark = false
+                finishLocationFetch()
             }
             return
         }
-        self.userCoordinates = location.coordinate
         
-        self.mapRegion = MKCoordinateRegion(
-            center: location.coordinate,
-            span: self.mapRegion.span
-        )
+        // Cache the location
+        lastKnownLocation = location
+        lastLocationTime = Date()
+        
+        userCoordinates = location.coordinate
+        updateMapRegion(for: location.coordinate)
+        
         print("LocationManager: Coordinates updated - Lat: \(location.coordinate.latitude), Lon: \(location.coordinate.longitude)")
         
         if isProcessingOneTimeFetchWithLandmark {
-            // It was a one-time fetch, now get the landmark.
-            // fetchLandmark will handle setting isLoading to false and resetting the flag.
             fetchLandmark(for: location)
         }
-        // If it's for continuous map updates, isLoading remains true until stopUpdatingMapLocation is called.
+        
+        // Stop timeout timer since we got a location
+        if isProcessingOneTimeFetchWithLandmark {
+            stopLocationTimeout()
+        }
     }
-    
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("LocationManager: Failed with error: \(error.localizedDescription)")
-        self.landmarkName = "Could not fetch location"
-        self.userCoordinates = nil
-        self.isLoading = false
-        isProcessingOneTimeFetchWithLandmark = false
+        
+        // Try to use cached location if available
+        if let cachedLocation = lastKnownLocation {
+            print("LocationManager: Using cached location due to error")
+            userCoordinates = cachedLocation.coordinate
+            updateMapRegion(for: cachedLocation.coordinate)
+            landmarkName = "Near your last known location"
+        } else {
+            handleLocationFailure(message: "Could not fetch location")
+        }
+        
+        finishLocationFetch()
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -129,53 +214,54 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         print("LocationManager: Authorization status changed from \(oldStatus.rawValue) to \(authorizationStatus.rawValue)")
         
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
-            // If status just changed to authorized, and we intended to start map updates:
             print("LocationManager: Authorization granted, can now start/continue location updates.")
-            // The view (e.g. MapView on appear) should decide whether to start updates.
-            // Or, if a request was pending:
-            // startUpdatingMapLocation() // Or fetchCurrentLocationAndLandmark()
         } else {
             print("LocationManager: Location authorization not granted (\(authorizationStatus.rawValue)).")
-            self.landmarkName = "Location access needed"
-            self.userCoordinates = nil
-            self.isLoading = false
-            isProcessingOneTimeFetchWithLandmark = false
+            handleLocationFailure(message: "Location access needed")
         }
     }
     
-    // Your fetchLandmark function remains the same, it's good for getting landmark names.
-    // It sets isLoading = false, which is fine for one-time fetches.
-    // For continuous updates, the MapView's loading state might be managed separately
-    // or tied to whether the locationManager is actively updating.
     private func fetchLandmark(for location: CLLocation) {
         let geocoder = CLGeocoder()
-        // isLoading should ideally be true when starting this.
-        // If called from didUpdateLocations during continuous updates, this could be frequent.
-        // For SnapMap, we primarily need coordinates.
-        // self.isLoading = true; // Ensure it's true before geocoding
+        
+        // Set a timeout for geocoding as well
+        let geocodingTimeout = DispatchWorkItem {
+            geocoder.cancelGeocode()
+            print("LocationManager: Geocoding timed out, using fallback")
+            self.landmarkName = "Near your current location"
+            if self.isProcessingOneTimeFetchWithLandmark {
+                self.finishLocationFetch()
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: geocodingTimeout)
         
         geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
             guard let self = self else { return }
             
+            geocodingTimeout.cancel() // Cancel timeout since we got a response
+            
             defer {
                 if self.isProcessingOneTimeFetchWithLandmark {
-                    self.isLoading = false
-                    self.isProcessingOneTimeFetchWithLandmark = false // Reset the flag
+                    self.finishLocationFetch()
                 }
             }
             
             if let error = error {
                 print("LocationManager: Reverse geocoding failed: \(error.localizedDescription)")
-                self.landmarkName = "Nearby your location"
+                self.landmarkName = "Near your current location"
                 return
             }
             
             if let placemark = placemarks?.first {
                 var nameComponents: [String] = []
                 
-                if let poiName = placemark.name, poiName != "\(location.coordinate.latitude),\(location.coordinate.longitude)" {
+                // Prioritize POI name first
+                if let poiName = placemark.name,
+                   !poiName.contains(String(location.coordinate.latitude)) {
                     nameComponents.append(poiName)
                 } else {
+                    // Build address
                     if let street = placemark.thoroughfare {
                         var streetAddress = street
                         if let subThoroughfare = placemark.subThoroughfare {
@@ -188,19 +274,21 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                     }
                 }
                 
+                // Fallback options
                 if nameComponents.isEmpty {
                     if let areaOfInterest = placemark.areasOfInterest?.first {
                         nameComponents.append(areaOfInterest)
                     } else if let locality = placemark.locality {
                         nameComponents.append(locality)
                     } else {
-                        nameComponents.append("Unnamed Location")
+                        nameComponents.append("Near your current location")
                     }
                 }
+                
                 self.landmarkName = nameComponents.joined(separator: ", ")
                 print("LocationManager: Fetched landmark - \(self.landmarkName ?? "N/A")")
             } else {
-                self.landmarkName = "Unknown Location"
+                self.landmarkName = "Near your current location"
                 print("LocationManager: No placemark found.")
             }
         }
