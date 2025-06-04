@@ -126,8 +126,10 @@ struct MainAppView: View {
                     .environmentObject(locationManager)
                 SocialAnalyticsView()
                     .tag(MoodAppRouter.MainTab.analytics)
-                ProfileView()
-                    .tag(MoodAppRouter.MainTab.profile)
+                NavigationView {
+                    ProfileView()
+                }
+                .tag(MoodAppRouter.MainTab.profile)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .ignoresSafeArea(.all)

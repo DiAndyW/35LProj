@@ -1,6 +1,3 @@
-// MoodPostDetailView.swift
-// Requires ProfanityFilterService.swift and Toast.swift (for ToastView/modifier) to be in the project.
-
 import SwiftUI
 
 struct MoodPostDetailView: View {
@@ -12,6 +9,14 @@ struct MoodPostDetailView: View {
     @State private var isSendingComment: Bool = false
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCommentFieldFocused: Bool
+    
+    // Block and Report states
+    @State private var showingOptionsMenu = false
+    @State private var showingReportMenu = false
+    @State private var isBlocking = false
+    @State private var isReporting = false
+    @State private var statusMessage = ""
+    @State private var showStatusMessage = false
     
     @EnvironmentObject private var userDataProvider: UserDataProvider
 
@@ -39,7 +44,7 @@ struct MoodPostDetailView: View {
     }
     
     var body: some View {
-        ZStack { // Ensure ZStack is the outermost for the toast modifier to cover the whole view
+        ZStack {
             VStack(spacing: 0) {
                 // Header
                 HStack {
@@ -47,6 +52,22 @@ struct MoodPostDetailView: View {
                         .font(.title2.bold())
                         .foregroundColor(.white)
                     Spacer()
+                    
+                    // Options dropdown menu
+                    Menu {
+                        Button("Report Post") {
+                            showingReportMenu = true
+                        }
+                        
+                        Button("Block User", role: .destructive) {
+                            blockUser()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title2)
+                            .foregroundColor(.gray.opacity(0.8))
+                    }
+                    
                     Button {
                         onDismiss()
                     } label: {
@@ -57,6 +78,19 @@ struct MoodPostDetailView: View {
                 }
                 .padding()
                 .background(Color.black.opacity(0.3))
+                
+                // Status message
+                if showStatusMessage {
+                    HStack {
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundColor(statusMessage.contains("Failed") ? .red : .green)
+                            .padding(.horizontal)
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.2))
+                }
                 
                 Divider().background(Color.gray.opacity(0.3))
                 
@@ -175,8 +209,69 @@ struct MoodPostDetailView: View {
                     isCommentFieldFocused = false
                 }
             }
+            
+            // Report reason dropdown overlay
+            if showingReportMenu {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            showingReportMenu = false
+                        }
+                    
+                    VStack(spacing: 0) {
+                        Text("Report this post")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray.opacity(0.8))
+                        
+                        VStack(spacing: 1) {
+                            reportButton("Spam - fake engagement or repetitive content", reason: "This appears to be spam with fake engagement or repetitive content that doesn't contribute to meaningful discussion")
+                            reportButton("Inappropriate Content - offensive or disturbing", reason: "This content contains inappropriate material that is offensive, disturbing, or violates community standards")
+                            reportButton("Harassment - targeting or bullying behavior", reason: "This post contains harassment, targeting, or bullying behavior directed at individuals or groups")
+                            reportButton("False Information - misleading or incorrect", reason: "This post contains false, misleading, or incorrect information that could be harmful or deceptive")
+                            reportButton("Other - violates community guidelines", reason: "This content violates community guidelines in ways not covered by other categories")
+                            
+                            Button("Cancel") {
+                                showingReportMenu = false
+                            }
+                            .foregroundColor(.blue)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.1))
+                        }
+                    }
+                    .background(Color.black.opacity(0.9))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 40)
+                }
+            }
         }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Apply toast modifier
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Apply toast modifier only for profanity
+    }
+    
+    private func reportButton(_ title: String, reason: String) -> some View {
+        Button(title) {
+            showingReportMenu = false
+            reportPost(reason: reason)
+        }
+        .foregroundColor(.white)
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.05))
+    }
+    
+    private func showStatus(_ message: String, duration: TimeInterval = 3.0) {
+        statusMessage = message
+        showStatusMessage = true
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            withAnimation(.easeOut(duration: 0.3)) {
+                showStatusMessage = false
+            }
+        }
     }
     
     func attemptSendComment() {
@@ -194,9 +289,6 @@ struct MoodPostDetailView: View {
     func sendComment(content: String) { // Accepts content parameter
         guard let currentUserId = userDataProvider.currentUser?.id else {
             print("User not logged in.")
-            // Optionally, show a toast for this specific error
-            // self.toastMessage = "Please log in to comment."
-            // self.showProfanityToast = true // Or use a different toast state for different error types
             return
         }
         
@@ -219,27 +311,63 @@ struct MoodPostDetailView: View {
                         self.isCommentFieldFocused = false // Dismiss keyboard
                     case .failure(let error):
                         print("Error sending comment: \(error.localizedDescription)")
-                        // Optionally, show a non-profanity error toast
-                        // self.toastMessage = "Failed to send comment."
-                        // self.showProfanityToast = true // Or a different toast state
+                }
+            }
+        }
+    }
+    
+    private func blockUser() {
+        guard let currentUserId = userDataProvider.currentUser?.id else {
+            showStatus("Please log in to block users")
+            return
+        }
+        
+        guard !isBlocking else { return }
+        
+        isBlocking = true
+        showStatus("Blocking user...")
+        
+        BlockService.blockUser(userId: post.userId, currentUserId: currentUserId) { result in
+            DispatchQueue.main.async {
+                self.isBlocking = false
+                switch result {
+                case .success:
+                    self.showStatus("User blocked successfully")
+                    // Optionally dismiss the detail view after blocking
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        self.onDismiss()
+                    }
+                case .failure(let error):
+                    self.showStatus("Failed to block user: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func reportPost(reason: String) {
+        guard let currentUserId = userDataProvider.currentUser?.id else {
+            showStatus("Please log in to report posts")
+            return
+        }
+        
+        guard !isReporting else { return }
+        
+        isReporting = true
+        showStatus("Reporting post...")
+        
+        ReportService.reportPost(postId: post.id, reason: reason) { result in
+            DispatchQueue.main.async {
+                self.isReporting = false
+                switch result {
+                case .success:
+                    self.showStatus("Post reported successfully")
+                case .failure(let error):
+                    self.showStatus("Failed to report post: \(error.localizedDescription)")
                 }
             }
         }
     }
 }
-
-// Make sure your supporting structs like FeedItem (and its comment/emotion structure),
-// CommentPosts, UserDataProvider, CommentService, DateFormatterUtility, MoodPostCard, etc., are correctly defined.
-// For `post.comments?.data`: Ensure `FeedItem` has an optional property `comments` of a type that has an optional `data: [CommentPosts]?`.
-// For example:
-// protocol FeedItem: Identifiable {
-//     var id: String { get }
-//     var emotion: Emotion? { get }
-//     var comments: CommentsResponse? { get } // Added for comment initialization
-//     // ... other properties
-// }
-// struct Emotion { var color: Color? /* ... */ }
-// struct CommentsResponse: Codable { var data: [CommentPosts]? } // Matching structure for comments
 
 struct CommentView: View {
     let comment: CommentPosts
