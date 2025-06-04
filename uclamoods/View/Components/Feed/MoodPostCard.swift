@@ -187,8 +187,8 @@ struct MoodPostCard: View {
             .padding(.top, (hasLocation || hasPeople || hasContent) ? 8 : 0) // Add padding if there's any content above buttons
         }
         .padding(16)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(16)
+        .background(Color.white.opacity(0.075))
+        .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(post.emotion.color ?? Color.white.opacity(0.1), lineWidth: 2))
