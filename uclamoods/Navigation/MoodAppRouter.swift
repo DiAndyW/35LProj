@@ -153,9 +153,7 @@ class MoodAppRouter: ObservableObject {
             navigateToMoodFlow()
         } else {
             if selectedMainTab != tab {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    selectedMainTab = tab
-                }
+                selectedMainTab = tab
             }
         }
     }
