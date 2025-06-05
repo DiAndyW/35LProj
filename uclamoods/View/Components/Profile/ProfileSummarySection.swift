@@ -21,7 +21,7 @@ struct ProfileSummarySectionView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This Week")
+            Text("Your Morii")
                 .font(.custom("Georgia", size: 24))
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
@@ -46,20 +46,19 @@ struct ProfileSummarySectionView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 30)
             } else if let currentSummaryData = summary?.data {
-                let weeklySummary = currentSummaryData.weeklySummary
-                let avgPleasantness = weeklySummary.averageMoodForWeek.averageAttributes.pleasantness
-                let avgIntensity = weeklySummary.averageMoodForWeek.averageAttributes.intensity
-                let avgControl = weeklySummary.averageMoodForWeek.averageAttributes.control
-                let avgClarity = weeklySummary.averageMoodForWeek.averageAttributes.clarity
+                let avgPleasantness = currentSummaryData.topMood?.attributes.pleasantness
+                let avgIntensity = currentSummaryData.topMood?.attributes.intensity
+                let avgControl = currentSummaryData.topMood?.attributes.control
+                let avgClarity = currentSummaryData.topMood?.attributes.clarity
                 
                 let averageEmotion = Emotion(
-                    name: weeklySummary.averageMoodForWeek.topEmotion ?? "Average",
+                    name: currentSummaryData.topMood?.name ?? "Average",
                     color: ColorData.calculateMoodColor(pleasantness: avgPleasantness, intensity: avgIntensity) ?? .gray,
                     description: "Average mood for the week.",
-                    pleasantness: avgPleasantness,
-                    intensity: avgIntensity,
-                    control: avgControl,
-                    clarity: avgClarity
+                    pleasantness: avgPleasantness ?? 50,
+                    intensity: avgIntensity ?? 50,
+                    control: avgControl ?? 50,
+                    clarity: avgClarity ?? 50
                 )
                 
                 VStack(spacing: 0) {
@@ -84,15 +83,15 @@ struct ProfileSummarySectionView: View {
                 )
                 
                 // Grid for displaying weekly statistics.
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     
                     VStack(spacing: 8) {
-                        Text(weeklySummary.weeklyTopMood?.name ?? "N/A")
+                        Text(currentSummaryData.topMood?.name ?? "N/A")
                             .font(.custom("Georgia", size: 20))
                             .fontWeight(.bold)
-                            .foregroundColor(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color ?? Color.pink)
+                            .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
                         
-                        Text("Top Emotion")
+                        Text("Top Mood")
                             .font(.custom("Georgia", size: 14))
                             .fontWeight(.medium)
                             .foregroundColor(.white)
@@ -103,14 +102,14 @@ struct ProfileSummarySectionView: View {
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                            .stroke(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                     )
                     
                     VStack(spacing: 8) {
-                        Text("\(weeklySummary.weeklyCheckinsCount)")
+                        Text("\(currentSummaryData.totalCheckins)")
                             .font(.custom("Georgia", size: 20))
                             .fontWeight(.bold)
-                            .foregroundColor(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color ?? Color.pink)
+                            .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
                         
                         Text("Check-Ins")
                             .font(.custom("Georgia", size: 14))
@@ -123,7 +122,27 @@ struct ProfileSummarySectionView: View {
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(EmotionDataProvider.getEmotion(byName: weeklySummary.weeklyTopMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                            .stroke(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
+                    )
+                    
+                    VStack(spacing: 8) {
+                        Text("\(currentSummaryData.checkinStreak)")
+                            .font(.custom("Georgia", size: 20))
+                            .fontWeight(.bold)
+                            .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
+                        
+                        Text("Streak")
+                            .font(.custom("Georgia", size: 14))
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color.opacity(0.6) ?? Color.white.opacity(0.6), lineWidth: 2)
                     )
                     
                 }

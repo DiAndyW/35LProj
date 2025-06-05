@@ -177,7 +177,7 @@ struct ProfileAnalyticsView: View {
                         .fontWeight(.bold)
                         .foregroundColor(EmotionDataProvider.getEmotion(byName: summary.topEmotion ?? "Neutral")?.color )
                     
-                    Text("Top Emotion")
+                    Text("Top Mood")
                         .font(.custom("Georgia", size: 14))
                         .fontWeight(.medium)
                         .foregroundColor(.white)

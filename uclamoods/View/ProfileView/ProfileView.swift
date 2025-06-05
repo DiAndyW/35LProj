@@ -68,12 +68,17 @@ struct ProfileView: View {
     @ViewBuilder
     private var profileContentView: some View {
         VStack(spacing: 0) {
-            ProfileHeaderView()
-                .padding(.bottom, 20)
             
-            ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab)
-                .scaleEffect(0.9)
-            
+            VStack(spacing: 0){
+                ProfileHeaderView()
+                    .padding(.bottom, 8)
+                
+                ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab)
+                    .scaleEffect(0.9)
+                    .padding(.bottom, 8)
+            }
+            .cornerRadius(20)
+
             ScrollView {
                 tabContentView
                     .id(selectedProfileTab)
@@ -208,7 +213,7 @@ struct ProfileHeaderView: View {
                     .foregroundColor(.white.opacity(0.6))
             }
         }
-        .padding(.top, 20)
+        .padding(.top, 16)
     }
 }
 

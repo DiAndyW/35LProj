@@ -51,17 +51,17 @@ struct EmotionRadarChartView: View {
                         .foregroundColor(.white)
                         .position(x: center.x, y: center.y - radius - 15)
                     
-                    Text("Intensity \n (\(Int(emotion.pleasantness*100)))")
+                    Text("Intensity \n (\(Int(emotion.intensity*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x + radius + 35, y: center.y)
                     
-                    Text("Control (\(Int(emotion.pleasantness*100)))")
+                    Text("Control (\(Int(emotion.control*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x, y: center.y + radius + 15)
                     
-                    Text("Clarity \n (\(Int(emotion.pleasantness*100)))")
+                    Text("Clarity \n (\(Int(emotion.clarity*100)))")
                         .font(.custom("Georgia", size: 12))
                         .foregroundColor(.white)
                         .position(x: center.x - radius - 35, y: center.y)
