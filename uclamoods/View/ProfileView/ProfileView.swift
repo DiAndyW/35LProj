@@ -145,13 +145,16 @@ struct ProfileView: View {
     }
     
     private func dismissDetailView() {
+        let detailViewWasActive = showDetailViewAnimated
+        
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             showDetailViewAnimated = false
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             selectedPostForDetail = nil
         }
-        if router.tabWithActiveDetailView == .profile {
+        
+        if detailViewWasActive {
             router.tabWithActiveDetailView = nil
         }
     }
