@@ -85,10 +85,11 @@ struct ProfileView: View {
                     .transition(currentContentTransition)
             }
             .refreshable {
+                await userDataProvider.refreshUserData()
+                
                 if selectedProfileTab == .overview {
                     overviewRefreshID = UUID()
                 }
-                await userDataProvider.refreshUserData()
             }
         }
     }

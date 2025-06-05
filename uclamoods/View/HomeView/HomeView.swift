@@ -1,12 +1,9 @@
-// Enhanced HomeFeedView.swift with pagination support
-
 import SwiftUI
 
 struct HomeFeedView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @EnvironmentObject private var userDataProvider: UserDataProvider
     
-    // Pagination state
     @State private var posts: [MoodPost] = []
     @State private var isInitialLoading: Bool = false
     @State private var isLoadingMore: Bool = false
@@ -14,13 +11,11 @@ struct HomeFeedView: View {
     @State private var currentSkip: Int = 0
     @State private var errorMessage: String?
     
-    // Detail view state
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
-    // Constants
     private let pageSize = 20
-    private let sortMethod = "timestamp" // or "hottest"
+    private let sortMethod = "timestamp"
     
     var body: some View {
         GeometryReader { geometry in
@@ -37,7 +32,6 @@ struct HomeFeedView: View {
                 .blur(radius: showDetailViewAnimated ? 15 : 0)
                 .disabled(showDetailViewAnimated)
                 
-                // Detail view overlay
                 if showDetailViewAnimated {
                     detailViewOverlay(geometry: geometry)
                 }
@@ -131,14 +125,11 @@ struct HomeFeedView: View {
                             presentDetailView(for: feedItem)
                         }
                         .onAppear {
-                            // Trigger load more when near the end
                             if moodPostData.id == posts.last?.id {
                                 loadMorePostsIfNeeded()
                             }
                         }
                     }
-                    
-                    // Load more indicator
                     loadMoreView
                 }
                 .padding(.horizontal, 16)
@@ -149,7 +140,6 @@ struct HomeFeedView: View {
             }
         }
         
-        // Error handling
         if let error = errorMessage {
             VStack {
                 Text("Error: \(error)")
@@ -230,6 +220,18 @@ struct HomeFeedView: View {
     }
     
     // MARK: - Pagination Logic
+    private func fetchPosts(skip: Int, limit: Int) async -> Result<(posts: [MoodPost], pagination: PaginationMetadata?), MoodPostServiceError> {
+        await withCheckedContinuation { continuation in
+            MoodPostService.fetchMoodPosts(
+                skip: skip,
+                limit: limit,
+                sort: sortMethod
+            ) { result in
+                continuation.resume(returning: result)
+            }
+        }
+    }
+    
     private func loadInitialPosts() {
         guard !isInitialLoading else { return }
         
@@ -237,18 +239,23 @@ struct HomeFeedView: View {
         errorMessage = nil
         currentSkip = 0
         hasMorePosts = true
+        posts.removeAll()
         
         Task {
             let result = await fetchPosts(skip: 0, limit: pageSize)
             await MainActor.run {
                 isInitialLoading = false
                 switch result {
-                case .success(let newPosts):
-                    self.posts = newPosts
-                    self.hasMorePosts = newPosts.count == pageSize
-                    self.currentSkip = newPosts.count
-                case .failure(let error):
-                    self.errorMessage = error.localizedDescription
+                    case .success(let (newPosts, paginationInfo)):
+                        self.posts = newPosts
+                        if let pagination = paginationInfo {
+                            self.hasMorePosts = pagination.currentPage < pagination.totalPages
+                        } else {
+                            self.hasMorePosts = newPosts.count == pageSize
+                        }
+                        self.currentSkip = newPosts.count
+                    case .failure(let error):
+                        self.errorMessage = error.localizedDescription
                 }
             }
         }
@@ -265,50 +272,61 @@ struct HomeFeedView: View {
             await MainActor.run {
                 isLoadingMore = false
                 switch result {
-                case .success(let newPosts):
-                    if newPosts.isEmpty {
-                        self.hasMorePosts = false
-                    } else {
-                        self.posts.append(contentsOf: newPosts)
-                        self.currentSkip += newPosts.count
-                        self.hasMorePosts = newPosts.count == pageSize
-                    }
-                case .failure(let error):
-                    self.errorMessage = error.localizedDescription
+                    case .success(let (newPosts, paginationInfo)):
+                        if newPosts.isEmpty {
+                            self.hasMorePosts = false
+                        } else {
+                            let existingIDs = Set(self.posts.map { $0.id })
+                            let uniqueNewPosts = newPosts.filter { !existingIDs.contains($0.id) }
+                            self.posts.append(contentsOf: uniqueNewPosts)
+                            
+                            self.currentSkip = self.posts.count
+                            
+                            if let pagination = paginationInfo {
+                                self.hasMorePosts = pagination.currentPage < pagination.totalPages
+                            } else {
+                                self.hasMorePosts = newPosts.count == pageSize
+                            }
+                        }
+                    case .failure(let error):
+                        self.errorMessage = error.localizedDescription
                 }
             }
         }
     }
     
     private func refreshPosts() async {
-        let result = await fetchPosts(skip: 0, limit: pageSize)
         await MainActor.run {
+            isInitialLoading = true
+            errorMessage = nil
+            currentSkip = 0
+            hasMorePosts = true
+        }
+        
+        let result = await fetchPosts(skip: 0, limit: pageSize)
+        
+        await MainActor.run {
+            isInitialLoading = false
             switch result {
-            case .success(let newPosts):
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.posts = newPosts
-                    self.currentSkip = newPosts.count
-                    self.hasMorePosts = newPosts.count == pageSize
-                    self.errorMessage = nil
-                }
-            case .failure(let error):
-                self.errorMessage = error.localizedDescription
+                case .success(let (newPosts, paginationInfo)):
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.posts = newPosts
+                        self.currentSkip = newPosts.count
+                        
+                        if let pagination = paginationInfo {
+                            self.hasMorePosts = pagination.currentPage < pagination.totalPages
+                        } else {
+                            self.hasMorePosts = newPosts.count == pageSize
+                        }
+                        self.errorMessage = nil
+                    }
+                case .failure(let error):
+                    self.errorMessage = error.localizedDescription
             }
         }
     }
     
-    private func fetchPosts(skip: Int, limit: Int) async -> Result<[MoodPost], MoodPostServiceError> {
-        await withCheckedContinuation { continuation in
-            MoodPostService.fetchMoodPosts(
-                skip: skip,
-                limit: limit,
-                sort: sortMethod
-            ) { result in
-                continuation.resume(returning: result)
-            }
-        }
-    }
-    
+
     // MARK: - Detail View Management
     private func dismissDetailView() {
         let detailViewWasActive = showDetailViewAnimated
