@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum TabTransitionDirection: Equatable {
+    case forward
+    case backward
+    case none
+}
+
 struct ProfileView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @EnvironmentObject private var userDataProvider: UserDataProvider
@@ -8,7 +14,6 @@ struct ProfileView: View {
     @State private var tabTransitionDirection: TabTransitionDirection = .none
     @State private var overviewRefreshID = UUID()
     
-    // Detail view state
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
@@ -21,23 +26,32 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
-            
-            if userDataProvider.currentUser == nil && !AuthenticationService.shared.isAuthenticated {
-                ProgressView("Not authenticated or loading user...")
-                    .foregroundColor(.white)
-            } else if userDataProvider.currentUser == nil && AuthenticationService.shared.isAuthenticated {
-                ProgressView("Loading Profile...")
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .onAppear {
-                        Task {
-                            print("ProfileView: currentUser is nil, attempting refreshUserData.")
-                            await userDataProvider.refreshUserData()
-                        }
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                
+                VStack(spacing: 0) {
+                    if userDataProvider.currentUser == nil && !AuthenticationService.shared.isAuthenticated {
+                        ProgressView("Not authenticated or loading user...")
+                            .foregroundColor(.white)
+                    } else if userDataProvider.currentUser == nil && AuthenticationService.shared.isAuthenticated {
+                        ProgressView("Loading Profile...")
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .onAppear {
+                                Task {
+                                    await userDataProvider.refreshUserData()
+                                }
+                            }
+                    } else {
+                        profileContentView
                     }
-            } else {
-                profileContentView
+                }
+                .blur(radius: showDetailViewAnimated ? 15 : 0)
+                .disabled(showDetailViewAnimated)
+                
+                if showDetailViewAnimated {
+                    detailViewOverlay(geometry: geometry)
+                }
             }
         }
         .onChange(of: selectedProfileTab) { oldValue, newValue in
@@ -54,10 +68,10 @@ struct ProfileView: View {
     @ViewBuilder
     private var profileContentView: some View {
         VStack(spacing: 0) {
-            ProfileHeaderView() //
+            ProfileHeaderView()
                 .padding(.bottom, 20)
             
-            ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab) //
+            ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab)
                 .scaleEffect(0.9)
             
             ScrollView {
@@ -67,11 +81,9 @@ struct ProfileView: View {
             }
             .refreshable {
                 if selectedProfileTab == .overview {
-                    print("ProfileView: Refresh triggered for Overview tab.")
                     overviewRefreshID = UUID()
                 }
-                print("ProfileView: Refreshable initiated userDataProvider.refreshUserData()")
-                await userDataProvider.refreshUserData() //
+                await userDataProvider.refreshUserData()
             }
         }
     }
@@ -81,15 +93,67 @@ struct ProfileView: View {
         Group {
             switch selectedProfileTab {
                 case .overview:
-                    ProfileOverviewView(refreshID: overviewRefreshID)
+                    ProfileOverviewView(
+                        refreshID: overviewRefreshID,
+                        onSelectPost: { feedItem in
+                            presentDetailView(for: feedItem)
+                        }
+                    )
                 case .analytics:
-                    ProfileAnalyticsView() //
+                    ProfileAnalyticsView()
                 case .settings:
-                    ProfileSettingsView() //
+                    ProfileSettingsView()
             }
         }
         .padding(.horizontal, 20)
         .padding(.bottom, (UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) + 80)
+    }
+    
+    @ViewBuilder
+    private func detailViewOverlay(geometry: GeometryProxy) -> some View {
+        Color.black.opacity(0.4)
+            .edgesIgnoringSafeArea(.all)
+            .transition(.opacity)
+            .onTapGesture { dismissDetailView() }
+        
+        if let postToShow = selectedPostForDetail {
+            MoodPostDetailView(
+                post: postToShow,
+                onDismiss: dismissDetailView
+            )
+            .environmentObject(userDataProvider)
+            .environmentObject(router)
+            .frame(
+                width: geometry.size.width * 0.95,
+                height: max(
+                    geometry.size.height * 0.5,
+                    min(geometry.size.height * 0.90, 700)
+                )
+            )
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .zIndex(1)
+        }
+    }
+    
+    private func presentDetailView(for feedItem: FeedItem) {
+        selectedPostForDetail = feedItem
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            showDetailViewAnimated = true
+        }
+        router.tabWithActiveDetailView = .profile
+    }
+    
+    private func dismissDetailView() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            showDetailViewAnimated = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            selectedPostForDetail = nil
+        }
+        if router.tabWithActiveDetailView == .profile {
+            router.tabWithActiveDetailView = nil
+        }
     }
     
     private var currentContentTransition: AnyTransition {
@@ -182,10 +246,4 @@ struct ProfileTabViewSelector: View {
             .clipShape(Capsule())
         }
     }
-}
-
-enum TabTransitionDirection: Equatable {
-    case forward
-    case backward
-    case none
 }

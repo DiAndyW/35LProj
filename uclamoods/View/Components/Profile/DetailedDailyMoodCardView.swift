@@ -10,15 +10,27 @@ struct DetailedDailyMoodCardView: View {
     let daySummary: MoodDaySummary
     
     private var accentColor: Color {
-        EmotionColorMap.getColor(for: daySummary.topEmotion ?? "Neutral")
+        return EmotionColorMap.getColor(for: daySummary.topEmotion ?? "Neutral")
     }
+
     
     var body: some View {
+        
+        let averageEmotion = Emotion(
+            name: "Average",
+            color: ColorData.calculateMoodColor(pleasantness: daySummary.averageAttributes.pleasantness, intensity: daySummary.averageAttributes.intensity) ?? .gray,
+            description: "Average mood attributes for the period.",
+            pleasantness: daySummary.averageAttributes.pleasantness ?? 0.5,
+            intensity: daySummary.averageAttributes.intensity ?? 0.5,
+            control: daySummary.averageAttributes.control ?? 0.5,
+            clarity: daySummary.averageAttributes.clarity ?? 0.5
+        )
+        
         VStack(spacing: 6){
             VStack(alignment: .leading, spacing: 10) {
                 Text(daySummary.dayOfWeek)
                     .font(.custom("Georgia", size: 18))
-                    .foregroundColor(accentColor)
+                    .foregroundColor(averageEmotion.color)
                 
                 Divider().background(accentColor.opacity(0.5))
                 
@@ -49,17 +61,7 @@ struct DetailedDailyMoodCardView: View {
                     .padding(.top, 5)
             }
             if daySummary.totalCheckins > 0 {
-                
-                let averageEmotionForChart = Emotion(
-                    name: "Average",
-                    color: ColorData.calculateMoodColor(pleasantness: daySummary.averageAttributes.pleasantness, intensity: daySummary.averageAttributes.intensity) ?? .gray,
-                    description: "Average mood attributes for the period.",
-                    pleasantness: daySummary.averageAttributes.pleasantness ?? 0.5,
-                    intensity: daySummary.averageAttributes.intensity ?? 0.5,
-                    control: daySummary.averageAttributes.control ?? 0.5,
-                    clarity: daySummary.averageAttributes.clarity ?? 0.5
-                )
-                EmotionRadarChartView(emotion: averageEmotionForChart, showText: true)
+                EmotionRadarChartView(emotion: averageEmotion, showText: true)
                     .frame(width: 150, height: 150)
                     .padding(10)
             }else{
@@ -74,7 +76,7 @@ struct DetailedDailyMoodCardView: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(accentColor.opacity(0.6), lineWidth: 1.5)
+                .stroke(averageEmotion.color.opacity(0.6), lineWidth: 1.5)
         )
     }
 }

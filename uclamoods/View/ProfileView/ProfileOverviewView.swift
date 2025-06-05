@@ -10,6 +10,7 @@ struct ProfileOverviewView: View {
     @State private var contentLoadingError: String? = nil
     
     let refreshID: UUID
+    let onSelectPost: (FeedItem) -> Void
     
     var body: some View {
         Group {
@@ -67,7 +68,17 @@ struct ProfileOverviewView: View {
             if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
-                        ProfilePostCard(post: post.toFeedItem(), openDetailAction: {})
+                        let feedItem = post.toFeedItem()
+                        ProfilePostCard(
+                            post: feedItem,
+                            openDetailAction: {
+                                onSelectPost(feedItem)
+                            }
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSelectPost(feedItem)
+                        }
                     }
                 }
             } else if contentLoadingError == nil && !isLoadingContent {
@@ -119,8 +130,11 @@ struct ProfileOverviewView: View {
                 if self.summary == nil && self.posts.isEmpty {
                     self.isLoadingContent = false
                     self.contentLoadingError = "Failed to load profile data. Please try again."
-                    print("ProfileOverviewView: Error loading content - \(error.localizedDescription)")
+                } else {
+                    self.isLoadingContent = false
+                    print("ProfileOverviewView: Error refreshing content, showing stale data. Error: \(error.localizedDescription)")
                 }
+                print("ProfileOverviewView: Error loading/refreshing content - \(error.localizedDescription)")
             }
         }
     }
