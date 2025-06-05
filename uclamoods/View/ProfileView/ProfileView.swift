@@ -145,23 +145,18 @@ struct ProfileView: View {
     private func presentDetailView(for feedItem: FeedItem) {
         selectedPostForDetail = feedItem
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            router.tabWithActiveDetailView = .profile
             showDetailViewAnimated = true
         }
-        router.tabWithActiveDetailView = .profile
     }
     
     private func dismissDetailView() {
-        let detailViewWasActive = showDetailViewAnimated
-        
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             showDetailViewAnimated = false
+            router.tabWithActiveDetailView = nil
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             selectedPostForDetail = nil
-        }
-        
-        if detailViewWasActive {
-            router.tabWithActiveDetailView = nil
         }
     }
     

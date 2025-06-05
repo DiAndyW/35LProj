@@ -28,6 +28,6 @@ struct ProfileSettingsView: View {
                 feedback.impactOccurred()
                 router.signOut()})
         }
-        .padding(.top, 16)
+        .padding(.top, 8)
     }
 }

@@ -53,7 +53,6 @@ struct ProfileOverviewView: View {
                     Divider().background(Color.white.opacity(0.5))
                     postsSection
                 }
-                .padding(.vertical)
                 .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
             }
         }

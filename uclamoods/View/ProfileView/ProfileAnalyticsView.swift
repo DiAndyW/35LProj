@@ -41,7 +41,7 @@ struct ProfileAnalyticsView: View {
                         .clipShape(Capsule())
                     }
                 }
-                .padding(.top, 8)
+                .padding(.top, 4)
                                 
                 // Content Area
                 ScrollView {
@@ -81,6 +81,7 @@ struct ProfileAnalyticsView: View {
                             .padding(.horizontal, 20)
                     }
                 }
+                .padding(.top, 4)
             }
         }
         .onAppear {
