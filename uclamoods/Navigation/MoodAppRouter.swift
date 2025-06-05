@@ -236,9 +236,9 @@ class MoodAppRouter: ObservableObject {
         
         switch energyLevel {
             case .high:
-                return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.35)
+                return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.3)
             case .medium:
-                return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.6)
+                return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.55)
             case .low:
                 return CGPoint(x: screenSize.width / 2, y: screenSize.height * 0.8)
         }

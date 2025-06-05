@@ -171,6 +171,8 @@ struct MainAppView: View {
     
     var body: some View {
         ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+
             TabView(selection: $router.selectedMainTab) {
                 HomeFeedView()
                     .tag(MoodAppRouter.MainTab.home)
@@ -364,34 +366,38 @@ struct MoodFlowContainer: View {
     
     var body: some View {
         GeometryReader { geometry in
-            Group {
-                switch router.currentMoodFlowScreen {
-                case .energySelection:
-                    EnergySelectionView()
-                        .moodTransition(
-                            style: router.moodFlowTransitionStyle,
-                            progress: router.moodFlowTransitionProgress,
-                            origin: router.moodFlowTransitionOrigin,
-                            size: geometry.size
-                        )
-                    
-                case .emotionSelection(let energyLevel):
-                    EmotionSelectionView(energyLevel: energyLevel)
-                        .moodTransition(
-                            style: router.moodFlowTransitionStyle,
-                            progress: router.moodFlowTransitionProgress,
-                            origin: router.moodFlowTransitionOrigin,
-                            size: geometry.size
-                        )
-                    
-                case .completeCheckIn(let emotion):
-                    CompleteCheckInView(emotion: emotion)
-                        .moodTransition(
-                            style: router.moodFlowTransitionStyle,
-                            progress: router.moodFlowTransitionProgress,
-                            origin: router.moodFlowTransitionOrigin,
-                            size: geometry.size
-                        )
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                
+                Group {
+                    switch router.currentMoodFlowScreen {
+                    case .energySelection:
+                        EnergySelectionView()
+                            .moodTransition(
+                                style: router.moodFlowTransitionStyle,
+                                progress: router.moodFlowTransitionProgress,
+                                origin: router.moodFlowTransitionOrigin,
+                                size: geometry.size
+                            )
+                        
+                    case .emotionSelection(let energyLevel):
+                        EmotionSelectionView(energyLevel: energyLevel)
+                            .moodTransition(
+                                style: router.moodFlowTransitionStyle,
+                                progress: router.moodFlowTransitionProgress,
+                                origin: router.moodFlowTransitionOrigin,
+                                size: geometry.size
+                            )
+                        
+                    case .completeCheckIn(let emotion):
+                        CompleteCheckInView(emotion: emotion)
+                            .moodTransition(
+                                style: router.moodFlowTransitionStyle,
+                                progress: router.moodFlowTransitionProgress,
+                                origin: router.moodFlowTransitionOrigin,
+                                size: geometry.size
+                            )
+                    }
                 }
             }
         }

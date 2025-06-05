@@ -23,6 +23,21 @@ struct SignUpView: View {
     private let formHorizontalPadding: CGFloat = 24
     private let mainStackSpacing: CGFloat = 25
     
+    private var isUsernameValid: Bool {
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedUsername.count >= 4 && profanityFilter.isContentAcceptable(text: trimmedUsername)
+    }
+    
+    private func validateUsernameLength() {
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if !trimmedUsername.isEmpty && trimmedUsername.count < 4 {
+            toastMessage = "Username must be at least 4 characters long."
+            showProfanityToast = true
+            performHapticFeedback(style: .heavy)
+        }
+    }
+    
     // Password validation
     private var passwordStrengthMessage: String {
         if password.isEmpty {
@@ -56,11 +71,6 @@ struct SignUpView: View {
     
     private var passwordsMatch: Bool {
         !password.isEmpty && password == confirmPassword
-    }
-    
-    private var isUsernameValid: Bool {
-        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmedUsername.isEmpty && profanityFilter.isContentAcceptable(text: trimmedUsername)
     }
     
     private var canSubmit: Bool {
@@ -146,21 +156,28 @@ struct SignUpView: View {
                 VStack(alignment: .center, spacing: 18) {
                     FormField(
                         title: "Username",
-                        placeholder: "Choose a username",
+                        placeholder: "Choose a username (min 4 characters)",
                         text: $username,
                         textContentType: .username
                     )
                     .onSubmit {
+                        validateUsernameLength()
                         validateUsername()
                     }
                     .onChange(of: username) { oldValue, newValue in
-                        // Real-time validation as user types
-                        if !newValue.isEmpty {
-                            let trimmedUsername = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !profanityFilter.isContentAcceptable(text: trimmedUsername) {
-                                // Use a slight delay to avoid rapid-fire toasts
+                        let trimmedUsername = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if !trimmedUsername.isEmpty {
+                            if trimmedUsername.count < 4 {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    if username == newValue { // Only show if user hasn't changed it again
+                                    if username == newValue {
+                                        toastMessage = "Username must be at least 4 characters long."
+                                        showProfanityToast = true
+                                    }
+                                }
+                            } else if !profanityFilter.isContentAcceptable(text: trimmedUsername) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    if username == newValue {
                                         toastMessage = "Username contains inappropriate language."
                                         showProfanityToast = true
                                     }

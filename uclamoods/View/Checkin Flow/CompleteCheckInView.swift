@@ -499,6 +499,8 @@ struct CompleteCheckInView: View {
         ZStack {
             GeometryReader { geometry in
                 ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(spacing: 0) {

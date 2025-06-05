@@ -77,7 +77,7 @@ struct EmotionSelectionView: View {
         
         // Navigate with the blob transition using the new router
         router.setMoodFlowTransitionStyle(.blobToTop(emotion: emotion))
-        router.navigateToCompleteCheckIn(emotion: emotion, from: selectedBlobPosition)
+        router.navigateToCompleteCheckIn(emotion: emotion)
     }
     
     // Helper to get blob frame (you'll need to implement this)
