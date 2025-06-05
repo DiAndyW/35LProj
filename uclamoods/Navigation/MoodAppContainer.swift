@@ -6,9 +6,9 @@ struct MoodAppContainer: View {
     
     // MARK: - Shared Gradient Properties (Moved here)
     @State private var gradientColors: [Color] = []
-    @State private var gradientHighlights: [Color] = []
+    @State private var gradientHighlights: [Color] = [.black]
     @State private var gradientSpeed: Double = 0.1 // Adjust default speed as needed
-    private let colorPool: [Color] = [Color(hex: "459DF4"), Color(hex: "9180FD"), .black]
+    private let colorPool: [Color] = [Color(hex: "403BFF"), Color(hex: "2C60F2"), .black]
 
     // MARK: - Shared Gradient Setup Method (Moved here)
     private func setupGradientColors() {
