@@ -14,8 +14,11 @@ struct HomeFeedView: View {
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
+    // New: Sort method state
+    @State private var selectedSortMethod: FeedSortMethod = .relevance
+    @State private var showSortOptions: Bool = false
+    
     private let pageSize = 20
-    private let sortMethod = "timestamp"
     
     var body: some View {
         GeometryReader { geometry in
@@ -45,10 +48,10 @@ struct HomeFeedView: View {
         }
     }
     
-    // MARK: - Header Section
+    // MARK: - Enhanced Header Section with Sort Options
     @ViewBuilder
     private var headerSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
                 Text("Morii")
                     .font(.custom("Georgia", size: 28))
@@ -61,14 +64,54 @@ struct HomeFeedView: View {
                         .foregroundColor(.pink)
                 }
             }
-            Text("How's everyone feeling?")
-                .font(.custom("Georgia", size: 16))
-                .foregroundColor(.white.opacity(0.6))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            HStack {
+                Text("How's everyone feeling?")
+                    .font(.custom("Georgia", size: 16))
+                    .foregroundColor(.white.opacity(0.6))
+                
+                Spacer()
+                
+                // Sort selector
+                Menu {
+                    ForEach(FeedSortMethod.allCases, id: \.self) { sortMethod in
+                        Button(action: {
+                            if selectedSortMethod != sortMethod {
+                                selectedSortMethod = sortMethod
+                                loadInitialPosts() // Reload with new sort
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: sortMethod.icon)
+                                Text(sortMethod.displayName)
+                                if selectedSortMethod == sortMethod {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: selectedSortMethod.icon)
+                            .font(.system(size: 14))
+                        Text(selectedSortMethod.displayName)
+                            .font(.custom("Georgia", size: 14))
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(8)
+                }
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
-        .padding(.bottom, 20)
+        .padding(.bottom, 16)
     }
     
     // MARK: - Loading Views
@@ -76,7 +119,7 @@ struct HomeFeedView: View {
     private var initialLoadingView: some View {
         VStack {
             Spacer()
-            ProgressView("Loading feed...")
+            ProgressView("Loading \(selectedSortMethod.displayName.lowercased()) feed...")
                 .foregroundColor(.white)
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
             Spacer()
@@ -162,11 +205,11 @@ struct HomeFeedView: View {
     private func emptyStateContent(geometry: GeometryProxy) -> some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "heart.circle")
+            Image(systemName: selectedSortMethod.icon)
                 .font(.system(size: 60))
                 .foregroundColor(.pink.opacity(0.6))
             VStack(spacing: 8) {
-                Text("Welcome to your mood feed!")
+                Text("No \(selectedSortMethod.displayName.lowercased()) posts yet!")
                     .font(.custom("Georgia", size: 20))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
@@ -219,13 +262,13 @@ struct HomeFeedView: View {
         }
     }
     
-    // MARK: - Pagination Logic
+    // MARK: - Pagination Logic (Updated)
     private func fetchPosts(skip: Int, limit: Int) async -> Result<(posts: [MoodPost], pagination: PaginationMetadata?), MoodPostServiceError> {
         await withCheckedContinuation { continuation in
             MoodPostService.fetchMoodPosts(
                 skip: skip,
                 limit: limit,
-                sort: sortMethod
+                sort: selectedSortMethod // Use selected sort method
             ) { result in
                 continuation.resume(returning: result)
             }
