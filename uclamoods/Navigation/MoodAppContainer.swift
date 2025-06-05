@@ -1,13 +1,64 @@
 import SwiftUI
+import FluidGradient
 
 struct MoodAppContainer: View {
     @StateObject private var router = MoodAppRouter()
+    
+    // MARK: - Shared Gradient Properties (Moved here)
+    @State private var gradientColors: [Color] = []
+    @State private var gradientHighlights: [Color] = []
+    @State private var gradientSpeed: Double = 0.1 // Adjust default speed as needed
+    private let colorPool: [Color] = [Color(hex: "459DF4"), Color(hex: "9180FD"), .black]
+
+    // MARK: - Shared Gradient Setup Method (Moved here)
+    private func setupGradientColors() {
+        var tempColors: [Color] = []
+        // Start with a more subtle highlight, or an empty array if preferred
+        var tempHighlights: [Color] = [Color.black.opacity(0.4)]
+
+        let numBlobs = 3
+        for _ in 0..<numBlobs {
+            if let randomColor = colorPool.randomElement() {
+                tempColors.append(randomColor)
+            }
+        }
+        
+        // Ensure black is present for a darker base, can be adjusted
+        if !tempColors.contains(.black) {
+            tempColors.insert(.black, at: Int.random(in: 0..<(tempColors.count + 1)))
+        }
+        if tempColors.filter({ $0 == .black }).count < 2 && numBlobs > 1 {
+             tempColors.append(.black)
+        }
+
+        let numHighlights = 2
+        for _ in 0..<numHighlights {
+            // Make highlights a bit subtle or use lighter distinct colors
+            if let randomHighlight = colorPool.randomElement()?.opacity(0.6) {
+                tempHighlights.append(randomHighlight)
+            }
+        }
+        // Optionally add a very subtle light highlight if the theme allows
+        // tempHighlights.append(Color.white.opacity(0.15))
+        
+        self.gradientColors = tempColors
+        self.gradientHighlights = tempHighlights
+    }
+
+    // Computed property for the shared gradient (Moved here)
+    private var sharedFluidGradient: some View {
+        FluidGradient(blobs: gradientColors,
+                      highlights: gradientHighlights,
+                      speed: gradientSpeed)
+            .backgroundStyle(.black) // Set the canvas for the gradient itself to black
+            .edgesIgnoringSafeArea(.all)
+    }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Consistent background
-                Color.black.edgesIgnoringSafeArea(.all)
+                sharedFluidGradient
                 
                 Group {
                     switch router.currentSection {
@@ -22,11 +73,13 @@ struct MoodAppContainer: View {
                     }
                 }
             }
+            .background(.black)
             .environmentObject(router)
             .onAppear {
                 router.setScreenSize(geometry.size)
                 // Check authentication status on app launch
                 AuthenticationService.shared.checkAuthenticationStatus()
+                setupGradientColors()
             }
             .onChange(of: geometry.size) { _, newSize in
                 router.setScreenSize(newSize)

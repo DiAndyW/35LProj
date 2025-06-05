@@ -53,8 +53,8 @@ struct SignInView: View {
     // MARK: - Body
     var body: some View {
         ZStack { // Apply sheet modifier here or to ScrollView
-            Color.black
-                .edgesIgnoringSafeArea(.all)
+//            Color.black
+//                .edgesIgnoringSafeArea(.all)
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: mainStackSpacing) {
@@ -80,14 +80,16 @@ struct SignInView: View {
     // MARK: - Subviews
     @ViewBuilder
     private var loginFormView: some View {
-        Spacer().frame(height: UIScreen.main.bounds.height * 0.05)
+        Spacer().frame(height: UIScreen.main.bounds.height * 0.03)
         
         Text("Morii")
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(.custom("Georgia", size: 48))
+            .fontWeight(.bold)
             .foregroundColor(.white)
+            .padding(.bottom, -20)
         
-        Text("Welcome Back")
-            .font(.system(size: 26, weight: .semibold))
+        Text("Moments That Stay")
+            .font(.custom("Chivo", size: 20))
             .foregroundColor(Color.white.opacity(0.85))
             .padding(.bottom, mainStackSpacing / 2)
         
@@ -209,18 +211,23 @@ struct FormField: View {
     private let fieldHeight: CGFloat = 50
     private let fieldCornerRadius: CGFloat = 10
     
+    var placeholderColor: Color = Color.white.opacity(0.6)
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(Color.white.opacity(0.7))
             
-            TextField(placeholder, text: $text)
-                .font(.system(size: 16))
+            TextField(
+                "", // Use an empty string for the main title
+                text: $text,
+                prompt: Text(placeholder).foregroundColor(placeholderColor) // Styled placeholder
+            )              .font(.system(size: 16))
                 .frame(height: fieldHeight)
                 .padding(.horizontal)
                 .foregroundColor(.white)
-                .background(Color.white.opacity(0.08))
+                .background(Color.white.opacity(0.3))
                 .cornerRadius(fieldCornerRadius)
                 .overlay(
                     RoundedRectangle(cornerRadius: fieldCornerRadius)
@@ -243,26 +250,32 @@ struct SecureFormField: View {
     private let fieldHeight: CGFloat = 50
     private let fieldCornerRadius: CGFloat = 10
     
+    var placeholderColor: Color = Color.white.opacity(0.6) // Example color
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(Color.white.opacity(0.7))
             
-            SecureField(placeholder, text: $text)
-                .font(.system(size: 16))
-                .frame(height: fieldHeight)
-                .padding(.horizontal)
-                .foregroundColor(.white)
-                .background(Color.white.opacity(0.08))
-                .cornerRadius(fieldCornerRadius)
-                .overlay(
-                    RoundedRectangle(cornerRadius: fieldCornerRadius)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                )
-                .textContentType(textContentType)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
+            SecureField(
+                "", // Use an empty string for the main title
+                text: $text,
+                prompt: Text(placeholder).foregroundColor(placeholderColor) // Styled placeholder
+            )
+            .font(.system(size: 16))
+            .frame(height: fieldHeight)
+            .padding(.horizontal)
+            .foregroundColor(.white)
+            .background(Color.white.opacity(0.3))
+            .cornerRadius(fieldCornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: fieldCornerRadius)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+            )
+            .textContentType(textContentType)
+            .autocapitalization(.none)
+            .disableAutocorrection(true)
         }
     }
 }

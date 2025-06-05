@@ -10,11 +10,11 @@ import FluidGradient
 
 struct ContentView: View {
     @State var colors: [Color] = []
-    @State var highlights: [Color] = []
+    @State var highlights: [Color] = [.white]
     
-    @State var speed = 1.0
+    @State var speed = 0.2
     
-    let colorPool: [Color] = [.red, .orange]
+    let colorPool: [Color] = [Color(hex: "459DF4"), Color(hex: "9180FD"), .black]
     
     var body: some View {
         VStack {
@@ -36,7 +36,7 @@ struct ContentView: View {
     
     func setColors() {
         colors = []
-        highlights = []
+        highlights = [.white]
         for _ in 0...Int.random(in: 5...5) {
             colors.append(colorPool.randomElement()!)
         }

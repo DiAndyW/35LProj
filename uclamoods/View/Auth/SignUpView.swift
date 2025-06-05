@@ -127,20 +127,18 @@ struct SignUpView: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            Color.black
-                .edgesIgnoringSafeArea(.all)
-            
             VStack(spacing: mainStackSpacing) {
-                Spacer().frame(height: UIScreen.main.bounds.height * 0.00)
+                Spacer().frame(height: UIScreen.main.bounds.height * 0.03)
+                    .padding(.top, -5)
                 
-                // App Title
                 Text("Morii")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .font(.custom("Georgia", size: 48))
+                    .fontWeight(.bold)
                     .foregroundColor(.white)
+                    .padding(.bottom, -20)
                 
-                // View Title
-                Text("Create Your Account")
-                    .font(.system(size: 18, weight: .semibold))
+                Text("Moments That Stay")
+                    .font(.custom("Chivo", size: 20))
                     .foregroundColor(Color.white.opacity(0.85))
                     .padding(.bottom, mainStackSpacing / 2)
                 

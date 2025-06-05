@@ -14,7 +14,7 @@ class KeyboardResponder: ObservableObject {
             }
             .map { $0.height }
             .sink { [weak self] height in
-                withAnimation(.easeOut(duration: 0.25)) {
+                DispatchQueue.main.async {
                     self?.currentHeight = height
                 }
             }
@@ -22,7 +22,7 @@ class KeyboardResponder: ObservableObject {
         
         NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
             .sink { [weak self] _ in
-                withAnimation(.easeOut(duration: 0.25)) {
+                DispatchQueue.main.async {
                     self?.currentHeight = 0
                 }
             }
