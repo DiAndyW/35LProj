@@ -1,5 +1,35 @@
 import SwiftUI
 import CoreLocation
+import Combine
+
+// Keyboard height observer
+class KeyboardResponder: ObservableObject {
+    @Published var currentHeight: CGFloat = 0
+    var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+            .compactMap { notification in
+                notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+            }
+            .map { $0.height }
+            .sink { [weak self] height in
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self?.currentHeight = height
+                }
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+            .sink { [weak self] _ in
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self?.currentHeight = 0
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
 
 extension CLLocationCoordinate2D: Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
@@ -436,6 +466,8 @@ struct CompleteCheckInView: View {
     @State private var customActivityText: String = ""
     @State private var showingAddCustomActivityField = false
     
+    @StateObject private var keyboardResponder = KeyboardResponder()
+    
     enum PrivacySetting: String, CaseIterable, Identifiable {
         case isPublic = "Public"
         case isPrivate = "Private"
@@ -467,40 +499,58 @@ struct CompleteCheckInView: View {
         ZStack {
             GeometryReader { geometry in
                 ZStack {
-                    VStack(spacing: 0) {
-                        EmotionHeaderView(
-                            emotion: emotion,
-                            timeFormatter: timeFormatter,
-                            currentDisplayLocation: getFormattedLocationForHeader(),
-                            geometry: geometry
-                        )
-                        .padding(.bottom, 30)
-                        .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48)
-                        
-                        CheckInFormView(
-                            reasonText: $reasonText,
-                            isTextFieldFocused: $isTextFieldFocused,
-                            selectedSocialTags: $selectedSocialTags,
-                            predefinedSocialTags: predefinedSocialTags,
-                            selectedPrivacy: $selectedPrivacy,
-                            showLocation: $showLocation,
-                            currentLocation: $displayableLocationName,
-                            emotion: emotion,
-                            geometry: geometry,
-                            isSaving: $isSaving,
-                            saveError: $saveError,
-                            isLocationLoading: .constant(locationManager.isLoading),
-                            saveAction: saveCheckIn
-                        )
-                        .padding(.top, -geometry.size.height * 0.56)
-                        .padding(.horizontal, geometry.size.width * 0.24)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                EmotionHeaderView(
+                                    emotion: emotion,
+                                    timeFormatter: timeFormatter,
+                                    currentDisplayLocation: getFormattedLocationForHeader(),
+                                    geometry: geometry
+                                )
+                                .padding(.bottom, 30)
+                                .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48)
+                                
+                                CheckInFormView(
+                                    reasonText: $reasonText,
+                                    isTextFieldFocused: $isTextFieldFocused,
+                                    selectedSocialTags: $selectedSocialTags,
+                                    predefinedSocialTags: predefinedSocialTags,
+                                    selectedPrivacy: $selectedPrivacy,
+                                    showLocation: $showLocation,
+                                    currentLocation: $displayableLocationName,
+                                    emotion: emotion,
+                                    geometry: geometry,
+                                    isSaving: $isSaving,
+                                    saveError: $saveError,
+                                    isLocationLoading: .constant(locationManager.isLoading),
+                                    saveAction: saveCheckIn
+                                )
+                                .padding(.top, -geometry.size.height * 0.56)
+                                .padding(.horizontal, geometry.size.width * 0.24)
+                                .id("formView") // Add ID for ScrollViewReader
+                                
+                                // Add invisible spacer that expands when keyboard appears
+                                Color.clear
+                                    .frame(height: keyboardResponder.currentHeight > 0 ? keyboardResponder.currentHeight * 0.4 : 0)
+                                    .animation(.easeOut(duration: 0.25), value: keyboardResponder.currentHeight)
+                            }
+                            .ignoresSafeArea(edges: .top)
+                            .onTapGesture {
+                                isTextFieldFocused = false
+                            }
+                            .offset(y: -geometry.size.width * 0.0)
+                            .offset(x: -geometry.size.width * 0.25)
+                        }
+                        .scrollDisabled(keyboardResponder.currentHeight == 0) // Disable scrolling when keyboard is hidden
+                        .onChange(of: isTextFieldFocused) { focused in
+                            if focused {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    proxy.scrollTo("formView", anchor: .center)
+                                }
+                            }
+                        }
                     }
-                    .ignoresSafeArea(edges: .top)
-                    .onTapGesture {
-                        isTextFieldFocused = false
-                    }
-                    .offset(y: -geometry.size.width * 0.0)
-                    .offset(x: -geometry.size.width * 0.25)
                     
                     VStack {
                         HStack {
@@ -525,7 +575,7 @@ struct CompleteCheckInView: View {
                 }
             }
         }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Assuming .toast modifier is defined
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
         .alert("Success!", isPresented: $showSaveSuccessAlert) {
             Button("OK", role: .cancel) {
                 router.navigateToMainApp()
@@ -545,7 +595,7 @@ struct CompleteCheckInView: View {
                 displayableLocationName = "Location Hidden"
             }
         }
-        .onChange(of: showLocation) { newShowValue in // Original onChange syntax
+        .onChange(of: showLocation) { newShowValue in
             if newShowValue {
                 displayableLocationName = "Fetching location..."
                 locationManager.fetchCurrentLocationAndLandmark()
@@ -554,16 +604,16 @@ struct CompleteCheckInView: View {
                 locationManager.stopUpdatingMapLocation()
             }
         }
-        .onChange(of: locationManager.landmarkName) { newLandmark in // Original onChange syntax
+        .onChange(of: locationManager.landmarkName) { newLandmark in
             updateDisplayableLocationName(landmark: newLandmark, coordinates: locationManager.userCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.userCoordinates) { newCoordinates in // Original onChange syntax
+        .onChange(of: locationManager.userCoordinates) { newCoordinates in
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: newCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.isLoading) { newIsLoading in // Original onChange syntax
+        .onChange(of: locationManager.isLoading) { newIsLoading in
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: locationManager.userCoordinates, isLoading: newIsLoading)
         }
-        .onChange(of: locationManager.authorizationStatus) { newStatus in // Original onChange syntax
+        .onChange(of: locationManager.authorizationStatus) { newStatus in
             print("Auth status changed to: \(newStatus)")
             if newStatus == .denied || newStatus == .restricted {
                 displayableLocationName = "Location access needed"
@@ -641,7 +691,7 @@ struct CompleteCheckInView: View {
         let finalLandmarkName: String?
         let finalCoordinates: CLLocationCoordinate2D?
         let finalShowLocationFlag: Bool
-
+        
         if self.showLocation && self.locationManager.userCoordinates != nil {
             // User wants to show location AND coordinates are available
             finalCoordinates = self.locationManager.userCoordinates
