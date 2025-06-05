@@ -7,22 +7,42 @@ struct ProfileAnalyticsView: View {
     
     var body: some View {
         ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 2) {
+                        
+            VStack(spacing: 8) {
                 
-                Picker("Select Period", selection: $selectedPeriod) {
+                //Picker
+                HStack(spacing: 4) {
                     ForEach(AnalyticsPeriod.allCases, id: \.self) { period in
-                        Text(formattedPeriodTitle(period.rawValue.capitalized)).tag(period)
+                        Button(action: {
+                            if(selectedPeriod != period){
+                                selectedPeriod = period
+                                analyticsService.fetchAnalytics(period: period)
+                            }
+                        }) {
+                            Text(formattedPeriodTitle(period.rawValue).capitalized)
+                                .padding(.vertical, 6)
+                                .font(.custom("Georgia", size: 10))
+                                .frame(minWidth: 0, maxWidth: .infinity)
+                                .fontWeight(selectedPeriod == period ? .bold : .medium)
+                                .foregroundColor(selectedPeriod == period ? .pink : .white.opacity(0.6))
+                                .background(
+                                    ZStack {
+                                        Capsule()
+                                            .fill(Color.pink.opacity(0.2))
+                                            .opacity(selectedPeriod == period ? 1 : 0)
+                                        
+                                        Capsule()
+                                            .stroke(selectedPeriod == period ? Color.pink : Color.gray.opacity(0.3), lineWidth: 1)
+                                    }
+                                    .animation(.easeInOut(duration: 0.5), value: selectedPeriod == period)
+                                )
+                        }
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(Capsule())
                     }
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding(.vertical, 10)
-                .colorScheme(.dark)
-                .onChange(of: selectedPeriod) { _, newPeriod in
-                    analyticsService.fetchAnalytics(period: newPeriod)
-                }
-                
+                .padding(.top, 8)
+                                
                 // Content Area
                 ScrollView {
                     if analyticsService.isLoading {

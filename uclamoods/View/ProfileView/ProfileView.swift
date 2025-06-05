@@ -1,78 +1,5 @@
 import SwiftUI
 
-struct ProfileHeaderView: View {
-    @EnvironmentObject private var userDataProvider: UserDataProvider
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            Circle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 80, height: 80)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.white.opacity(0.8))
-                )
-            
-            VStack(spacing: 4) {
-                Text(userDataProvider.currentUser?.username ?? "Username")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text(userDataProvider.currentUser?.email ?? "Email")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-            }
-        }
-        .padding(.top, 20)
-    }
-}
-
-struct ProfileTabViewSelector: View {
-    @Binding var selectedProfileTab: ProfileView.ProfileTab
-    let tabs: [ProfileView.ProfileTab] = ProfileView.ProfileTab.allCases
-    
-    @Namespace private var selectedTabNamespace
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(tabs, id: \.self) { tab in
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        selectedProfileTab = tab
-                    }
-                }) {
-                    Text(tab.rawValue)
-                        .font(.custom("Georgia", size: 16))
-                        .fontWeight(selectedProfileTab == tab ? .bold : .medium)
-                        .foregroundColor(selectedProfileTab == tab ? .pink : .white.opacity(0.6))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            ZStack {
-                                if selectedProfileTab == tab {
-                                    Capsule()
-                                        .fill(Color.pink.opacity(0.2))
-                                        .matchedGeometryEffect(id: "selectedTabBackground", in: selectedTabNamespace)
-                                }
-                                Capsule()
-                                    .stroke(selectedProfileTab == tab ? Color.pink : Color.gray.opacity(0.3), lineWidth: 1)
-                            }
-                        )
-                }
-            }
-        }
-        .background(Color.white.opacity(0.05))
-        .clipShape(Capsule())
-    }
-}
-
-enum TabTransitionDirection: Equatable {
-    case forward
-    case backward
-    case none
-}
-
 struct ProfileView: View {
     @EnvironmentObject private var router: MoodAppRouter
     @EnvironmentObject private var userDataProvider: UserDataProvider
@@ -80,6 +7,10 @@ struct ProfileView: View {
     @State private var selectedProfileTab: ProfileTab = .overview
     @State private var tabTransitionDirection: TabTransitionDirection = .none
     @State private var overviewRefreshID = UUID()
+    
+    // Detail view state
+    @State private var selectedPostForDetail: FeedItem?
+    @State private var showDetailViewAnimated: Bool = false
     
     enum ProfileTab: String, CaseIterable, Identifiable {
         case overview = "Overview"
@@ -183,4 +114,78 @@ struct ProfileView: View {
                     .animation(.easeInOut(duration: animationDuration))
         }
     }
+}
+
+
+struct ProfileHeaderView: View {
+    @EnvironmentObject private var userDataProvider: UserDataProvider
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Circle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 80, height: 80)
+                .overlay(
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.white.opacity(0.8))
+                )
+            
+            VStack(spacing: 4) {
+                Text(userDataProvider.currentUser?.username ?? "Username")
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text(userDataProvider.currentUser?.email ?? "Email")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(.top, 20)
+    }
+}
+
+struct ProfileTabViewSelector: View {
+    @Binding var selectedProfileTab: ProfileView.ProfileTab
+    let tabs: [ProfileView.ProfileTab] = ProfileView.ProfileTab.allCases
+    
+    @Namespace private var selectedTabNamespace
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(tabs, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        selectedProfileTab = tab
+                    }
+                }) {
+                    Text(tab.rawValue)
+                        .font(.custom("Georgia", size: 16))
+                        .fontWeight(selectedProfileTab == tab ? .bold : .medium)
+                        .foregroundColor(selectedProfileTab == tab ? .pink : .white.opacity(0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            ZStack {
+                                if selectedProfileTab == tab {
+                                    Capsule()
+                                        .fill(Color.pink.opacity(0.2))
+                                        .matchedGeometryEffect(id: "selectedTabBackground", in: selectedTabNamespace)
+                                }
+                                Capsule()
+                                    .stroke(selectedProfileTab == tab ? Color.pink : Color.gray.opacity(0.3), lineWidth: 1)
+                            }
+                        )
+                }
+            }
+            .background(Color.white.opacity(0.05))
+            .clipShape(Capsule())
+        }
+    }
+}
+
+enum TabTransitionDirection: Equatable {
+    case forward
+    case backward
+    case none
 }
