@@ -263,7 +263,7 @@ struct SignUpView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(Color.red)
                         .multilineTextAlignment(.center)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 5)
                         .padding(.horizontal, formHorizontalPadding)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
