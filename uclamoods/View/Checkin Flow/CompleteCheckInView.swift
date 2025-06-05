@@ -59,7 +59,7 @@ struct SocialTagSectionView: View {
     @FocusState private var isTextFieldFocused: Bool
     
     // Profanity Filter and Toast State
-    @StateObject private var profanityFilter = ProfanityFilterService()
+    @StateObject private var profanityFilter = ProfanityFilterService() // Assuming ProfanityFilterService is defined
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
     
@@ -121,7 +121,7 @@ struct SocialTagSectionView: View {
         .onTapGesture {
             if isTextFieldFocused { isTextFieldFocused = false }
         }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Apply toast modifier
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Assuming .toast modifier is defined
     }
     
     private func addCustomTagFromInput() {
@@ -141,14 +141,14 @@ struct SocialTagSectionView: View {
 }
 
 struct EmotionHeaderView: View {
-    let emotion: Emotion
+    let emotion: Emotion // Assuming Emotion struct is defined
     let timeFormatter: DateFormatter
     let currentDisplayLocation: String
     let geometry: GeometryProxy
     
     var body: some View {
         ZStack {
-            FloatingBlobButton(
+            FloatingBlobButton( // Assuming FloatingBlobButton is defined
                 text: "",
                 size: 600,
                 fontSize: 50,
@@ -245,7 +245,7 @@ struct ReasonInputSectionView: View {
     @Binding var reasonText: String
     var isTextFieldFocused: FocusState<Bool>.Binding
     let accentColor: Color
-    let maxCharacterLimit = 300 // Add this constant
+    let maxCharacterLimit = 300
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -265,7 +265,7 @@ struct ReasonInputSectionView: View {
                     .shadow(color: .white.opacity(0.1), radius: 5, x: 0, y: 0)
                 
                 TextField("Share your thoughts...", text: $reasonText, axis: .vertical)
-                    .font(.custom("Roberto", size: 16))
+                    .font(.custom("Roberto", size: 16)) // Ensure font "Roberto" is available
                     .foregroundColor(.white)
                     .accentColor(accentColor)
                     .padding(20)
@@ -274,7 +274,7 @@ struct ReasonInputSectionView: View {
                     .onTapGesture {
                         isTextFieldFocused.wrappedValue = true
                     }
-                    .onChange(of: reasonText) { newValue in
+                    .onChange(of: reasonText) { newValue in // Using original onChange syntax
                         guard let newValueLastChar = newValue.last else { return }
                         if newValueLastChar == "\n" {
                             reasonText.removeLast()
@@ -286,21 +286,18 @@ struct ReasonInputSectionView: View {
                         }
                     }
                     .submitLabel(.done)
-                // Inside ReasonInputSectionView's TextField modifiers:
                     .onSubmit {
                         print("➡️ ReasonInputSectionView: .onSubmit triggered.")
                         print("   Before change: isTextFieldFocused.wrappedValue = \(isTextFieldFocused.wrappedValue)")
-                        print("   Current reasonText before potential change: '\(reasonText)'") // See if newline is already there
+                        print("   Current reasonText before potential change: '\(reasonText)'")
                         
-                        isTextFieldFocused.wrappedValue = false // Attempt to dismiss keyboard
+                        isTextFieldFocused.wrappedValue = false
                         
                         print("   After change: isTextFieldFocused.wrappedValue = \(isTextFieldFocused.wrappedValue)")
-                        // If you suspect a newline is being added by "Done", check text *after* potential implicit changes
-                        // DispatchQueue.main.async { print("   reasonText shortly after onSubmit: '\(reasonText)'") }
                     }
                 
-                Text("\(reasonText.count)/\(maxCharacterLimit)") // Update to use the constant
-                    .font(.custom("Roberto", size: 14))
+                Text("\(reasonText.count)/\(maxCharacterLimit)")
+                    .font(.custom("Roberto", size: 14)) // Ensure font "Roberto" is available
                     .foregroundColor(.white.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.horizontal, 30)
@@ -319,7 +316,7 @@ struct SaveCheckInButtonView: View {
     let action: () -> Void
     let isSaving: Bool
     let saveError: String?
-    let isDisabled: Bool // Add this property
+    let isDisabled: Bool
     
     var body: some View {
         VStack(spacing: 8) {
@@ -333,13 +330,13 @@ struct SaveCheckInButtonView: View {
                     Button(action: action) {
                         Text("Save Check-in")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(isDisabled ? .gray : .black) // Change text color when disabled
+                            .foregroundColor(isDisabled ? .gray : .black)
                             .frame(width: geometry.size.width * 0.8, height: 50)
-                            .background(isDisabled ? Color.white.opacity(0.5) : Color.white) // Change background when disabled
+                            .background(isDisabled ? Color.white.opacity(0.5) : Color.white)
                             .cornerRadius(25)
                             .shadow(radius: 5)
                     }
-                    .disabled(isDisabled) // Disable button when condition is met
+                    .disabled(isDisabled)
                     Spacer()
                 }
             }
@@ -360,7 +357,6 @@ struct CheckInFormView: View {
     @Binding var reasonText: String
     var isTextFieldFocused: FocusState<Bool>.Binding
     
-    // Updated properties for social tags
     @Binding var selectedSocialTags: Set<String>
     let predefinedSocialTags: [String]
     
@@ -368,7 +364,7 @@ struct CheckInFormView: View {
     @Binding var showLocation: Bool
     @Binding var currentLocation: String
     
-    let emotion: Emotion // Assuming Emotion struct is defined elsewhere
+    let emotion: Emotion
     let geometry: GeometryProxy
     
     @Binding var isSaving: Bool
@@ -380,8 +376,8 @@ struct CheckInFormView: View {
     var body: some View {
         VStack(spacing: 0) {
             SocialTagSectionView(
-                selectedTags: $selectedSocialTags,       // Pass the Set<String> binding
-                predefinedTags: predefinedSocialTags   // Pass the [String]
+                selectedTags: $selectedSocialTags,
+                predefinedTags: predefinedSocialTags
             )
             
             ReasonInputSectionView(
@@ -403,24 +399,21 @@ struct CheckInFormView: View {
                 action: saveAction,
                 isSaving: isSaving,
                 saveError: saveError,
-                isDisabled: reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                isDisabled: shouldDisableSaveButton() // Using original helper
             )
         }
     }
+    
     private func shouldDisableSaveButton() -> Bool {
-        // Disable if reason text is empty
         let isReasonEmpty = reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        
-        // Disable if location is enabled but still loading
         let isLocationPending = showLocation && isLocationLoading
-        
         return isReasonEmpty || isLocationPending
     }
 }
 
 struct CompleteCheckInView: View {
-    @EnvironmentObject private var router: MoodAppRouter
-    @EnvironmentObject private var userDataProvider: UserDataProvider
+    @EnvironmentObject private var router: MoodAppRouter // Assuming MoodAppRouter is defined
+    @EnvironmentObject private var userDataProvider: UserDataProvider // Assuming UserDataProvider is defined
     
     @State private var reasonText: String = ""
     @FocusState private var isTextFieldFocused: Bool
@@ -430,12 +423,12 @@ struct CompleteCheckInView: View {
         "Friends", "Family", "By Myself"
     ]
     
-    @StateObject private var profanityFilter = ProfanityFilterService()
+    @StateObject private var profanityFilter = ProfanityFilterService() // Assuming ProfanityFilterService is defined
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
     
     @State private var selectedActivities: Set<ActivityTag> = []
-    @State private var predefinedActivities: [ActivityTag] = [
+    @State private var predefinedActivities: [ActivityTag] = [ // Original predefined activities
         ActivityTag(name: "Driving"), ActivityTag(name: "Resting"), ActivityTag(name: "Hobbies"),
         ActivityTag(name: "Fitness"), ActivityTag(name: "Hanging Out"), ActivityTag(name: "Eating"),
         ActivityTag(name: "Work"), ActivityTag(name: "Studying")
@@ -452,10 +445,10 @@ struct CompleteCheckInView: View {
     
     // MARK: - Location State
     @State private var showLocation: Bool = true
-    @StateObject private var locationManager = LocationManager()
+    @StateObject private var locationManager = LocationManager() // Assuming LocationManager is defined
     @State private var displayableLocationName: String = "Fetching location..."
     
-    let emotion: Emotion
+    let emotion: Emotion // Assuming Emotion struct is defined
     
     // MARK: - Saving State
     @State private var isSaving: Bool = false
@@ -472,10 +465,8 @@ struct CompleteCheckInView: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            // Main content with GeometryReader
             GeometryReader { geometry in
                 ZStack {
-                    // Main content stack
                     VStack(spacing: 0) {
                         EmotionHeaderView(
                             emotion: emotion,
@@ -511,7 +502,6 @@ struct CompleteCheckInView: View {
                     .offset(y: -geometry.size.width * 0.0)
                     .offset(x: -geometry.size.width * 0.25)
                     
-                    // Back Button Overlay
                     VStack {
                         HStack {
                             Button(action: {
@@ -535,8 +525,7 @@ struct CompleteCheckInView: View {
                 }
             }
         }
-        // Apply toast to the entire ZStack container, not inside GeometryReader
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Assuming .toast modifier is defined
         .alert("Success!", isPresented: $showSaveSuccessAlert) {
             Button("OK", role: .cancel) {
                 router.navigateToMainApp()
@@ -556,7 +545,7 @@ struct CompleteCheckInView: View {
                 displayableLocationName = "Location Hidden"
             }
         }
-        .onChange(of: showLocation) { newShowValue in
+        .onChange(of: showLocation) { newShowValue in // Original onChange syntax
             if newShowValue {
                 displayableLocationName = "Fetching location..."
                 locationManager.fetchCurrentLocationAndLandmark()
@@ -565,16 +554,16 @@ struct CompleteCheckInView: View {
                 locationManager.stopUpdatingMapLocation()
             }
         }
-        .onChange(of: locationManager.landmarkName) { newLandmark in
+        .onChange(of: locationManager.landmarkName) { newLandmark in // Original onChange syntax
             updateDisplayableLocationName(landmark: newLandmark, coordinates: locationManager.userCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.userCoordinates) { newCoordinates in
+        .onChange(of: locationManager.userCoordinates) { newCoordinates in // Original onChange syntax
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: newCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.isLoading) { newIsLoading in
+        .onChange(of: locationManager.isLoading) { newIsLoading in // Original onChange syntax
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: locationManager.userCoordinates, isLoading: newIsLoading)
         }
-        .onChange(of: locationManager.authorizationStatus) { newStatus in
+        .onChange(of: locationManager.authorizationStatus) { newStatus in // Original onChange syntax
             print("Auth status changed to: \(newStatus)")
             if newStatus == .denied || newStatus == .restricted {
                 displayableLocationName = "Location access needed"
@@ -586,7 +575,7 @@ struct CompleteCheckInView: View {
         }
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Helper Methods (Original versions)
     private func getFormattedLocationForHeader() -> String {
         if !showLocation {
             return "Location Hidden"
@@ -614,6 +603,7 @@ struct CompleteCheckInView: View {
         }
     }
     
+    // MARK: - saveCheckIn (MODIFIED LOGIC)
     private func saveCheckIn() {
         isSaving = true
         saveError = nil
@@ -647,38 +637,52 @@ struct CompleteCheckInView: View {
             return
         }
         
-        isSaving = true
-        saveError = nil
-        showSaveSuccessAlert = false
+        // MODIFIED SECTION FOR LOCATION HANDLING
+        let finalLandmarkName: String?
+        let finalCoordinates: CLLocationCoordinate2D?
+        let finalShowLocationFlag: Bool
+
+        if self.showLocation && self.locationManager.userCoordinates != nil {
+            // User wants to show location AND coordinates are available
+            finalCoordinates = self.locationManager.userCoordinates
+            finalLandmarkName = self.locationManager.landmarkName // This could be nil if landmark isn't found, which is acceptable for the backend if coordinates are present.
+            finalShowLocationFlag = true
+        } else {
+            // User either chose to hide location (self.showLocation is false), OR
+            // self.showLocation is true BUT self.locationManager.userCoordinates is nil (e.g. permissions denied, error fetching)
+            // In these cases, the entire location object should be treated as null/hidden for the backend.
+            finalCoordinates = nil
+            finalLandmarkName = nil
+            finalShowLocationFlag = false
+        }
+        
+        // Original print statement, updated to use resolved values
+        print("Saving CheckIn - Landmark: \(finalLandmarkName ?? "nil"), Coords: \(String(describing: finalCoordinates)), ShowLocation (to service): \(finalShowLocationFlag)")
         
         Task {
             do {
-                let landmarkToSave = showLocation ? locationManager.landmarkName : nil
-                let coordinatesToSave = showLocation ? locationManager.userCoordinates : nil
-                
-                print("Saving CheckIn - Landmark: \(landmarkToSave ?? "nil"), Coords: \(String(describing: coordinatesToSave)), ShowLocation: \(showLocation)")
-                
+                // Assuming CheckInService and its error types are defined elsewhere
                 let response = try await CheckInService.createCheckIn(
                     emotion: self.emotion,
                     reasonText: trimmedReasonText,
                     socialTags: self.selectedSocialTags,
                     selectedActivities: self.selectedActivities,
-                    landmarkName: landmarkToSave,
-                    userCoordinates: coordinatesToSave,
-                    showLocation: self.showLocation,
+                    landmarkName: finalLandmarkName,         // Use the resolved landmark name
+                    userCoordinates: finalCoordinates,       // Use the resolved coordinates
+                    showLocation: finalShowLocationFlag,     // Use the resolved show location flag
                     privacySetting: self.selectedPrivacy,
                     userDataProvider: self.userDataProvider
                 )
                 
                 await MainActor.run {
                     isSaving = false
-                    print("Save successful: \(response.message)")
+                    print("Save successful: \(response.message)") // Assuming response has a message
                     showSaveSuccessAlert = true
                 }
             } catch {
                 await MainActor.run {
                     isSaving = false
-                    if let serviceError = error as? CheckInServiceError {
+                    if let serviceError = error as? CheckInServiceError { // Assuming CheckInServiceError is defined
                         saveError = serviceError.errorDescription ?? "An unknown error occurred."
                     } else {
                         saveError = error.localizedDescription
@@ -692,6 +696,8 @@ struct CompleteCheckInView: View {
 
 struct UpdatedCompleteCheckInView_Previews: PreviewProvider {
     static var previews: some View {
+        // Assuming Emotion, EmotionDataProvider, MoodAppRouter, UserDataProvider are defined elsewhere
+        // and work as intended for the preview.
         CompleteCheckInView(emotion: EmotionDataProvider.highEnergyEmotions[3])
             .environmentObject(MoodAppRouter())
             .environmentObject(UserDataProvider.shared)

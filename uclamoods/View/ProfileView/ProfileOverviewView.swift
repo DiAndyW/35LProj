@@ -144,6 +144,7 @@ struct ProfileOverviewView: View {
         guard let userId = userDataProvider.currentUser?.id, !userId.isEmpty, userId != "000" else {
             throw NSError(domain: "DataFetching", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid or missing user ID for fetching posts."])
         }
+        print("ProfileOverviewView: Fetching posts for userId: \(userId)")
         return try await withCheckedThrowingContinuation { continuation in
             MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)") { result in
                 switch result {

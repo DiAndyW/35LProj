@@ -434,13 +434,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = uclamoods/uclamoods.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1.0;
 				DEVELOPMENT_TEAM = PBTJSSD9T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Morii;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
@@ -453,7 +453,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yang.morii;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -469,13 +469,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = uclamoods/uclamoods.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1.0;
 				DEVELOPMENT_TEAM = PBTJSSD9T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Morii;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
@@ -488,7 +488,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yang.morii;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
