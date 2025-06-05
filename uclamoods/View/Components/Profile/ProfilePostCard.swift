@@ -1,72 +1,79 @@
-//
-//  ProfilePostCard.swift
-//  uclamoods
-//
-//  Created by David Sun on 6/4/25.
-//
-
 import SwiftUI
 
-struct ProfilePostHeaderView: View {
+struct ProfilePostCardHeaderView: View {
+    let displayUsername: String
+    let isLoadingUsername: Bool
+    let usernameFetchFailed: Bool
     let timestamp: String
     let location: SimpleLocation?
     let people: [String]?
     
     var body: some View {
         HStack {
-            VStack(){
-                if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
-                    Text("\(timestampParts.relativeDate), \(timestampParts.absoluteDate)")
-                        .font(.custom("Georgia", size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+            VStack(alignment: .leading, spacing: 4) {
+                let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                let hasPeople = people != nil && !(people?.isEmpty ?? true)
+                
+                if hasLocation || hasPeople {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if let peopleArray = people, !peopleArray.isEmpty {
+                            HStack(spacing: 5) {
+                                Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Text(peopleArray.joined(separator: ", "))
+                                    .font(.custom("Georgia", size: 12))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .lineLimit(2).truncationMode(.tail)
+                            }
+                        }
+                        if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 5) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Text(locationName)
+                                    .font(.custom("Georgia", size: 12))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .lineLimit(1).truncationMode(.tail)
+                            }
+                        }
+                    }
+                }else{
+                    HStack(spacing: 5) {
+                        Image(systemName: "list.clipboard")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
+                        Text("No location or people data")
+                            .font(.custom("Georgia", size: 12))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
                 }
                 Spacer()
             }
             
             Spacer()
             
-            let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            if hasLocation{
-                VStack(alignment: .trailing, spacing: 5) {
-                    // Location
-                    if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(locationName)
+            HStack {
+                VStack(){
+                    if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(timestampParts.relativeDate)
                                 .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(1).truncationMode(.tail)
+                                .foregroundColor(.white.opacity(0.6))
+                            Text(timestampParts.absoluteDate)
+                                .font(.custom("Georgia", size: 12))
+                                .foregroundColor(.white.opacity(0.6))
                         }
                     }
-                    Spacer()
                 }
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
-struct ProfilePostPeopleView: View {
-    let people: [String]?
-
-    var body: some View {
-        let hasPeople = people != nil && !(people?.isEmpty ?? true)
-        if hasPeople{
-            if let peopleArray = people, !peopleArray.isEmpty {
-                HStack(spacing: 5) {
-                    Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
-                    Text(peopleArray.joined(separator: ", "))
-                        .font(.custom("Georgia", size: 12))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(2).truncationMode(.tail)
-                }
-            }
-        }
-    }
-}
-
 
 struct ProfilePostCardEmotionView: View {
     let emotion: SimpleEmotion
@@ -74,16 +81,78 @@ struct ProfilePostCardEmotionView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(emotion.name)
-                .font(.custom("Georgia", size: 18))
+                .font(.custom("Georgia", size: 16))
                 .fontWeight(.bold)
                 .foregroundColor(emotion.color ?? .white)
                 .lineLimit(1)
+                .offset(y: 5)
             EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: emotion.name)!, showText: false)
-                .frame(width:100, height: 100)
+                .frame(width:130, height: 130)
                 .offset(y: -3)
         }
     }
 }
+
+struct ProfilePostCardContentView: View {
+    let content: String?
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            if let reasonText = content, !reasonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(reasonText)
+                    .font(.custom("HelveticaNeue", size: 14))
+                    .foregroundColor(.white)
+                    .lineLimit(6).truncationMode(.tail)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
+            }
+            Spacer()
+        }
+    }
+}
+
+struct ProfilePostCardActionsView: View {
+    @Binding var isLiked: Bool
+    @Binding var currentLikesCount: Int
+    let commentsCount: Int
+    let likeAction: () -> Void
+    let commentButtonAction: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: likeAction) {
+                HStack(spacing: 5) {
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: 18))
+                        .foregroundColor(isLiked ? .red : .white.opacity(0.7))
+                        .scaleEffect(isLiked ? 1.15 : 1.0)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.5), value: isLiked)
+                    Text("\(currentLikesCount)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .animation(nil, value: currentLikesCount)
+                }
+            }
+            .buttonStyle(.plain)
+            
+            Button(action: commentButtonAction) {
+                HStack(spacing: 5) {
+                    Image(systemName: "bubble.right")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white.opacity(0.7))
+                    Text("\(commentsCount)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
 
 struct ProfilePostCard: View {
     let post: FeedItem
@@ -99,38 +168,48 @@ struct ProfilePostCard: View {
     @State private var isPressed: Bool = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            
-            ProfilePostHeaderView(
+        VStack(alignment: .leading, spacing: 2){
+            ProfilePostCardHeaderView(
+                displayUsername: displayUsername,
+                isLoadingUsername: isLoadingUsername,
+                usernameFetchFailed: usernameFetchFailed,
                 timestamp: post.timestamp,
                 location: post.location,
                 people: post.people
             )
-            .padding(.horizontal, 16)
+            .padding(.bottom, 4)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(post.emotion.color?.opacity(0.3) ?? Color.white.opacity(0.1), lineWidth: 1)
+            )
             
-            HStack(spacing: 0) {
-                ProfilePostCardEmotionView(emotion: post.emotion)
-                MoodPostCardContentView(content: post.content)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) {
+                    ProfilePostCardEmotionView(emotion: post.emotion)
+                    ProfilePostCardContentView(content: post.content)
+                }
+                .frame(maxHeight: 120)
+                
+                HStack(){
+                    Spacer()
+                    ProfilePostCardActionsView(
+                        isLiked: $isLiked,
+                        currentLikesCount: $currentLikesCount,
+                        commentsCount: post.commentsCount ?? 0,
+                        likeAction: handleLikeButtonTapped,
+                        commentButtonAction: openDetailAction
+                    )
+                    .padding(.horizontal, 4)
+                }
             }
-            .frame(maxHeight: 120)
-            
-            
-            HStack(){
-                ProfilePostPeopleView(people: post.people)
-                Spacer()
-                MoodPostCardActionsView(
-                    isLiked: $isLiked,
-                    currentLikesCount: $currentLikesCount,
-                    commentsCount: post.commentsCount ?? 0,
-                    likeAction: handleLikeButtonTapped,
-                    commentButtonAction: openDetailAction
-                )
-            }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 8)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            .background(Color.white.opacity(0.02))
         }
-        .padding(8)
-        .background(Color.white.opacity(0.075))
         .cornerRadius(20)
+        .background(Color.white.opacity(0.05))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2)

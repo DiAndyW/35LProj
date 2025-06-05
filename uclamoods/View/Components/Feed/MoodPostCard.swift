@@ -10,68 +10,70 @@ struct MoodPostCardHeaderView: View {
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
-                if isLoadingUsername {
-                    ProgressView().scaleEffect(0.7).frame(height: 18)
-                } else {
-                    Text(displayUsername)
-                        .font(.custom("Georgia", size: 16))
-                        .fontWeight(.semibold)
-                        .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white.opacity(0.9))
-                        .lineLimit(1).truncationMode(.tail)
+            VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .center, spacing: 0){
+                    if isLoadingUsername {
+                        ProgressView().scaleEffect(0.7).frame(height: 18)
+                    } else {
+                        Text(displayUsername)
+                            .font(.custom("Georgia", size: 18))
+                            .fontWeight(.semibold)
+                            .foregroundColor(usernameFetchFailed ? .gray.opacity(0.7) : .white.opacity(0.9))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
                 }
+
+                let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                let hasPeople = people != nil && !(people?.isEmpty ?? true)
                 
-                if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(timestampParts.relativeDate)
-                            .font(.custom("Georgia", size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                        Text(timestampParts.absoluteDate)
-                            .font(.custom("Georgia", size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                if hasLocation || hasPeople {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if let peopleArray = people, !peopleArray.isEmpty {
+                            HStack(spacing: 5) {
+                                Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Text(peopleArray.joined(separator: ", "))
+                                    .font(.custom("Georgia", size: 12))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .lineLimit(2).truncationMode(.tail)
+                            }
+                        }
+                        if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 5) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Text(locationName)
+                                    .font(.custom("Georgia", size: 12))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .lineLimit(1).truncationMode(.tail)
+                            }
+                        }
                     }
                 }
                 Spacer()
             }
-            .padding([.leading, .top, .bottom], 8)
-            
             
             Spacer()
-            
-            let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            let hasPeople = people != nil && !(people?.isEmpty ?? true)
-            
-            if hasLocation || hasPeople {
-                VStack(alignment: .trailing, spacing: 5) {
-                    // Location
-                    if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(locationName)
+
+            HStack {
+                VStack(){
+                    if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(timestampParts.relativeDate)
                                 .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(1).truncationMode(.tail)
+                                .foregroundColor(.white.opacity(0.6))
+                            Text(timestampParts.absoluteDate)
+                                .font(.custom("Georgia", size: 12))
+                                .foregroundColor(.white.opacity(0.6))
                         }
                     }
-                    // People (Social Tags)
-                    if let peopleArray = people, !peopleArray.isEmpty {
-                        HStack(spacing: 5) {
-                            Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Text(peopleArray.joined(separator: ", "))
-                                .font(.custom("Georgia", size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(2).truncationMode(.tail)
-                        }
-                    }
-                    Spacer()
                 }
-                .padding([.trailing, .top, .bottom], 8)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
 
@@ -80,15 +82,15 @@ struct MoodPostCardEmotionView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: emotion.name)!, showText: false) //
-                .frame(width:100, height: 100)
             Text(emotion.name)
-                .font(.custom("Georgia", size: 12))
+                .font(.custom("Georgia", size: 16))
                 .fontWeight(.bold)
                 .foregroundColor(emotion.color ?? .white)
                 .lineLimit(1)
-                .offset(y: -4)
-            Spacer()
+                .offset(y: 5)
+            EmotionRadarChartView(emotion: EmotionDataProvider.getEmotion(byName: emotion.name)!, showText: false)
+                .frame(width:130, height: 130)
+                .offset(y: -3)
         }
     }
 }
@@ -111,7 +113,6 @@ struct MoodPostCardContentView: View {
             }
             Spacer()
         }
-        .padding(4)
     }
 }
 
@@ -151,7 +152,6 @@ struct MoodPostCardActionsView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.leading, 8)
     }
 }
 
@@ -170,7 +170,7 @@ struct MoodPostCard: View {
     @State private var isPressed: Bool = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2){
             MoodPostCardHeaderView(
                 displayUsername: displayUsername,
                 isLoadingUsername: isLoadingUsername,
@@ -179,29 +179,39 @@ struct MoodPostCard: View {
                 location: post.location,
                 people: post.people
             )
+            .padding(.bottom, 2)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(post.emotion.color?.opacity(0.3) ?? Color.white.opacity(0.1), lineWidth: 1)
+            )
             
-            HStack(spacing: 0) {
-                MoodPostCardEmotionView(emotion: post.emotion)
-                MoodPostCardContentView(content: post.content)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) {
+                    MoodPostCardEmotionView(emotion: post.emotion)
+                    MoodPostCardContentView(content: post.content)
+                }
+                .frame(maxHeight: 120)
+                
+                HStack(){
+                    Spacer()
+                    MoodPostCardActionsView(
+                        isLiked: $isLiked,
+                        currentLikesCount: $currentLikesCount,
+                        commentsCount: post.commentsCount ?? 0,
+                        likeAction: handleLikeButtonTapped,
+                        commentButtonAction: openDetailAction
+                    )
+                    .padding(.horizontal, 4)
+                }
             }
-            .frame(maxHeight: 120)
-            
-            HStack(){
-                Spacer()
-                MoodPostCardActionsView(
-                    isLiked: $isLiked,
-                    currentLikesCount: $currentLikesCount,
-                    commentsCount: post.commentsCount ?? 0,
-                    likeAction: handleLikeButtonTapped,
-                    commentButtonAction: openDetailAction
-                )
-                .padding(.horizontal, 4)
-            }
-
+            .padding(.horizontal, 8)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+            .background(Color.white.opacity(0.02))
         }
-        .padding(8)
-        .background(Color.white.opacity(0.075))
         .cornerRadius(20)
+        .background(Color.white.opacity(0.05))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2)
