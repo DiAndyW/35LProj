@@ -43,7 +43,7 @@ export const createCheckIn = async (req, res) => {
       reason,
       people,
       activities,
-      location, // Expected structure from frontend: { landmarkName?: string, coordinates?: { type: "Point", coordinates: [lon, lat] }, showLocation: boolean }
+      location,
       privacy
     } = req.body;
 
@@ -65,52 +65,60 @@ export const createCheckIn = async (req, res) => {
       return res.status(400).json({ error: userIdValidation.error });
     }
 
-    let processedLocationForDb = null; // Initialize to null
+    let processedLocationForDb = null; // This will be structured for your Mongoose schema
 
-    // New Failsafe Location Logic:
-    // The frontend now sends a `showLocation` boolean.
-    // If `showLocation` is true, then `landmarkName` AND `coordinates` must be present and valid.
-    // If `showLocation` is false, or if `coordinates` are missing/invalid even if `showLocation` was true,
-    // the entire location object should be null.
+    if (location) { // (A) Check if a 'location' object was sent by the client
+        const clientLandmarkName = (location.landmarkName && typeof location.landmarkName === 'string')
+                                 ? location.landmarkName.trim()
+                                 : null;
 
-    if (location && location.showLocation === true) {
-      const clientLandmarkName = (location.landmarkName && typeof location.landmarkName === 'string')
-                               ? location.landmarkName.trim()
-                               : null;
-      const clientGeoJsonData = location.coordinates; // This is the { type: "Point", coordinates: [...] } object
+        // (B) Check if the client sent the 'coordinates' sub-object (which should be our GeoJSON structure)
+        if (location.coordinates && typeof location.coordinates === 'object') {
+            const clientGeoJsonData = location.coordinates; // This is the { type: "Point", coordinates: [...] } object from the client
 
-      // Both landmarkName and valid coordinates are required if showLocation is true
-      if (clientLandmarkName &&
-          clientGeoJsonData &&
-          clientGeoJsonData.type === 'Point' &&
-          Array.isArray(clientGeoJsonData.coordinates) &&
-          clientGeoJsonData.coordinates.length === 2 &&
-          typeof clientGeoJsonData.coordinates[0] === 'number' && // longitude
-          typeof clientGeoJsonData.coordinates[1] === 'number') {  // latitude
+            // (C) Validate the actual numerical coordinates array within the client's GeoJSON data
+            if (clientGeoJsonData.type === 'Point' && // Check type
+                Array.isArray(clientGeoJsonData.coordinates) &&
+                clientGeoJsonData.coordinates.length === 2 &&
+                typeof clientGeoJsonData.coordinates[0] === 'number' && // longitude
+                typeof clientGeoJsonData.coordinates[1] === 'number') {  // latitude
 
-        processedLocationForDb = {
-          landmarkName: clientLandmarkName,
-          coordinates: {
-            type: 'Point',
-            coordinates: [clientGeoJsonData.coordinates[0], clientGeoJsonData.coordinates[1]]
-          }
-        };
-      } else {
-        // If showLocation was true but data is incomplete/invalid, treat as no location shared.
-        // No error response here; processedLocationForDb remains null by default.
-        // You could log this scenario for debugging if desired:
-        // console.warn('Location sharing intended, but data was incomplete/invalid. Saving location as null.', location);
-      }
+                // Structure for Mongoose:
+                processedLocationForDb = {
+                    landmarkName: clientLandmarkName,
+                    coordinates: { // This is the GeoJSON structure for the database
+                        type: 'Point',
+                        coordinates: [clientGeoJsonData.coordinates[0], clientGeoJsonData.coordinates[1]] // [longitude, latitude]
+                    }
+                };
+            } else {
+                // The client sent a 'location.coordinates' object, but it's not a valid GeoJSON Point structure
+                return res.status(400).json({
+                    error: 'Invalid location.coordinates structure. Expected { type: "Point", coordinates: [longitude, latitude] } with numerical longitude and latitude.',
+                    receivedCoordinatesObject: clientGeoJsonData // Send back what was received for debugging
+                });
+            }
+        } else if (clientLandmarkName) {
+            // (D) Client sent 'location' with only 'landmarkName', no 'coordinates' object.
+            // This is valid if you want to allow saving only a landmark.
+            processedLocationForDb = {
+                landmarkName: clientLandmarkName
+                // 'coordinates' field will be absent, Mongoose schema default (undefined) will apply
+            };
+        } else if (Object.keys(location).length > 0) {
+            // (E) Client sent a 'location' object, but it was empty or didn't contain
+            // a 'landmarkName' or a 'coordinates' object.
+            return res.status(400).json({ error: 'Location object provided but lacks valid landmarkName or coordinates data.' });
+        }
+        // If 'location' object was sent but was completely empty (e.g. {}), processedLocationForDb remains null.
+        // If client didn't send a 'location' object at all, processedLocationForDb also remains null.
     }
-    // If `location.showLocation` is false, or if `location` itself is not provided,
-    // `processedLocationForDb` correctly remains `null`.
-
 
     // Validate privacy setting
     const validPrivacySettings = ['friends', 'public', 'private'];
     const processedPrivacy = privacy && validPrivacySettings.includes(privacy.toLowerCase())
       ? privacy.toLowerCase()
-      : 'private'; // Default to 'private' if invalid or not provided
+      : 'private';
 
     // Validate reason length
     if (reason && reason.length > 500) {
@@ -135,12 +143,12 @@ export const createCheckIn = async (req, res) => {
       userId,
       emotion: {
         name: emotion.name,
-        attributes: emotion.attributes || {} // Ensure attributes is an object
+        attributes: emotion.attributes || {}
       },
       reason: reason || null,
       people: processedPeople,
       activities: processedActivities,
-      location: processedLocationForDb, // This will be null or a complete GeoJSON object
+      location: processedLocationForDb,
       privacy: processedPrivacy,
       timestamp: new Date()
     });
@@ -148,8 +156,7 @@ export const createCheckIn = async (req, res) => {
     const savedCheckIn = await newCheckIn.save();
 
     res.status(201).json({
-      // Assuming your MoodCheckIn model has a 'displayData' virtual or method
-      ...(savedCheckIn.displayData || savedCheckIn.toObject()),
+      ...savedCheckIn.displayData,
       message: 'Check-in created successfully'
     });
 
