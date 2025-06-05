@@ -440,6 +440,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Morii;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
@@ -475,6 +476,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = uclamoods/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Morii;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "Morii uses your location to record where you felt emotions and to find emotion check-ins near you.";
