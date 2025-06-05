@@ -99,12 +99,9 @@ export const createCheckIn = async (req, res) => {
                 });
             }
         } else if (clientLandmarkName) {
-            // (D) Client sent 'location' with only 'landmarkName', no 'coordinates' object.
-            // This is valid if you want to allow saving only a landmark.
-            processedLocationForDb = {
-                landmarkName: clientLandmarkName
-                // 'coordinates' field will be absent, Mongoose schema default (undefined) will apply
-            };
+            // Client sent 'location' with only 'landmarkName', no 'coordinates' object.
+            // In this case, we'll set location to null
+            processedLocationForDb = null;
         } else if (Object.keys(location).length > 0) {
             // (E) Client sent a 'location' object, but it was empty or didn't contain
             // a 'landmarkName' or a 'coordinates' object.
