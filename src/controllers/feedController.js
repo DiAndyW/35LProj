@@ -75,7 +75,7 @@ export const getFeedCheckIns = async (req, res) => {
                 {
                     $match: {
                         privacy: 'public',
-                        userId: { $nin: blockedUsers.map(id => mongoose.Types.ObjectId(id)) }
+                        userId: { $nin: blockedUsers }
                     }
                 },
                 {
