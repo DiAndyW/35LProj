@@ -47,7 +47,6 @@ export const createCheckIn = async (req, res) => {
       privacy
     } = req.body;
 
-    // Validate required fields
     if (!userId || !emotion || !emotion.name) {
       return res.status(400).json({
         error: 'Required fields missing: userId and emotion.name are required',
@@ -59,65 +58,52 @@ export const createCheckIn = async (req, res) => {
       });
     }
 
-    // Validate userId format
     const userIdValidation = validateObjectId(userId, 'userId');
     if (!userIdValidation.isValid) {
       return res.status(400).json({ error: userIdValidation.error });
     }
 
-    let processedLocationForDb = null; // This will be structured for your Mongoose schema
+    let processedLocationForDb = null;
 
-    if (location) { // (A) Check if a 'location' object was sent by the client
-        const clientLandmarkName = (location.landmarkName && typeof location.landmarkName === 'string')
-                                 ? location.landmarkName.trim()
-                                 : null;
+    if (location) {
+      const clientLandmarkName = (location.landmarkName && typeof location.landmarkName === 'string')
+        ? location.landmarkName.trim()
+        : null;
 
-        // (B) Check if the client sent the 'coordinates' sub-object (which should be our GeoJSON structure)
-        if (location.coordinates && typeof location.coordinates === 'object') {
-            const clientGeoJsonData = location.coordinates; // This is the { type: "Point", coordinates: [...] } object from the client
+      if (location.coordinates && typeof location.coordinates === 'object') {
+        const clientGeoJsonData = location.coordinates;
 
-            // (C) Validate the actual numerical coordinates array within the client's GeoJSON data
-            if (clientGeoJsonData.type === 'Point' && // Check type
-                Array.isArray(clientGeoJsonData.coordinates) &&
-                clientGeoJsonData.coordinates.length === 2 &&
-                typeof clientGeoJsonData.coordinates[0] === 'number' && // longitude
-                typeof clientGeoJsonData.coordinates[1] === 'number') {  // latitude
+        if (clientGeoJsonData.type === 'Point' &&
+          Array.isArray(clientGeoJsonData.coordinates) &&
+          clientGeoJsonData.coordinates.length === 2 &&
+          typeof clientGeoJsonData.coordinates[0] === 'number' &&
+          typeof clientGeoJsonData.coordinates[1] === 'number') {
 
-                // Structure for Mongoose:
-                processedLocationForDb = {
-                    landmarkName: clientLandmarkName,
-                    coordinates: { // This is the GeoJSON structure for the database
-                        type: 'Point',
-                        coordinates: [clientGeoJsonData.coordinates[0], clientGeoJsonData.coordinates[1]] // [longitude, latitude]
-                    }
-                };
-            } else {
-                // The client sent a 'location.coordinates' object, but it's not a valid GeoJSON Point structure
-                return res.status(400).json({
-                    error: 'Invalid location.coordinates structure. Expected { type: "Point", coordinates: [longitude, latitude] } with numerical longitude and latitude.',
-                    receivedCoordinatesObject: clientGeoJsonData // Send back what was received for debugging
-                });
+          processedLocationForDb = {
+            landmarkName: clientLandmarkName,
+            coordinates: {
+              type: 'Point',
+              coordinates: [clientGeoJsonData.coordinates[0], clientGeoJsonData.coordinates[1]]
             }
-        } else if (clientLandmarkName) {
-            // Client sent 'location' with only 'landmarkName', no 'coordinates' object.
-            // In this case, we'll set location to null
-            processedLocationForDb = null;
-        } else if (Object.keys(location).length > 0) {
-            // (E) Client sent a 'location' object, but it was empty or didn't contain
-            // a 'landmarkName' or a 'coordinates' object.
-            return res.status(400).json({ error: 'Location object provided but lacks valid landmarkName or coordinates data.' });
+          };
+        } else {
+          return res.status(400).json({
+            error: 'Invalid location.coordinates structure. Expected { type: "Point", coordinates: [longitude, latitude] } with numerical longitude and latitude.',
+            receivedCoordinatesObject: clientGeoJsonData
+          });
         }
-        // If 'location' object was sent but was completely empty (e.g. {}), processedLocationForDb remains null.
-        // If client didn't send a 'location' object at all, processedLocationForDb also remains null.
+      } else if (clientLandmarkName) {
+        processedLocationForDb = null;
+      } else if (Object.keys(location).length > 0) {
+        return res.status(400).json({ error: 'Location object provided but lacks valid landmarkName or coordinates data.' });
+      }
     }
 
-    // Validate privacy setting
     const validPrivacySettings = ['friends', 'public', 'private'];
     const processedPrivacy = privacy && validPrivacySettings.includes(privacy.toLowerCase())
       ? privacy.toLowerCase()
       : 'private';
 
-    // Validate reason length
     if (reason && reason.length > 500) {
       return res.status(400).json({
         error: 'Reason text exceeds maximum length of 500 characters',
@@ -125,17 +111,14 @@ export const createCheckIn = async (req, res) => {
       });
     }
 
-    // Process people array
     const processedPeople = Array.isArray(people)
       ? people.filter(person => typeof person === 'string' && person.trim().length > 0)
       : [];
 
-    // Process activities array
     const processedActivities = Array.isArray(activities)
       ? activities.filter(activity => typeof activity === 'string' && activity.trim().length > 0)
       : [];
 
-    // Create the new check-in with processed data
     const newCheckIn = new MoodCheckIn({
       userId,
       emotion: {
@@ -173,18 +156,40 @@ export const createCheckIn = async (req, res) => {
   }
 };
 
-// GET - Retrieve a user's check-ins with enhanced filtering
+// GET - Retrieve a user's check-ins with enhanced filtering and pagination
 export const getUserCheckIns = async (req, res) => {
   try {
     const { userId } = req.params;
-    const checkIns = await MoodCheckIn.find({ userId: userId })
-      .sort({ timestamp: -1 })
-      .limit(20);
 
-    // Map each check-in to its displayData
+    // Pagination parameters from query string
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1
+    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
+    const skip = (page - 1) * limit;
+
+    // Validate userId
+    const userIdValidation = validateObjectId(userId, 'userId');
+    if (!userIdValidation.isValid) {
+      return res.status(400).json({ error: userIdValidation.error });
+    }
+
+    const checkInsQuery = MoodCheckIn.find({ userId: userId })
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const checkIns = await checkInsQuery;
+
+    // Optionally, get total count for pagination metadata
+    const totalCheckIns = await MoodCheckIn.countDocuments({ userId: userId });
+
     const responseData = checkIns.map(checkIn => checkIn.displayData);
 
-    res.json(responseData);
+    res.json({
+      data: responseData, // The paginated check-ins
+      currentPage: page,
+      totalPages: Math.ceil(totalCheckIns / limit),
+      totalCount: totalCheckIns
+    });
   } catch (error) {
     console.error('Check-in retrieval error:', error);
     res.status(500).json({
@@ -282,7 +287,6 @@ export const updateCheckIn = async (req, res) => {
       return res.status(400).json({ error: 'Invalid privacy setting' });
     }
 
-    // Re-process location if it's being updated
     if (updates.location) {
       const locationResult = processLocationData(updates.location);
       if (locationResult.error) {
@@ -322,7 +326,7 @@ export const updateCheckIn = async (req, res) => {
 export const deleteCheckIn = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body; // Assuming userId is sent in body for authorization
+    const { userId } = req.body;
 
     const idValidation = validateObjectId(id, 'check-in ID');
     if (!idValidation.isValid) {
@@ -365,9 +369,8 @@ export const updateLikes = async (req, res) => {
   try {
 
     const { id } = req.params;
-    const { userId } = req.body; // Assuming userId of person adding the like is sent in body
+    const { userId } = req.body;
 
-    // validation
     const idValidation = validateObjectId(id, 'check-in ID');
     if (!idValidation.isValid) {
       return res.status(400).json({ error: idValidation.error });
@@ -384,13 +387,10 @@ export const updateLikes = async (req, res) => {
       return res.status(404).json({ error: 'Check-in not found' });
     }
 
-    // update likes
     if (checkIn.likes.includes(userId)) {
-      // Remove the like if it already exists
       checkIn.likes.pop(userId);
       await checkIn.save();
     } else {
-      // Else, add the like
       checkIn.likes.push(userId);
       await checkIn.save();
     }
@@ -414,9 +414,8 @@ export const addComment = async (req, res) => {
   try {
 
     const { id } = req.params;
-    const { userId, content } = req.body; // Assuming userId & content is sent in body
+    const { userId, content } = req.body;
 
-    // validation
     const idValidation = validateObjectId(id, 'check-in ID');
     if (!idValidation.isValid) {
       return res.status(400).json({ error: idValidation.error });
@@ -440,7 +439,6 @@ export const addComment = async (req, res) => {
       });
     }
 
-    // update comments
     const newComment = {
       userId,
       content,
