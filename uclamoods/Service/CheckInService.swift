@@ -69,7 +69,7 @@ class CheckInService {
         let emotionPayload = CheckInEmotionPayload(name: emotion.name, attributes: emotionAttributes)
         
         let peopleNames = Array(socialTags).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && $0.lowercased() != "by myself" }
+            .filter { !$0.isEmpty }
         
         let activityNames = selectedActivities.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
