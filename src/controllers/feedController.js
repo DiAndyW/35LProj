@@ -1,5 +1,6 @@
 import MoodCheckIn from '../models/CheckIn.js';
 import User from '../models/UserModel.js';
+import mongoose from 'mongoose';
 
 export const getBlockedUsers = async (userId) => {
     const user = await User.findById(userId).select('blockedUsers');
