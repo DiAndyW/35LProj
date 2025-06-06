@@ -30,26 +30,27 @@ struct MoodPostCardHeaderView: View {
                 if hasLocation || hasPeople {
                     VStack(alignment: .leading, spacing: 5) {
                         if let peopleArray = people, !peopleArray.isEmpty {
-                            HStack(spacing: 5) {
+                            HStack(spacing: 2) {
                                 Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 Text(peopleArray.joined(separator: ", "))
                                     .font(.custom("Georgia", size: 12))
                                     .foregroundColor(.white.opacity(0.7))
-                                    .lineLimit(2).truncationMode(.tail)
+                                    .lineLimit(1).truncationMode(.tail)
                             }
                         }
                         if let locationName = location?.name, !locationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            HStack(spacing: 5) {
+                            HStack(spacing: 2) {
                                 Image(systemName: "mappin.and.ellipse")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
-                                Text(locationName)
+                                Text(locationName.trimmingCharacters(in: .whitespacesAndNewlines))
                                     .font(.custom("Georgia", size: 12))
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1).truncationMode(.tail)
                             }
+                            .frame(maxWidth: 150, alignment: .leading)
                         }
                     }
                 }
@@ -59,7 +60,7 @@ struct MoodPostCardHeaderView: View {
             Spacer()
             
             HStack {
-                VStack(){
+                VStack(alignment: .trailing){
                     if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp, relativeTo: lastRefreshed) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(timestampParts.relativeDate)
@@ -188,11 +189,10 @@ struct MoodPostCard: View {
                 location: post.location,
                 people: post.people
             )
-            .padding(.bottom, 2)
-            .cornerRadius(8)
+            .cornerRadius(6)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(post.emotion.color?.opacity(0.3) ?? Color.white.opacity(0.1), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(post.emotion.color?.opacity(0.4) ?? Color.white.opacity(0.1), lineWidth: 1)
             )
             
             VStack(alignment: .leading, spacing: 0) {
@@ -211,16 +211,19 @@ struct MoodPostCard: View {
                         likeAction: handleLikeButtonTapped,
                         commentButtonAction: openDetailAction
                     )
+                    .cornerRadius(16)
                     .padding(.horizontal, 4)
                 }
             }
             .padding(.horizontal, 8)
             .padding(.top, 16)
             .padding(.bottom, 8)
-            .background(Color.white.opacity(0.02))
         }
-        .cornerRadius(20)
-        .background(Color.white.opacity(0.05))
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.05))
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2)

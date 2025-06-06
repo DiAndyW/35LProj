@@ -77,10 +77,10 @@ struct MoodPostDetailView: View {
                 
                 Divider().background(Color.gray.opacity(0.3))
                 
+                
                 MoodPostCard(post: post, openDetailAction: {})
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .scaledToFit()
                 
                 
                 if showStatusMessage {
@@ -129,6 +129,7 @@ struct MoodPostDetailView: View {
                         }
                     }
                 }
+                .layoutPriority(1)
                                 
                 Button(action: {
                     withAnimation { isShowingCommentSheet = true }
