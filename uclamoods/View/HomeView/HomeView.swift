@@ -23,7 +23,7 @@ struct HomeFeedView: View {
         GeometryReader { geometry in
             ScrollViewReader { scrollProxy in
                 ZStack {
-                    VStack(spacing: 0) {
+                    ScrollView() {
                         headerSection
                         
                         if isInitialLoading && posts.isEmpty {
