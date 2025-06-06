@@ -77,8 +77,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             print("[AppDelegate] FCM token is nil.")
             return
         }
-        print("[AppDelegate] Firebase registration token (FCM token): \(token)")
-
+        
         // Send this token to your server
         // You might want to store it locally and send it only when it changes or when the user logs in.
         AuthenticationService.shared.sendFCMTokenToBackend(fcmToken: token)

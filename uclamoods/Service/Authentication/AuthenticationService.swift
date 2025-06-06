@@ -620,7 +620,7 @@ class AuthenticationService: ObservableObject {
             // Clear any pending token if we are about to send one
             UserDefaults.standard.removeObject(forKey: "pendingFCMToken")
 
-            print("[AuthService][FCM] Attempting to send FCM token to backend for user: \(userId). Token: \(fcmToken)")
+            print("[AuthService][FCM] Attempting to send FCM token to backend for user: \(userId).")
 
             Task {
                 do {
@@ -635,8 +635,8 @@ class AuthenticationService: ObservableObject {
                     )
 
                     if (200...299).contains(httpResponse.statusCode) {
-                        if let responseString = String(data: data, encoding: .utf8) {
-                            print("[AuthService][FCM] Successfully sent FCM token to backend. Response: \(responseString)")
+                        if String(data: data, encoding: .utf8) != nil {
+                            print("[AuthService][FCM] Successfully sent FCM token to backend.")
                         } else {
                             print("[AuthService][FCM] Successfully sent FCM token to backend (no response body).")
                         }

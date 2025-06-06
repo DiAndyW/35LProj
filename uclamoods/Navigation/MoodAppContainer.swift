@@ -111,7 +111,7 @@ struct MoodAppContainer: View {
     private func clearAppBadge() {
         DispatchQueue.main.async {
             UIApplication.shared.applicationIconBadgeNumber = 0
-            print("App badge cleared")
+            print("[Notification Service] App badge cleared")
         }
     }
 }

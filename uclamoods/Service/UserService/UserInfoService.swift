@@ -50,7 +50,7 @@ func fetchUsername(for userId: String, completion: @escaping (Result<String, Fet
 
     // For debugging: Print the Authorization header
     if let authorizationHeader = request.value(forHTTPHeaderField: "Authorization") {
-        print("fetchUsername: Authorization Header being sent: \(authorizationHeader)")
+        print("fetchUsername: Authorization Header being sent.")
     } else {
         print("fetchUsername: Authorization Header is NOT set on the request.")
     }

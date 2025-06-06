@@ -35,7 +35,7 @@ struct MoodPostCardHeaderView: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 Text(peopleArray.joined(separator: ", "))
-                                    .font(.custom("Georgia", size: 12))
+                                    .font(.custom("Georgia", size: 11))
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1).truncationMode(.tail)
                             }
@@ -46,7 +46,7 @@ struct MoodPostCardHeaderView: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 Text(locationName.trimmingCharacters(in: .whitespacesAndNewlines))
-                                    .font(.custom("Georgia", size: 12))
+                                    .font(.custom("Georgia", size: 11))
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1).truncationMode(.tail)
                             }
