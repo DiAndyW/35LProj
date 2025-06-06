@@ -17,22 +17,31 @@ struct SocialAnalyticsView: View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all)
             
-            if analyticsService.isLoading {
-                loadingView
-            } else if let errorMessage = analyticsService.errorMessage {
-                errorView(errorMessage)
-            } else if let data = analyticsService.communityData {
-                analyticsContent(data)
-            } else {
-                emptyStateView
+            ScrollView {
+                VStack {
+                    if analyticsService.isLoading && analyticsService.communityData == nil {
+                        loadingView
+                            .frame(height: UIScreen.main.bounds.height * 0.7)
+                    } else if let errorMessage = analyticsService.errorMessage {
+                        errorView(errorMessage)
+                    } else if let data = analyticsService.communityData {
+                        analyticsContent(data)
+                    } else {
+                        emptyStateView
+                            .frame(height: UIScreen.main.bounds.height * 0.7)
+                    }
+                }
+            }
+            .refreshable {
+                print("Refresh action was started.")
+                await handleRefresh()
+                print("Refresh action was completed.")
             }
         }
         .onAppear {
-            loadAnalytics()
-        }
-        .refreshable {
-            refreshID = UUID()
-            loadAnalytics()
+            Task {
+                await loadAnalytics()
+            }
         }
         .id(refreshID)
     }
@@ -69,7 +78,9 @@ struct SocialAnalyticsView: View {
                 .padding(.horizontal, 40)
             
             Button("Try Again") {
-                loadAnalytics()
+                Task {
+                    await loadAnalytics()
+                }
             }
             .font(.custom("Georgia", size: 16))
             .fontWeight(.medium)
@@ -102,33 +113,32 @@ struct SocialAnalyticsView: View {
     
     // MARK: - Analytics Content
     private func analyticsContent(_ data: CommunityAnalyticsData) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 20) {
-                // Header
-                analyticsHeader
-                
-                // Global Community Stats
-                globalStatsSection(data.overallStats)
-                
-                // Local Area Insights (if available)
-                if let localStats = data.localStats,
-                   let comparison = data.globalComparison {
-                    localInsightsSection(localStats, comparison)
-                }
-                
-                // Emotion Breakdown Chart
-                emotionBreakdownSection(data.overallStats.emotionBreakdown)
-                
-                // Activity & Trends
-//                if let trends = data.trends {
-//                    trendsSection(trends)
-//                }
-                
-                // Engagement Metrics
-                engagementSection(data.overallStats)
+        LazyVStack(spacing: 20) {
+            // Header
+            analyticsHeader
+            
+            // Global Community Stats
+            globalStatsSection(data.overallStats)
+            
+            // Local Area Insights (if available)
+            if let localStats = data.localStats,
+               let comparison = data.globalComparison {
+                localInsightsSection(localStats, comparison)
             }
-            .padding(.horizontal, 20)
+            
+            // Emotion Breakdown Chart
+            emotionBreakdownSection(data.overallStats.emotionBreakdown)
+            
+            // Activity & Trends
+            //                if let trends = data.trends {
+            //                    trendsSection(trends)
+            //                }
+            
+            // Engagement Metrics
+            engagementSection(data.overallStats)
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical)
     }
     
     // MARK: - Header
@@ -143,7 +153,6 @@ struct SocialAnalyticsView: View {
                 .font(.custom("Georgia", size: 16))
                 .foregroundColor(.white.opacity(0.6))
         }
-        .padding(.top, 20)
         .padding(.bottom, 10)
     }
     
@@ -307,14 +316,26 @@ struct SocialAnalyticsView: View {
     }
     
     // MARK: - Helper Methods
-    private func loadAnalytics() {
+    private func handleRefresh() async {
+        refreshID = UUID()
+
+        async let loadData: () = loadAnalytics()
+        async let minDelay: () = Task.sleep(for: .seconds(10))
+        
+        do {
+            _ = try await [loadData, minDelay]
+            print("Refresh action was completed.")
+        } catch {
+            print("Refresh action was cancelled.")
+        }
+    }
+    
+    private func loadAnalytics() async {
         locationManager.requestLocationAccessIfNeeded()
         
-        Task {
-            await analyticsService.fetchCommunityAnalytics(
-                userLocation: locationManager.userCoordinates
-            )
-        }
+        await analyticsService.fetchCommunityAnalytics(
+            userLocation: locationManager.userCoordinates
+        )
     }
     
     private func getOverallVibe(from emotions: [String: Int]) -> String {
@@ -339,30 +360,30 @@ struct SocialAnalyticsView: View {
     private func getVibeIcon(from emotions: [String: Int]) -> String {
         let vibe = getOverallVibe(from: emotions)
         switch vibe {
-        case "Generally Positive":
-            return "sun.max.fill"
-        case "Peaceful & Calm":
-            return "leaf.fill"
-        case "High Energy":
-            return "bolt.fill"
-        default:
-            return "cloud.sun.fill"
+            case "Generally Positive":
+                return "sun.max.fill"
+            case "Peaceful & Calm":
+                return "leaf.fill"
+            case "High Energy":
+                return "bolt.fill"
+            default:
+                return "cloud.sun.fill"
         }
     }
     
     private func getEmotionIcon(_ emotion: String) -> String {
         // Map emotions to SF Symbols
         switch emotion.lowercased() {
-        case "happy", "joyful", "excited":
-            return "face.smiling.fill"
-        case "calm", "relaxed", "serene":
-            return "leaf.fill"
-        case "energized", "motivated":
-            return "bolt.fill"
-        case "grateful", "blessed":
-            return "heart.fill"
-        default:
-            return "circle.fill"
+            case "happy", "joyful", "excited":
+                return "face.smiling.fill"
+            case "calm", "relaxed", "serene":
+                return "leaf.fill"
+            case "energized", "motivated":
+                return "bolt.fill"
+            case "grateful", "blessed":
+                return "heart.fill"
+            default:
+                return "circle.fill"
         }
     }
     

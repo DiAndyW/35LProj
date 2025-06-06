@@ -25,6 +25,7 @@ struct MoodPostDetailView: View {
     @EnvironmentObject private var userDataProvider: UserDataProvider
 
     // MARK: - Profanity Filter and Toast State
+
     @StateObject private var profanityFilter = ProfanityFilterService()
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
@@ -42,15 +43,15 @@ struct MoodPostDetailView: View {
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
-        let initialData = post.comments?.data ?? []
-         let initialDataToSort = post.comments?.data ?? [] // Assuming FeedItem now has optional 'comments: CommentsResponse?'
-         self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
-             guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
-                   let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
-                 return false
-             }
-             return date1 > date2
-         }))
+        let initialDataToSort = post.comments?.data ?? [] // Assuming FeedItem now has optional 'comments: CommentsResponse?'
+        self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
+            guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
+                  let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp)
+            else {
+                return false
+            }
+            return date1 > date2
+        }))
     }
     
     var body: some View {
@@ -227,7 +228,7 @@ struct MoodPostDetailView: View {
             
             // Delete confirmation alert
             .alert("Delete Post", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
+                Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
                     deletePost()
                 }
@@ -322,20 +323,21 @@ struct MoodPostDetailView: View {
             DispatchQueue.main.async {
                 isSendingComment = false
                 switch result {
-                    case .success(let response):
-                        // Assuming response.comment is of type CommentPosts
-                        self.comments.append(response.comment)
-                        self.comments.sort { comment1, comment2 in
-                            guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
-                                  let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp) else {
-                                return false
-                            }
-                            return date1 > date2 // Assuming newest first
+                case .success(let response):
+                    // Assuming response.comment is of type CommentPosts
+                    self.comments.append(response.comment)
+                    self.comments.sort { comment1, comment2 in
+                        guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
+                              let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp)
+                        else {
+                            return false
                         }
-                        self.newComment = ""
-                        self.isCommentFieldFocused = false // Dismiss keyboard
-                    case .failure(let error):
-                        print("Error sending comment: \(error.localizedDescription)")
+                        return date1 > date2 // Assuming newest first
+                    }
+                    self.newComment = ""
+                    self.isCommentFieldFocused = false // Dismiss keyboard
+                case .failure(let error):
+                    print("Error sending comment: \(error.localizedDescription)")
                 }
             }
         }
@@ -356,7 +358,7 @@ struct MoodPostDetailView: View {
             DispatchQueue.main.async {
                 self.isDeleting = false
                 switch result {
-                case .success(let response):
+                    case .success(_):
                     self.showStatus("Post deleted successfully")
                     HapticFeedbackManager.shared.successNotification()
                     
@@ -413,7 +415,7 @@ struct MoodPostDetailView: View {
     }
     
     private func reportPost(reason: String) {
-        guard let currentUserId = userDataProvider.currentUser?.id else {
+        guard (userDataProvider.currentUser?.id) != nil else {
             showStatus("Please log in to report posts")
             return
         }
@@ -465,10 +467,10 @@ struct CommentView: View {
         .onAppear {
             fetchUsername(for: comment.userId) { result in
                 switch result {
-                    case .success(let name):
-                        self.username = name
-                    case .failure:
-                        self.username = "User"
+                case .success(let name):
+                    self.username = name
+                case .failure:
+                    self.username = "User"
                 }
             }
         }

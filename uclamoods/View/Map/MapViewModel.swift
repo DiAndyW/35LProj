@@ -268,10 +268,10 @@ class MapViewModel: ObservableObject {
         
         do {
             lastApiCall = Date()
-            let bounds = region.getBounds()
+            _ = region.getBounds()
             let center = region.center
             
-            var components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
+            let components = URLComponents(url: Config.apiURL(for: "/api/map/moods"), resolvingAgainstBaseURL: false)
             guard var validComponents = components else {
                 throw MapError.badURL
             }
@@ -309,7 +309,7 @@ class MapViewModel: ObservableObject {
             request.addAuthenticationIfNeeded()
             request.timeoutInterval = 10.0 // Add timeout
             
-            print("🌐 Fetching mood posts from API for region: \(region.center)")
+            print("Fetching mood posts from API for region: \(region.center)")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
@@ -399,7 +399,7 @@ class MapViewModel: ObservableObject {
             lastApiCall = Date()
             let bounds = region.getBounds()
             
-            var components = URLComponents(url: Config.apiURL(for: "/api/map/moods/heatmap"), resolvingAgainstBaseURL: false)
+            let components = URLComponents(url: Config.apiURL(for: "/api/map/moods/heatmap"), resolvingAgainstBaseURL: false)
             guard var validComponents = components else {
                 throw MapError.badURL
             }
@@ -420,7 +420,7 @@ class MapViewModel: ObservableObject {
             request.addAuthenticationIfNeeded()
             request.timeoutInterval = 10.0
             
-            print("🌐 Fetching heatmap from API for region: \(region.center)")
+            print("Fetching heatmap from API for region: \(region.center)")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             

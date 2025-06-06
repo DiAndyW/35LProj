@@ -3,7 +3,7 @@ import CoreLocation
 import MapKit
 
 @MainActor
-class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     
     @Published var userCoordinates: CLLocationCoordinate2D?

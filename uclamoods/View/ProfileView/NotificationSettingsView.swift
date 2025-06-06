@@ -106,7 +106,7 @@ struct NotificationSettingsView: View {
         components.second = 0
         
         // Create a date in PST with the given hour/minute
-        guard let pstDate = Calendar.current.date(from: components) else {
+        guard Calendar.current.date(from: components) != nil else {
             return Date() // Fallback
         }
         

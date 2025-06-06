@@ -5,7 +5,7 @@ import CoreImage.CIFilterBuiltins
 
 // MARK: - Data Models
 
-extension MKCoordinateSpan: Equatable {
+extension MKCoordinateSpan: @retroactive Equatable {
     public static func == (lhs: MKCoordinateSpan, rhs: MKCoordinateSpan) -> Bool {
         return lhs.latitudeDelta == rhs.latitudeDelta && lhs.longitudeDelta == rhs.longitudeDelta
     }

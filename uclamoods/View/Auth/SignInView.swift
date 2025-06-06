@@ -30,7 +30,7 @@ struct SignInView: View {
         
         Task {
             do {
-                let response = try await authService.loginAndFetchProfile(email: email, password: password)
+                _ = try await authService.loginAndFetchProfile(email: email, password: password)
                 
                 await MainActor.run {
                     isLoading = false

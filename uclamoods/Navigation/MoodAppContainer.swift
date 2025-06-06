@@ -199,11 +199,6 @@ struct MainAppView: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
-        .onAppear {
-            if router.selectedMainTab == nil {
-                router.selectTab(.home)
-            }
-        }
     }
 }
 

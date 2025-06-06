@@ -109,7 +109,7 @@ struct SignUpView: View {
         
         Task {
             do {
-                let response = try await authService.register(
+                _ = try await authService.register(
                     username: trimmedUsername,
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password
