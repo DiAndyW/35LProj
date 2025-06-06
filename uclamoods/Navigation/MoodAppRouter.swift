@@ -58,16 +58,18 @@ class MoodAppRouter: ObservableObject {
     @Published var moodFlowTransitionOrigin: CGPoint = .zero
     @Published var moodFlowTransitionStyle: TransitionStyle = .bubbleExpand
     
-    @Published var tabWithActiveDetailView: MainTab? = nil {
-        didSet {
-            print("[MoodAppRouter] tabWithActiveDetailView changed to: \(String(describing: tabWithActiveDetailView))")
-        }
-    }
+    @Published var initialEmotionIDForSelection: Emotion.ID?
     
     let homeTabTappedAgain = PassthroughSubject<Void, Never>()
     let profileTabTappedAgain = PassthroughSubject<Void, Never>()
     let mapTabTappedAgain = PassthroughSubject<Void, Never>()
     let analyticsTabTappedAgain = PassthroughSubject<Void, Never>()
+    
+    @Published var tabWithActiveDetailView: MainTab? = nil {
+        didSet {
+            print("[MoodAppRouter] tabWithActiveDetailView changed to: \(String(describing: tabWithActiveDetailView))")
+        }
+    }
     
     private var screenSize: CGSize = .zero
     let fadeOutDuration: Double = 0.4
@@ -161,6 +163,7 @@ class MoodAppRouter: ObservableObject {
             if selectedMainTab != tab {
                 selectedMainTab = tab
             } else {
+                // Same tab was tapped again, broadcast an event
                 switch tab {
                     case .home:
                         print("[MoodAppRouter] Home tab tapped again.")
@@ -175,7 +178,7 @@ class MoodAppRouter: ObservableObject {
                         print("[MoodAppRouter] Analytics tab tapped again.")
                         analyticsTabTappedAgain.send()
                     default:
-                        break
+                        break // No action for other tabs
                 }
             }
         }
@@ -213,13 +216,14 @@ class MoodAppRouter: ObservableObject {
         performMoodFlowTransition(to: .energySelection)
     }
     
-    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, from originPoint: CGPoint? = nil) {
+    func navigateToEmotionSelection(energyLevel: EmotionDataProvider.EnergyLevel, initialEmotionID: Emotion.ID? = nil, from originPoint: CGPoint? = nil) {
         if let originPoint = originPoint {
             moodFlowTransitionOrigin = originPoint
         } else {
             moodFlowTransitionOrigin = getTransitionOriginForEnergyLevel(energyLevel)
         }
         moodFlowTransitionStyle = .bubbleExpand
+        self.initialEmotionIDForSelection = initialEmotionID
         performMoodFlowTransition(to: .emotionSelection(energyLevel: energyLevel))
     }
     

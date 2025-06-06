@@ -33,18 +33,31 @@ struct EmotionDataProvider {
     
     static func getEmotionsForCurrentEnergyLevel() -> [Emotion] {
         switch selectedEnergyLevel {
-        case .high:
-            return highEnergyEmotions
-        case .medium:
-            return mediumEnergyEmotions
-        case .low:
-            return lowEnergyEmotions
+            case .high:
+                return highEnergyEmotions
+            case .medium:
+                return mediumEnergyEmotions
+            case .low:
+                return lowEnergyEmotions
         }
     }
     
     static func getEmotion(byName name: String) -> Emotion? {
         let allEmotions = highEnergyEmotions + mediumEnergyEmotions + lowEnergyEmotions
         return allEmotions.first { $0.name.lowercased() == name.lowercased() } ?? fallbackEmotion
+    }
+    
+    static func getEnergyLevel(for emotion: Emotion) -> EnergyLevel? {
+        if highEnergyEmotions.contains(where: { $0.id == emotion.id }) {
+            return .high
+        }
+        if mediumEnergyEmotions.contains(where: { $0.id == emotion.id }) {
+            return .medium
+        }
+        if lowEnergyEmotions.contains(where: { $0.id == emotion.id }) {
+            return .low
+        }
+        return nil
     }
     
     static let highEnergyEmotions: [Emotion] = [
@@ -256,4 +269,3 @@ struct EmotionDataProvider {
                 pleasantness: 0.9, intensity: 0.35, control: 0.8, clarity: 0.9)
     ]
 }
-

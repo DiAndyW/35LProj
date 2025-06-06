@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EnergySelectionView: View {
     @EnvironmentObject private var router: MoodAppRouter
+    @State private var isShowingSearchView = false
     
     let blobSize = 200.0
     
@@ -12,7 +13,6 @@ struct EnergySelectionView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button(action: {
-                        // Use the new back navigation method
                         router.navigateBackInMoodFlow(from: CGPoint(x: 50, y: 100))
                     }) {
                         Image(systemName: "xmark")
@@ -24,7 +24,7 @@ struct EnergySelectionView: View {
                     Spacer()
                     
                     Button(action: {
-                        // TODO: Search functionality
+                        isShowingSearchView = true
                     }) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 18, weight: .medium))
@@ -44,7 +44,7 @@ struct EnergySelectionView: View {
                     .padding(.bottom, 20)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
-
+                
                 // High Energy Blob Button
                 FloatingBlobButton(
                     text: "High",
@@ -88,16 +88,9 @@ struct EnergySelectionView: View {
                 .frame(width: blobSize, height: blobSize)
             }
         }
-    }
-}
-
-
-struct NewFloatingBlobView_Previews: PreviewProvider {
-    static var previews: some View {
-        EnergySelectionView()
-        //.background(Color.black.opacity(0.1))
-            .previewLayout(.sizeThatFits)
-            .padding()
-            .preferredColorScheme(.dark)
+        .sheet(isPresented: $isShowingSearchView) {
+            EmotionSearchView()
+                .environmentObject(router)
+        }
     }
 }

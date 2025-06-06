@@ -185,7 +185,7 @@ struct EmotionSelectionView: View {
                                 .id(emotion.id)
                                 .onTapGesture {
                                     // Add haptic feedback for tap selection
-
+                                    
                                 }
                                 .scrollTransition { effect, phase in
                                     effect
@@ -267,7 +267,12 @@ struct EmotionSelectionView: View {
             }
             .onAppear {
                 isInitialAppearance = true
-                selectedEmotionID = EmotionDataProvider.defaultEmotion.id
+                if let initialID = router.initialEmotionIDForSelection {
+                    selectedEmotionID = initialID
+                    router.initialEmotionIDForSelection = nil
+                } else if selectedEmotionID == nil {
+                    selectedEmotionID = EmotionDataProvider.defaultEmotion.id
+                }
             }
         }
     }
@@ -275,20 +280,12 @@ struct EmotionSelectionView: View {
     // Static helper for transition offset calculation
     static func transitionOffset(for phase: ScrollTransitionPhase) -> Double {
         switch phase {
-        case .topLeading:
-            return 50
-        case .identity:
-            return 0
-        case .bottomTrailing:
-            return 50
+            case .topLeading:
+                return 50
+            case .identity:
+                return 0
+            case .bottomTrailing:
+                return 50
         }
-    }
-}
-
-struct UpdatedEmotionSelectionView_Previews: PreviewProvider {
-    static var previews: some View {
-        EmotionSelectionView()
-            .preferredColorScheme(.dark)
-            .environmentObject(MoodAppRouter())
     }
 }
