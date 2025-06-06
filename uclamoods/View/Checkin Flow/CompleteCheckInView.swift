@@ -304,20 +304,18 @@ struct ReasonInputSectionView: View {
                     .onTapGesture {
                         isTextFieldFocused.wrappedValue = true
                     }
-                    .onChange(of: reasonText) { newValue, oldValue in // Using original onChange syntax
-                        guard let newValueLastChar = newValue.last else { return }
-                        if newValueLastChar == "\n" {
-                            reasonText.removeLast()
+                    .onChange(of: reasonText) {
+                        if reasonText.contains("\n") {
+                            reasonText = reasonText.replacingOccurrences(of: "\n", with: "")
                             hideKeyboard()
                         }
-                        
-                        if newValue.count > maxCharacterLimit {
-                            reasonText = String(newValue.prefix(maxCharacterLimit))
+                        if reasonText.count > maxCharacterLimit {
+                            reasonText = String(reasonText.prefix(maxCharacterLimit))
                         }
                     }
                     .submitLabel(.done)
                     .onSubmit {
-                        print("➡️ ReasonInputSectionView: .onSubmit triggered.")
+                        print("   ReasonInputSectionView: .onSubmit triggered.")
                         print("   Before change: isTextFieldFocused.wrappedValue = \(isTextFieldFocused.wrappedValue)")
                         print("   Current reasonText before potential change: '\(reasonText)'")
                         
@@ -338,6 +336,9 @@ struct ReasonInputSectionView: View {
             .padding(.top, 5)
             .padding(.bottom, 30)
         }
+    }
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
