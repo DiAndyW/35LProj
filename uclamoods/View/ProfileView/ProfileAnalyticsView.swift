@@ -104,7 +104,7 @@ struct ProfileAnalyticsView: View {
                     .foregroundColor(.white.opacity(0.7))
             }*/
 
-            overallAverageMoodMimicSection(data.averageMoodForPeriod, periodName: data.period.capitalized)
+            analyticsSummarySection(data.averageMoodForPeriod, periodName: data.period.capitalized)
             Divider().background(Color.white.opacity(0.5))
             moodByDayOfWeekSection(data.averageMoodByDayOfWeek)
         }
@@ -121,7 +121,7 @@ struct ProfileAnalyticsView: View {
     }
     
     @ViewBuilder
-    private func overallAverageMoodMimicSection(_ summary: MoodPeriodSummary, periodName: String) -> some View {
+    private func analyticsSummarySection(_ summary: MoodPeriodSummary, periodName: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if(formattedPeriodTitle(periodName)=="All Time"){
                 Text("All Time")
@@ -175,6 +175,7 @@ struct ProfileAnalyticsView: View {
                 VStack(spacing: 8) {
                     Text(summary.topEmotion ?? "N/A")
                         .font(.custom("Georgia", size: 20))
+                        .scaledToFit()
                         .fontWeight(.bold)
                         .foregroundColor(EmotionDataProvider.getEmotion(byName: summary.topEmotion ?? "Neutral")?.color )
                     

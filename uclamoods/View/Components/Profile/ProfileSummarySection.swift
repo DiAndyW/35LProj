@@ -88,6 +88,7 @@ struct ProfileSummarySectionView: View {
                     VStack(spacing: 8) {
                         Text(currentSummaryData.topMood?.name ?? "N/A")
                             .font(.custom("Georgia", size: 20))
+                            .scaledToFit()
                             .fontWeight(.bold)
                             .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
                         
