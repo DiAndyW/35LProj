@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MoodPostDetailView: View {
-    let post: FeedItem // Assumed to have id: String, and emotion: Emotion? (where Emotion has color: Color?)
+    let post: FeedItem
     let onDismiss: () -> Void
     
     @State private var newComment: String = ""
-    @State private var comments: [CommentPosts] // Assumed CommentPosts and its timestamp parsing are correct
+    @State private var comments: [CommentPosts]
     @State private var isSendingComment: Bool = false
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCommentFieldFocused: Bool
@@ -31,7 +31,7 @@ struct MoodPostDetailView: View {
     @State private var toastMessage: String = ""
     
     private var accentColor: Color {
-        post.emotion.color ?? .blue // Assumes FeedItem.emotion.color exists
+        post.emotion.color ?? .blue
     }
     
     // Check if current user is the author of the post
@@ -43,7 +43,7 @@ struct MoodPostDetailView: View {
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
-        let initialDataToSort = post.comments?.data ?? [] // Assuming FeedItem now has optional 'comments: CommentsResponse?'
+        let initialDataToSort = post.comments?.data ?? []
         self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
             guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
                   let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp)
@@ -115,7 +115,7 @@ struct MoodPostDetailView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            MoodPostCard( // This assumes MoodPostCard can handle the 'post: FeedItem'
+                            MoodPostCard(
                                 post: post,
                                 openDetailAction: {}
                             )
@@ -135,7 +135,7 @@ struct MoodPostDetailView: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding()
                             } else {
-                                ForEach(comments) { comment in // Assumes CommentPosts is Identifiable
+                                ForEach(comments) { comment in
                                     CommentView(comment: comment)
                                         .padding(.horizontal)
                                 }
@@ -177,9 +177,9 @@ struct MoodPostDetailView: View {
                         .accentColor(accentColor)
                         .focused($isCommentFieldFocused)
                         .onSubmit {
-                            attemptSendComment() // Changed to attemptSendComment
+                            isCommentFieldFocused = false
                         }
-                        .submitLabel(.send)
+                        .submitLabel(.done)
                     
                     if isSendingComment {
                         ProgressView().tint(.white)
