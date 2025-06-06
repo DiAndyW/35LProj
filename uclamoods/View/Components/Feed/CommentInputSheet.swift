@@ -34,7 +34,7 @@ struct CommentInputView: View {
                     .onChange(of: commentText) {
                         if commentText.contains("\n") {
                             commentText = commentText.replacingOccurrences(of: "\n", with: "")
-                            isTextFieldFocused = false
+                            hideKeyboard()
                         }
                     }
                 
@@ -49,6 +49,7 @@ struct CommentInputView: View {
             
             HStack(spacing: 8) {
                 Button("Cancel") {
+                    hideKeyboard()
                     withAnimation { isPresented = false }
                 }
                 .padding(.vertical, 12)
@@ -58,6 +59,7 @@ struct CommentInputView: View {
                 .clipShape(Capsule())
                 
                 Button("Post") {
+                    hideKeyboard()
                     onPost(commentText)
                     withAnimation { isPresented = false }
                 }
@@ -75,12 +77,16 @@ struct CommentInputView: View {
         .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
         .padding(.horizontal, 20)
         .onTapGesture {
-            isTextFieldFocused = false
+            hideKeyboard()
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isTextFieldFocused = true
             }
         }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
