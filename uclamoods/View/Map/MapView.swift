@@ -24,7 +24,7 @@ struct UserBrief: Codable, Identifiable {
     let id: String
     let username: String
     let profilePicture: String? // Or String if it's never null
-
+    
     private enum CodingKeys: String, CodingKey {
         case id = "_id"
         case username
@@ -46,7 +46,7 @@ struct MapMoodPost: Identifiable, Codable {
     let commentsCount: Int    // Expects JSON key "commentsCount"
     let people: [String]?
     let activities: [String]?
-
+    
     
     private enum CodingKeys: String, CodingKey {
         case id = "_id" // Correct: maps JSON "_id" to Swift "id"
@@ -248,21 +248,21 @@ class HeatmapOverlayRenderer: MKOverlayRenderer {
     private func getIntensityBasedEmotionColor(intensity: CGFloat) -> UIColor {
         // Map intensity to emotion-like colors rather than rainbow
         switch intensity {
-        case 0.0..<0.2:
-            // Low intensity - calm, peaceful emotions (soft blues/greens)
-            return UIColor(red: 0.5, green: 0.8, blue: 0.6, alpha: 1.0) // Soft teal
-        case 0.2..<0.4:
-            // Low-medium intensity - content emotions (gentle blues)
-            return UIColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0) // Calm blue
-        case 0.4..<0.6:
-            // Medium intensity - neutral to positive (warm yellows)
-            return UIColor(red: 0.9, green: 0.8, blue: 0.3, alpha: 1.0) // Warm yellow
-        case 0.6..<0.8:
-            // High intensity - excited/energetic (vibrant oranges)
-            return UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0) // Energetic orange
-        default:
-            // Very high intensity - intense emotions (deep reds)
-            return UIColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) // Intense red
+            case 0.0..<0.2:
+                // Low intensity - calm, peaceful emotions (soft blues/greens)
+                return UIColor(red: 0.5, green: 0.8, blue: 0.6, alpha: 1.0) // Soft teal
+            case 0.2..<0.4:
+                // Low-medium intensity - content emotions (gentle blues)
+                return UIColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0) // Calm blue
+            case 0.4..<0.6:
+                // Medium intensity - neutral to positive (warm yellows)
+                return UIColor(red: 0.9, green: 0.8, blue: 0.3, alpha: 1.0) // Warm yellow
+            case 0.6..<0.8:
+                // High intensity - excited/energetic (vibrant oranges)
+                return UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0) // Energetic orange
+            default:
+                // Very high intensity - intense emotions (deep reds)
+                return UIColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) // Intense red
         }
     }
     
@@ -501,16 +501,16 @@ struct MapView: View {
                             .clipShape(Circle())
                     }
                     
-//                    // Clear Cache Button (for debugging/testing)
-//                    Button(action: {
-//                        viewModel.clearCache()
-//                    }) {
-//                        Image(systemName: "trash")
-//                            .foregroundColor(.white)
-//                            .padding()
-//                            .background(Color.red.opacity(0.7))
-//                            .clipShape(Circle())
-//                    }
+                    //                    // Clear Cache Button (for debugging/testing)
+                    //                    Button(action: {
+                    //                        viewModel.clearCache()
+                    //                    }) {
+                    //                        Image(systemName: "trash")
+                    //                            .foregroundColor(.white)
+                    //                            .padding()
+                    //                            .background(Color.red.opacity(0.7))
+                    //                            .clipShape(Circle())
+                    //                    }
                     
                     // User Location Button
                     Button(action: {
@@ -560,8 +560,8 @@ struct MapView: View {
                 )
                 .padding()
                 .opacity((viewMode == .markers && !viewModel.annotations.isEmpty) ||
-                        (viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty) ||
-                        viewModel.isLoading ? 1 : 0)
+                         (viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty) ||
+                         viewModel.isLoading ? 1 : 0)
                 .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
             }
         }
@@ -575,7 +575,7 @@ struct MapView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        .onChange(of: viewMode) { newMode, oldMode in
+        .onChange(of: viewMode) { newMode in
             // Clear previous mode data and fetch new data
             handleViewModeChange(newMode)
         }
@@ -631,10 +631,10 @@ struct MapView: View {
                     .preferredColorScheme(.dark)
                 }
             }
-            .onChange(of: mapRegion) { newRegion, oldRegion in
+            .onChange(of: mapRegion) { newRegion in
                 handleRegionChange(newRegion)
             }
-            .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
+            .onChange(of: locationManager.userCoordinates) { newCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
                     withAnimation {
                         mapRegion.center = coordinates
@@ -649,7 +649,7 @@ struct MapView: View {
                 heatmapData: viewModel.heatmapPoints,
                 onRegionChange: handleRegionChange
             )
-            .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
+            .onChange(of: locationManager.userCoordinates) { newCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
                     withAnimation {
                         mapRegion.center = coordinates
@@ -742,9 +742,9 @@ struct HeatmapMapView: UIViewRepresentable {
             // Simple comparison - you might want to make this more sophisticated
             for (index, point) in newData.enumerated() {
                 if index >= cachedHeatmapData.count ||
-                   cachedHeatmapData[index].lat != point.lat ||
-                   cachedHeatmapData[index].lng != point.lng ||
-                   cachedHeatmapData[index].intensity != point.intensity {
+                    cachedHeatmapData[index].lat != point.lat ||
+                    cachedHeatmapData[index].lng != point.lng ||
+                    cachedHeatmapData[index].intensity != point.intensity {
                     return false
                 }
             }
@@ -762,9 +762,9 @@ struct HeatmapMapView: UIViewRepresentable {
 extension MKCoordinateRegion {
     func isEqual(to other: MKCoordinateRegion, threshold: Double) -> Bool {
         let centerEqual = abs(center.latitude - other.center.latitude) < threshold &&
-                         abs(center.longitude - other.center.longitude) < threshold
+        abs(center.longitude - other.center.longitude) < threshold
         let spanEqual = abs(span.latitudeDelta - other.span.latitudeDelta) < threshold &&
-                       abs(span.longitudeDelta - other.span.longitudeDelta) < threshold
+        abs(span.longitudeDelta - other.span.longitudeDelta) < threshold
         return centerEqual && spanEqual
     }
 }
@@ -896,10 +896,10 @@ struct MoodPostPreview: View {
         .onAppear {
             fetchUsername(for: moodPost.userId.id) { result in
                 switch result {
-                case .success(let username):
-                    displayUsername = moodPost.isAnonymous ?? false ? "Anonymous" : username
-                case .failure:
-                    displayUsername = "User"
+                    case .success(let username):
+                        displayUsername = moodPost.isAnonymous ?? false ? "Anonymous" : username
+                    case .failure:
+                        displayUsername = "User"
                 }
             }
         }
@@ -999,7 +999,7 @@ func formatRelativeTimestamp(from timestampString: String) -> String {
         formatter.dateTimeStyle = .named
         return formatter.localizedString(for: dateWithoutFractions, relativeTo: Date())
     }
-
+    
     let formatter = RelativeDateTimeFormatter()
     formatter.unitsStyle = .abbreviated
     formatter.dateTimeStyle = .named
