@@ -49,7 +49,7 @@ func fetchUsername(for userId: String, completion: @escaping (Result<String, Fet
     request.addAuthenticationIfNeeded()
 
     // For debugging: Print the Authorization header
-    if let authorizationHeader = request.value(forHTTPHeaderField: "Authorization") {
+    if request.value(forHTTPHeaderField: "Authorization") != nil {
         print("fetchUsername: Authorization Header being sent.")
     } else {
         print("fetchUsername: Authorization Header is NOT set on the request.")

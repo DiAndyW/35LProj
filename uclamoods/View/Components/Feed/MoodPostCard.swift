@@ -50,7 +50,7 @@ struct MoodPostCardHeaderView: View {
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1).truncationMode(.tail)
                             }
-                            .frame(maxWidth: 150, alignment: .leading)
+                            .frame(maxWidth: 200, alignment: .leading)
                         }
                     }
                 }

@@ -3,6 +3,7 @@ import FluidGradient
 
 struct MoodAppContainer: View {
     @StateObject private var router = MoodAppRouter()
+    @StateObject private var locationManager = LocationManager()
     
     // MARK: - Shared Gradient Properties (Moved here)
     @State private var gradientColors: [Color] = []
@@ -75,6 +76,7 @@ struct MoodAppContainer: View {
             }
             .background(.black)
             .environmentObject(router)
+            .environmentObject(locationManager)
             .onAppear {
                 router.setScreenSize(geometry.size)
                 // Check authentication status on app launch
@@ -184,7 +186,6 @@ struct AuthFlowView: View {
 // MARK: - 5-Tab Main App with Swipe Navigation (MODIFIED)
 struct MainAppView: View {
     @EnvironmentObject private var router: MoodAppRouter
-    @StateObject private var locationManager = LocationManager()
     
     var body: some View {
         ZStack {
@@ -195,7 +196,6 @@ struct MainAppView: View {
                     .tag(MoodAppRouter.MainTab.home)
                 MapView()
                     .tag(MoodAppRouter.MainTab.map)
-                    .environmentObject(locationManager)
                 SocialAnalyticsView()
                     .tag(MoodAppRouter.MainTab.analytics)
                 NavigationView {

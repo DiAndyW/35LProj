@@ -444,6 +444,7 @@ struct CheckInFormView: View {
 struct CompleteCheckInView: View {
     @EnvironmentObject private var router: MoodAppRouter // Assuming MoodAppRouter is defined
     @EnvironmentObject private var userDataProvider: UserDataProvider // Assuming UserDataProvider is defined
+    @EnvironmentObject var locationManager: LocationManager
     
     @State private var reasonText: String = ""
     @FocusState private var isTextFieldFocused: Bool
@@ -477,7 +478,6 @@ struct CompleteCheckInView: View {
     
     // MARK: - Location State
     @State private var showLocation: Bool = true
-    @StateObject private var locationManager = LocationManager() // Assuming LocationManager is defined
     @State private var displayableLocationName: String = "Fetching location..."
     
     let emotion: Emotion // Assuming Emotion struct is defined
@@ -486,6 +486,22 @@ struct CompleteCheckInView: View {
     @State private var isSaving: Bool = false
     @State private var saveError: String? = nil
     @State private var showSaveSuccessAlert: Bool = false
+    
+    struct LocationState: Equatable {
+        let isLoading: Bool
+        let landmarkName: String?
+        let coordinates: CLLocationCoordinate2D?
+        let authStatus: CLAuthorizationStatus
+    }
+    
+    var currentLocationState: LocationState {
+        LocationState(
+            isLoading: locationManager.isLoading,
+            landmarkName: locationManager.landmarkName,
+            coordinates: locationManager.userCoordinates,
+            authStatus: locationManager.authorizationStatus
+        )
+    }
     
     // MARK: - Formatters
     private var timeFormatter: DateFormatter {
@@ -597,7 +613,7 @@ struct CompleteCheckInView: View {
                 displayableLocationName = "Location Hidden"
             }
         }
-        .onChange(of: showLocation) { newShowValue, oldShowValue in
+        .onChange(of: showLocation) { oldShowValue, newShowValue in
             if newShowValue {
                 displayableLocationName = "Fetching location..."
                 locationManager.fetchCurrentLocationAndLandmark()
@@ -606,24 +622,8 @@ struct CompleteCheckInView: View {
                 locationManager.stopUpdatingMapLocation()
             }
         }
-        .onChange(of: locationManager.landmarkName) { newLandmark, oldLandmark in
-            updateDisplayableLocationName(landmark: newLandmark, coordinates: locationManager.userCoordinates, isLoading: locationManager.isLoading)
-        }
-        .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
-            updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: newCoordinates, isLoading: locationManager.isLoading)
-        }
-        .onChange(of: locationManager.isLoading) { newIsLoading, oldIsLoading in
-            updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: locationManager.userCoordinates, isLoading: newIsLoading)
-        }
-        .onChange(of: locationManager.authorizationStatus) { newStatus, oldStatus in
-            print("Auth status changed to: \(newStatus)")
-            if newStatus == .denied || newStatus == .restricted {
-                displayableLocationName = "Location access needed"
-            } else if newStatus == .authorizedAlways || newStatus == .authorizedWhenInUse {
-                if showLocation && locationManager.userCoordinates == nil {
-                    locationManager.fetchCurrentLocationAndLandmark()
-                }
-            }
+        .onChange(of: currentLocationState) { oldState, newState in
+            updateDisplayableLocationName(with: newState)
         }
     }
     
@@ -638,20 +638,20 @@ struct CompleteCheckInView: View {
         return "@ \(displayableLocationName)"
     }
     
-    private func updateDisplayableLocationName(landmark: String?, coordinates: CLLocationCoordinate2D?, isLoading: Bool) {
-        if isLoading {
-            displayableLocationName = "Fetching location..."
+    private func updateDisplayableLocationName(with state: LocationState) {
+        if state.isLoading {
+            self.displayableLocationName = "Fetching location..."
             return
         }
-        if let name = landmark, !name.isEmpty {
-            displayableLocationName = name
-        } else if coordinates != nil {
-            displayableLocationName = "Near your current location"
-        } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-            displayableLocationName = "Location access needed"
-        }
-        else {
-            displayableLocationName = "Location unavailable"
+        
+        if let name = state.landmarkName, !name.isEmpty {
+            self.displayableLocationName = name
+        } else if state.coordinates != nil {
+            self.displayableLocationName = "Near your current location"
+        } else if state.authStatus == .denied || state.authStatus == .restricted {
+            self.displayableLocationName = "Location access needed"
+        } else {
+            self.displayableLocationName = "Location unavailable"
         }
     }
     
