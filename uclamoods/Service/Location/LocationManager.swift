@@ -116,11 +116,14 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     }
     
     private func startLocationTimeout() {
-        stopLocationTimeout() // Clear any existing timer
+        stopLocationTimeout()
         locationTimer = Timer.scheduledTimer(withTimeInterval: locationTimeout, repeats: false) { [weak self] _ in
-            self?.handleLocationTimeout()
+            DispatchQueue.main.async {
+                self?.handleLocationTimeout()
+            }
         }
     }
+
     
     private func stopLocationTimeout() {
         locationTimer?.invalidate()

@@ -227,11 +227,15 @@ class MapViewModel: ObservableObject {
             // Schedule for later
             let delay = minimumApiInterval - timeSinceLastCall
             rateLimitTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-                if let pendingRegion = self?.pendingRegion {
-                    if viewMode == .markers {
-                        self?.fetchMoodPosts(for: pendingRegion)
-                    } else {
-                        self?.fetchHeatmapData(for: pendingRegion)
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    
+                    if let pendingRegion = self.pendingRegion {
+                        if viewMode == .markers {
+                            self.fetchMoodPosts(for: pendingRegion)
+                        } else {
+                            self.fetchHeatmapData(for: pendingRegion)
+                        }
                     }
                 }
             }

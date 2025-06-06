@@ -278,7 +278,7 @@ struct EmotionSelectionView: View {
     }
     
     // Static helper for transition offset calculation
-    static func transitionOffset(for phase: ScrollTransitionPhase) -> Double {
+    nonisolated static func transitionOffset(for phase: ScrollTransitionPhase) -> Double {
         switch phase {
             case .topLeading:
                 return 50
