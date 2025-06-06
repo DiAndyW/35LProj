@@ -172,12 +172,14 @@ struct ProfileOverviewView: View {
             }
         }
         
-        print("ProfileOverviewView: Loading initial content (isRefresh: \(isRefresh))...")
+        print("ProfileOverviewView: Loading summary first...")
         
-        async let summaryTask: () = fetchSummaryDataAsync()
-        async let postsTask: () = fetchAndSetPosts(skip: 0, isInitialLoadOrRefresh: true)
+        await fetchSummaryDataAsync()
         
-        _ = await [summaryTask, postsTask]
+        if summaryLoadingError == nil {
+            print("ProfileOverviewView: Summary loaded. Now loading posts.")
+            await fetchAndSetPosts(skip: 0, isInitialLoadOrRefresh: true)
+        }
         
         await MainActor.run {
             self.isInitialLoading = false
