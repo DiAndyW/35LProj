@@ -128,7 +128,6 @@ struct SocialAnalyticsView: View {
                 engagementSection(data.overallStats)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, max(100, UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) + 70)
         }
     }
     

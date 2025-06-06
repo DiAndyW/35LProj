@@ -9,7 +9,6 @@ import Foundation
 
 struct DateFormatterUtility {
     
-    // Static formatters (reused for performance)
     private static let isoFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -36,13 +35,13 @@ struct DateFormatterUtility {
         return formatter
     }()
     
-    static func formatTimestampParts(timestampString: String) -> (absoluteDate: String, relativeDate: String)? {
+    static func formatTimestampParts(timestampString: String, relativeTo: Date = Date()) -> (absoluteDate: String, relativeDate: String)? {
         guard let date = parseDate(from: timestampString) else {
             return nil
         }
         
         let absoluteDateString = absoluteDateFormatter.string(from: date)
-        let relativeDateString = relativeFormatter.localizedString(for: date, relativeTo: Date())
+        let relativeDateString = relativeFormatter.localizedString(for: date, relativeTo: relativeTo)
         
         return (absoluteDate: absoluteDateString, relativeDate: relativeDateString)
     }

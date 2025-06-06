@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileSettingsView: View {
     @EnvironmentObject private var router: MoodAppRouter
+    @State private var showingSignOutAlert = false
     
     var body: some View {
         VStack(spacing: 16) {
@@ -21,13 +22,21 @@ struct ProfileSettingsView: View {
             NavigationLink(destination: BlockedAccountsView()) {
                 SettingsRow(icon: "person.slash", title: "Blocked Accounts", subtitle: "Manage blocked users")
             }
-            //SettingsRow(icon: "questionmark.circle", title: "Help & Support", subtitle: "Get help or send feedback")
             SettingsRow(icon: "arrow.right.square", title: "Sign Out", subtitle: "Sign out of your account", action: {
                 let feedback = UIImpactFeedbackGenerator(style: .medium)
                 feedback.prepare()
                 feedback.impactOccurred()
-                router.signOut()})
+                showingSignOutAlert = true
+            })
         }
         .padding(.top, 8)
+        .alert("Are you sure you want to sign out?", isPresented: $showingSignOutAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Sign Out", role: .destructive) {
+                router.signOut()
+            }
+        } message: {
+            Text("You will be returned to the login screen.")
+        }
     }
 }

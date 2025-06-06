@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 enum MoodAppScreen: Equatable {
     case energySelection
@@ -62,6 +63,11 @@ class MoodAppRouter: ObservableObject {
             print("[MoodAppRouter] tabWithActiveDetailView changed to: \(String(describing: tabWithActiveDetailView))")
         }
     }
+    
+    let homeTabTappedAgain = PassthroughSubject<Void, Never>()
+    let profileTabTappedAgain = PassthroughSubject<Void, Never>()
+    let mapTabTappedAgain = PassthroughSubject<Void, Never>()
+    let analyticsTabTappedAgain = PassthroughSubject<Void, Never>()
     
     private var screenSize: CGSize = .zero
     let fadeOutDuration: Double = 0.4
@@ -154,6 +160,23 @@ class MoodAppRouter: ObservableObject {
         } else {
             if selectedMainTab != tab {
                 selectedMainTab = tab
+            } else {
+                switch tab {
+                    case .home:
+                        print("[MoodAppRouter] Home tab tapped again.")
+                        homeTabTappedAgain.send()
+                    case .profile:
+                        print("[MoodAppRouter] Profile tab tapped again.")
+                        profileTabTappedAgain.send()
+                    case .map:
+                        print("[MoodAppRouter] Map tab tapped again.")
+                        mapTabTappedAgain.send()
+                    case .analytics:
+                        print("[MoodAppRouter] Analytics tab tapped again.")
+                        analyticsTabTappedAgain.send()
+                    default:
+                        break
+                }
             }
         }
     }

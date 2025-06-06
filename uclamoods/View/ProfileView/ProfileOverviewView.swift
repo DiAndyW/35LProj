@@ -7,7 +7,8 @@ struct ProfileOverviewView: View {
     @EnvironmentObject private var userDataProvider: UserDataProvider
     
     @State private var isInitialLoading: Bool = true
-    @State private var contentLoadingError: String? = nil
+    @State private var summaryLoadingError: String? = nil
+    @State private var postsLoadingError: String? = nil
     
     @State private var isLoadingMore: Bool = false
     @State private var hasMorePosts: Bool = true
@@ -15,6 +16,7 @@ struct ProfileOverviewView: View {
     private let pageSize: Int = 10
     
     let refreshID: UUID
+    let lastRefreshed: Date
     let onSelectPost: (FeedItem) -> Void
     
     var body: some View {
@@ -24,14 +26,14 @@ struct ProfileOverviewView: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.vertical, 50)
-            } else if let error = contentLoadingError, posts.isEmpty && summary == nil {
+            } else if summaryLoadingError != nil && postsLoadingError != nil {
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                         .font(.largeTitle)
                     Text("Failed to load profile data.")
                         .font(.headline)
-                    Text(error)
+                    Text("Both summary and posts failed to load.")
                         .font(.caption)
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
@@ -48,7 +50,7 @@ struct ProfileOverviewView: View {
                     ProfileSummarySectionView(
                         summary: self.summary,
                         isLoading: self.isInitialLoading && self.summary == nil,
-                        loadingError: self.summary == nil ? self.contentLoadingError : nil
+                        loadingError: self.summaryLoadingError
                     )
                     Divider().background(Color.white.opacity(0.5))
                     postsSection
@@ -69,18 +71,25 @@ struct ProfileOverviewView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
             
-            if posts.isEmpty && !isInitialLoading && !isLoadingMore && contentLoadingError == nil {
-                Text("No recent activity to display.")
+            if let error = postsLoadingError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 30)
+            } else if !isInitialLoading && posts.isEmpty {
+                Text("No recent activity! Create a check-in first.")
                     .font(.custom("Georgia", size: 16))
                     .foregroundColor(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 30)
-            } else {
+            } else if !posts.isEmpty {
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { post in
                         let feedItem = post.toFeedItem()
                         ProfilePostCard(
                             post: feedItem,
+                            lastRefreshed: lastRefreshed,
                             openDetailAction: {
                                 onSelectPost(feedItem)
                             }
@@ -129,7 +138,8 @@ struct ProfileOverviewView: View {
                 self.hasMorePosts = true
             } else {
                 self.isInitialLoading = true
-                self.contentLoadingError = nil
+                self.summaryLoadingError = nil
+                self.postsLoadingError = nil
                 self.currentSkip = 0
                 self.hasMorePosts = true
             }
@@ -163,12 +173,11 @@ struct ProfileOverviewView: View {
                 let fetchedSummary = try await fetchSummaryData()
                 await MainActor.run {
                     self.summary = fetchedSummary
+                    self.summaryLoadingError = nil
                 }
             } catch {
                 await MainActor.run {
-                    if self.posts.isEmpty {
-                        self.contentLoadingError = "Failed to load profile summary. \(error.localizedDescription)"
-                    }
+                    self.summaryLoadingError = error.localizedDescription
                     print("ProfileOverviewView: Error loading summary - \(error.localizedDescription)")
                 }
             }
@@ -178,7 +187,7 @@ struct ProfileOverviewView: View {
     private func fetchAndSetPosts(skip: Int, isInitialLoadOrRefresh: Bool) async {
         guard let userId = userDataProvider.currentUser?.id, !userId.isEmpty, userId != "000" else {
             await MainActor.run {
-                self.contentLoadingError = "Invalid or missing user ID for fetching posts."
+                self.postsLoadingError = "Invalid or missing user ID for fetching posts."
                 if isInitialLoadOrRefresh { self.isInitialLoading = false } else { self.isLoadingMore = false }
                 self.hasMorePosts = false
             }
@@ -198,6 +207,7 @@ struct ProfileOverviewView: View {
                 
                 switch result {
                     case .success(let (newPosts, paginationInfo)):
+                        self.postsLoadingError = nil
                         if isInitialLoadOrRefresh {
                             self.posts = newPosts
                         } else {
@@ -214,15 +224,10 @@ struct ProfileOverviewView: View {
                             self.hasMorePosts = newPosts.count == self.pageSize
                         }
                         
-                        if !newPosts.isEmpty || self.summary != nil {
-                            self.contentLoadingError = nil
-                        }
                         print("ProfileOverviewView: Posts processed. New count: \(newPosts.count). Total: \(self.posts.count)")
                         
                     case .failure(let error):
-                        if isInitialLoadOrRefresh && self.posts.isEmpty && self.summary == nil {
-                            self.contentLoadingError = "Failed to load posts. \(error.localizedDescription)"
-                        }
+                        self.postsLoadingError = "Failed to load posts. \(error.localizedDescription)"
                         self.hasMorePosts = false
                         print("ProfileOverviewView: Error fetching posts - \(error.localizedDescription)")
                 }

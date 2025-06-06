@@ -31,20 +31,6 @@ struct ProfileSummarySectionView: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 30)
-            } else if let error = loadingError {
-                VStack(spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                        .font(.largeTitle)
-                    Text("Failed to load summary")
-                        .font(.headline)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 30)
             } else if let currentSummaryData = summary?.data {
                 let avgPleasantness = currentSummaryData.topMood?.attributes.pleasantness
                 let avgIntensity = currentSummaryData.topMood?.attributes.intensity
@@ -148,7 +134,7 @@ struct ProfileSummarySectionView: View {
                     
                 }
             } else {
-                Text("No summary data available for this week.")
+                Text("No summary data available.")
                     .font(.custom("Georgia", size: 16))
                     .foregroundColor(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .center)
