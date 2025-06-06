@@ -48,18 +48,18 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         print("LocationManager: startUpdatingMapLocation called. Auth status: \(authorizationStatus.rawValue)")
         
         switch authorizationStatus {
-        case .authorizedWhenInUse, .authorizedAlways:
-            print("LocationManager: Starting continuous location updates for map.")
-            manager.startUpdatingLocation()
-            startLocationTimeout()
-        case .notDetermined:
-            print("LocationManager: Authorization not determined. Requesting access.")
-            manager.requestWhenInUseAuthorization()
-        case .restricted, .denied:
-            print("LocationManager: Location access denied or restricted.")
-            handleLocationFailure(message: "Location access denied")
-        @unknown default:
-            handleLocationFailure(message: "Unknown location error")
+            case .authorizedWhenInUse, .authorizedAlways:
+                print("LocationManager: Starting continuous location updates for map.")
+                manager.startUpdatingLocation()
+                startLocationTimeout()
+            case .notDetermined:
+                print("LocationManager: Authorization not determined. Requesting access.")
+                manager.requestWhenInUseAuthorization()
+            case .restricted, .denied:
+                print("LocationManager: Location access denied or restricted.")
+                handleLocationFailure(message: "Location access denied")
+            @unknown default:
+                handleLocationFailure(message: "Unknown location error")
         }
     }
     
@@ -90,17 +90,17 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         print("LocationManager: Starting fresh location fetch. Auth status: \(authorizationStatus.rawValue)")
         
         switch authorizationStatus {
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse, .authorizedAlways:
-            // Use requestLocation for one-time fetch - it's faster than startUpdatingLocation
-            manager.requestLocation()
-            startLocationTimeout()
-        case .restricted, .denied:
-            print("LocationManager: Location access denied or restricted.")
-            handleLocationFailure(message: "Location access denied")
-        @unknown default:
-            handleLocationFailure(message: "Unknown location error")
+            case .notDetermined:
+                manager.requestWhenInUseAuthorization()
+            case .authorizedWhenInUse, .authorizedAlways:
+                // Use requestLocation for one-time fetch - it's faster than startUpdatingLocation
+                manager.requestLocation()
+                startLocationTimeout()
+            case .restricted, .denied:
+                print("LocationManager: Location access denied or restricted.")
+                handleLocationFailure(message: "Location access denied")
+            @unknown default:
+                handleLocationFailure(message: "Unknown location error")
         }
     }
     
@@ -224,7 +224,6 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func fetchLandmark(for location: CLLocation) {
         let geocoder = CLGeocoder()
         
-        // Set a timeout for geocoding as well
         let geocodingTimeout = DispatchWorkItem {
             geocoder.cancelGeocode()
             print("LocationManager: Geocoding timed out, using fallback")
@@ -239,7 +238,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
             guard let self = self else { return }
             
-            geocodingTimeout.cancel() // Cancel timeout since we got a response
+            geocodingTimeout.cancel()
             
             defer {
                 if self.isProcessingOneTimeFetchWithLandmark {
@@ -254,39 +253,29 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
             
             if let placemark = placemarks?.first {
-                var nameComponents: [String] = []
+                var determinedName: String?
                 
-                // Prioritize POI name first
-                if let poiName = placemark.name,
-                   !poiName.contains(String(location.coordinate.latitude)) {
-                    nameComponents.append(poiName)
-                } else {
-                    // Build address
-                    if let street = placemark.thoroughfare {
-                        var streetAddress = street
-                        if let subThoroughfare = placemark.subThoroughfare {
-                            streetAddress = "\(subThoroughfare) \(street)"
-                        }
-                        nameComponents.append(streetAddress)
-                    }
-                    if let city = placemark.locality, nameComponents.isEmpty {
-                        nameComponents.append(city)
+                // Priority 1: A non-address-like Point of Interest (e.g., "UCLA", "Apple Park")
+                if let name = placemark.name {
+                    let startsWithNumber = name.rangeOfCharacter(from: .decimalDigits)?.lowerBound == name.startIndex
+                    if !startsWithNumber {
+                        determinedName = name
                     }
                 }
                 
-                // Fallback options
-                if nameComponents.isEmpty {
-                    if let areaOfInterest = placemark.areasOfInterest?.first {
-                        nameComponents.append(areaOfInterest)
-                    } else if let locality = placemark.locality {
-                        nameComponents.append(locality)
-                    } else {
-                        nameComponents.append("Near your current location")
-                    }
+                // Priority 2: Neighborhood (e.g., "Westwood")
+                if determinedName == nil, let neighborhood = placemark.subLocality {
+                    determinedName = neighborhood
                 }
                 
-                self.landmarkName = nameComponents.joined(separator: ", ")
-                print("LocationManager: Fetched landmark - \(self.landmarkName ?? "N/A")")
+                // Priority 3: City (e.g., "Los Angeles")
+                if determinedName == nil, let city = placemark.locality {
+                    determinedName = city
+                }
+                
+                self.landmarkName = determinedName ?? "Near your current location"
+                print("LocationManager: Fetched less precise landmark - \(self.landmarkName ?? "N/A")")
+                
             } else {
                 self.landmarkName = "Near your current location"
                 print("LocationManager: No placemark found.")
