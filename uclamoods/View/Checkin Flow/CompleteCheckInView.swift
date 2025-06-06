@@ -612,23 +612,6 @@ struct CompleteCheckInView: View {
         return "@ \(location)"
     }
     
-    private func updateDisplayableLocationName(with state: LocationState) {
-        if state.isLoading {
-            self.displayableLocationName = "Fetching location..."
-            return
-        }
-        
-        if let name = state.landmarkName, !name.isEmpty {
-            self.displayableLocationName = name
-        } else if state.coordinates != nil {
-            self.displayableLocationName = "Near your current location"
-        } else if state.authStatus == .denied || state.authStatus == .restricted {
-            self.displayableLocationName = "Location access needed"
-        } else {
-            self.displayableLocationName = "Location unavailable"
-        }
-    }
-    
     private func saveCheckIn() {
         isSaving = true
         saveError = nil
