@@ -511,7 +511,6 @@ struct CompleteCheckInView: View {
                 .position(x: geometry.size.width / 2, y: 0)
                 .ignoresSafeArea()
             )
-            .background(.black)
             .ignoresSafeArea()
             .navigationBarHidden(true)
             .onTapGesture {
@@ -523,12 +522,19 @@ struct CompleteCheckInView: View {
                     locationManager.fetchCurrentLocationAndLandmark()
                 }
             }
-            .onChange(of: showLocation) { show in
+            .onChange(of: showLocation) { show, oldShow in
                 if show {
                     locationManager.fetchCurrentLocationAndLandmark()
                 } else {
                     locationManager.stopUpdatingMapLocation()
                 }
+            }
+            .alert("Check-in Saved!", isPresented: $showSaveSuccessAlert) {
+                Button("Ok") {
+                    router.navigateToMainApp()
+                }
+            } message: {
+                Text("Your mood has been successfully logged.")
             }
         }
     }
