@@ -192,7 +192,7 @@ struct ForgotPasswordView: View {
                     .opacity(0.001) // Or .hidden() if opacity causes issues
                                     // For debugging, you can temporarily increase size/opacity
                                     // or add a .background(Color.blue.opacity(0.3))
-                    .onChange(of: verificationCode) { newValue in // 5. Improved onChange logic
+                    .onChange(of: verificationCode) { newValue, oldValue in // 5. Improved onChange logic
                         // Ensure only digits are processed
                         let digitsOnly = newValue.filter { "0123456789".contains($0) }
                         

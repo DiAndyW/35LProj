@@ -96,7 +96,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Show the notification in foreground
         // You can customize this: .banner, .list, .sound, .badge
-        completionHandler([[.alert, .sound, .badge]])
+        completionHandler([[.list, .banner, .sound, .badge]])
     }
 
     // MARK: - Handling Tapped Notifications (UNUserNotificationCenterDelegate)

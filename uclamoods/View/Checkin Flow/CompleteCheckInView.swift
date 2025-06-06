@@ -304,7 +304,7 @@ struct ReasonInputSectionView: View {
                     .onTapGesture {
                         isTextFieldFocused.wrappedValue = true
                     }
-                    .onChange(of: reasonText) { newValue in // Using original onChange syntax
+                    .onChange(of: reasonText) { newValue, oldValue in // Using original onChange syntax
                         guard let newValueLastChar = newValue.last else { return }
                         if newValueLastChar == "\n" {
                             reasonText.removeLast()
@@ -545,7 +545,7 @@ struct CompleteCheckInView: View {
                             .offset(x: -geometry.size.width * 0.25)
                         }
                         .scrollDisabled(keyboardResponder.currentHeight == 0) // Disable scrolling when keyboard is hidden
-                        .onChange(of: isTextFieldFocused) { focused in
+                        .onChange(of: isTextFieldFocused) { focused, oldFocused in
                             if focused {
                                 withAnimation(.easeOut(duration: 0.25)) {
                                     proxy.scrollTo("formView", anchor: .center)
@@ -597,7 +597,7 @@ struct CompleteCheckInView: View {
                 displayableLocationName = "Location Hidden"
             }
         }
-        .onChange(of: showLocation) { newShowValue in
+        .onChange(of: showLocation) { newShowValue, oldShowValue in
             if newShowValue {
                 displayableLocationName = "Fetching location..."
                 locationManager.fetchCurrentLocationAndLandmark()
@@ -606,16 +606,16 @@ struct CompleteCheckInView: View {
                 locationManager.stopUpdatingMapLocation()
             }
         }
-        .onChange(of: locationManager.landmarkName) { newLandmark in
+        .onChange(of: locationManager.landmarkName) { newLandmark, oldLandmark in
             updateDisplayableLocationName(landmark: newLandmark, coordinates: locationManager.userCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.userCoordinates) { newCoordinates in
+        .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: newCoordinates, isLoading: locationManager.isLoading)
         }
-        .onChange(of: locationManager.isLoading) { newIsLoading in
+        .onChange(of: locationManager.isLoading) { newIsLoading, oldIsLoading in
             updateDisplayableLocationName(landmark: locationManager.landmarkName, coordinates: locationManager.userCoordinates, isLoading: newIsLoading)
         }
-        .onChange(of: locationManager.authorizationStatus) { newStatus in
+        .onChange(of: locationManager.authorizationStatus) { newStatus, oldStatus in
             print("Auth status changed to: \(newStatus)")
             if newStatus == .denied || newStatus == .restricted {
                 displayableLocationName = "Location access needed"

@@ -12,7 +12,7 @@ extension MKCoordinateSpan: @retroactive Equatable {
 }
 
 // 3. Make MKCoordinateRegion Equatable
-extension MKCoordinateRegion: Equatable {
+extension MKCoordinateRegion: @retroactive Equatable {
     public static func == (lhs: MKCoordinateRegion, rhs: MKCoordinateRegion) -> Bool {
         // A region is equal if its center and span are both equal.
         // This relies on CLLocationCoordinate2D and MKCoordinateSpan being Equatable.
@@ -575,7 +575,7 @@ struct MapView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        .onChange(of: viewMode) { newMode in
+        .onChange(of: viewMode) { newMode, oldMode in
             // Clear previous mode data and fetch new data
             handleViewModeChange(newMode)
         }
@@ -631,10 +631,10 @@ struct MapView: View {
                     .preferredColorScheme(.dark)
                 }
             }
-            .onChange(of: mapRegion) { newRegion in
+            .onChange(of: mapRegion) { newRegion, oldRegion in
                 handleRegionChange(newRegion)
             }
-            .onChange(of: locationManager.userCoordinates) { newCoordinates in
+            .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
                     withAnimation {
                         mapRegion.center = coordinates
@@ -649,7 +649,7 @@ struct MapView: View {
                 heatmapData: viewModel.heatmapPoints,
                 onRegionChange: handleRegionChange
             )
-            .onChange(of: locationManager.userCoordinates) { newCoordinates in
+            .onChange(of: locationManager.userCoordinates) { newCoordinates, oldCoordinates in
                 if let coordinates = newCoordinates, tracking == .follow {
                     withAnimation {
                         mapRegion.center = coordinates

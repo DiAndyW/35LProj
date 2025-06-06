@@ -7,10 +7,10 @@ struct MoodPostDetailView: View {
     @State private var newComment: String = ""
     @State private var comments: [CommentPosts]
     @State private var isSendingComment: Bool = false
-    @State private var keyboardHeight: CGFloat = 0
-    @FocusState private var isCommentFieldFocused: Bool
     
-    // Block and Report states
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var isShowingCommentSheet = false
+    
     @State private var showingOptionsMenu = false
     @State private var showingReportMenu = false
     @State private var isBlocking = false
@@ -18,15 +18,12 @@ struct MoodPostDetailView: View {
     @State private var statusMessage = ""
     @State private var showStatusMessage = false
     
-    // Delete states
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
     
     @EnvironmentObject private var userDataProvider: UserDataProvider
     @EnvironmentObject private var router: MoodAppRouter
-
-    // MARK: - Profanity Filter and Toast State
-
+    
     @StateObject private var profanityFilter = ProfanityFilterService()
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
@@ -35,22 +32,19 @@ struct MoodPostDetailView: View {
         post.emotion.color ?? .blue
     }
     
-    // Check if current user is the author of the post
     private var isCurrentUserAuthor: Bool {
         guard let currentUserId = userDataProvider.currentUser?.id else { return false }
         return currentUserId == post.userId
     }
-
+    
     init(post: FeedItem, onDismiss: @escaping () -> Void) {
         self.post = post
         self.onDismiss = onDismiss
         let initialDataToSort = post.comments?.data ?? []
-        self._comments = State(initialValue: initialDataToSort.sorted(by: { comment1, comment2 in
-            guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
-                  let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp)
-            else {
-                return false
-            }
+        self._comments = State(initialValue: initialDataToSort.sorted(by: {
+            guard let date1 = DateFormatterUtility.parseCommentTimestamp($0.timestamp),
+                  let date2 = DateFormatterUtility.parseCommentTimestamp($1.timestamp)
+            else { return false }
             return date1 > date2
         }))
     }
@@ -58,186 +52,113 @@ struct MoodPostDetailView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("Post Details")
                         .font(.title2.bold())
                         .foregroundColor(.white)
                     Spacer()
-                    
-                    // Conditional Options menu based on post ownership
                     Menu {
                         if isCurrentUserAuthor {
-                            Button("Delete Post", role: .destructive) {
-                                showingDeleteConfirmation = true
-                            }
+                            Button("Delete Post", role: .destructive) { showingDeleteConfirmation = true }
                         } else {
-                            Button("Report Post") {
-                                showingReportMenu = true
-                            }
-                            
-                            Button("Block User", role: .destructive) {
-                                blockUser()
-                            }
+                            Button("Report Post") { showingReportMenu = true }
+                            Button("Block User", role: .destructive) { blockUser() }
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.title2)
-                            .foregroundColor(.gray.opacity(0.8))
+                        Image(systemName: "ellipsis.circle").font(.title2).foregroundColor(.gray.opacity(0.8))
                     }
-                    
-                    Button {
-                        onDismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.gray.opacity(0.8))
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill").font(.title2).foregroundColor(.gray.opacity(0.8))
                     }
                 }
                 .padding()
+                .frame(maxWidth: .infinity)
                 .background(Color.black.opacity(0.3))
                 
-                // Status message
+                Divider().background(Color.gray.opacity(0.3))
+                
+                MoodPostCard(post: post, openDetailAction: {})
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                
+                
                 if showStatusMessage {
                     HStack {
-                        Text(statusMessage)
-                            .font(.caption)
-                            .foregroundColor(statusMessage.contains("Failed") ? .red : .green)
-                            .padding(.horizontal)
+                        Text(statusMessage).font(.caption).foregroundColor(statusMessage.contains("Failed") ? .red : .green).padding(.horizontal)
                         Spacer()
                     }
                     .padding(.vertical, 4)
                     .background(Color.black.opacity(0.2))
                 }
                 
-                Divider().background(Color.gray.opacity(0.3))
-                
-                // Content with ScrollViewReader for auto-scroll
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            MoodPostCard(
-                                post: post,
-                                openDetailAction: {}
-                            )
-                            .padding(12)
+                        VStack(alignment: .leading, spacing: 4) {
                             
-                            Divider().background(Color.gray.opacity(0.9)).padding(.horizontal)
+                            Color.clear.frame(height: 1).id("topAnchor")
                             
                             Text("Comments (\(comments.count))")
-                                .font(.headline)
+                                .font(.headline.bold())
                                 .foregroundColor(.white)
-                                .padding(.horizontal)
-                                .padding(.top, 8)
+                                .padding(.horizontal, 8)
+                                .padding(.bottom, 4)
                             
-                            if comments.isEmpty {
-                                Text("No comments yet.")
-                                    .foregroundColor(.gray)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding()
-                            } else {
-                                ForEach(comments) { comment in
-                                    CommentView(comment: comment)
-                                        .padding(.horizontal)
+                            Divider().background(Color.gray.opacity(0.3))
+
+                            VStack(spacing: 12){
+                                if comments.isEmpty {
+                                    Text("No comments yet.")
+                                        .foregroundColor(.gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding()
+                                } else {
+                                    ForEach(comments) { comment in
+                                        CommentView(comment: comment)
+                                            .padding(.horizontal)
+                                    }
                                 }
                             }
-                            
-                            // Invisible anchor for scrolling to bottom
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(height: 1)
-                                .id("bottom")
+
                         }
-                        .padding(.top)
-                        .padding(.bottom, max(80, keyboardHeight + 20)) // Dynamic bottom padding
+                        .padding(.horizontal, 8)
                     }
-                    .onChange(of: isCommentFieldFocused) { focused in
-                        if focused {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo("bottom", anchor: .bottom)
-                            }
-                        }
-                    }
-                    .onChange(of: keyboardHeight) { _ in // height parameter not used directly
-                        if isCommentFieldFocused { // Scroll if focused, regardless of height value if it means keyboard is up
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo("bottom", anchor: .bottom)
-                            }
+                    .onChange(of: comments.count) {
+                        withAnimation {
+                            proxy.scrollTo("topAnchor", anchor: .top)
                         }
                     }
                 }
+                                
+                Button(action: {
+                    withAnimation { isShowingCommentSheet = true }
+                }) {
+                    HStack {
+                        Text("Add a comment...")
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding()
+                        Spacer()
+                        Image(systemName: "bubble.right.fill")
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 12)
+                    }
+                }
+                .padding(4)
+                .background(Color.white.opacity(0.05))
+            }
+            .blur(radius: isShowingCommentSheet ? 15 : 0)
+            .animation(.easeInOut, value: isShowingCommentSheet)
+            
+            if isShowingCommentSheet {
+                Color.black.opacity(0.65).ignoresSafeArea().onTapGesture { withAnimation { isShowingCommentSheet = false } }
                 
-                // Comment Input Area
-                HStack(spacing: 12) {
-                    TextField("Add a comment...", text: $newComment)
-                        .textFieldStyle(.plain)
-                        .padding(12)
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(10)
-                        .foregroundColor(.white)
-                        .accentColor(accentColor)
-                        .focused($isCommentFieldFocused)
-                        .onSubmit {
-                            isCommentFieldFocused = false
-                        }
-                        .submitLabel(.done)
-                    
-                    if isSendingComment {
-                        ProgressView().tint(.white)
-                    } else {
-                        Button(action: attemptSendComment) { // Changed to attemptSendComment
-                            Image(systemName: "paperplane.fill")
-                                .font(.title2)
-                                .foregroundColor(newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : accentColor)
-                        }
-                        .disabled(newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
+                CommentInputView(isPresented: $isShowingCommentSheet, color: self.accentColor) { commentText in
+                    self.newComment = commentText
+                    self.attemptSendComment()
                 }
-                .padding()
-                .background(Color.black.opacity(0.5))
-            }
-            .offset(y: -keyboardHeight) // Move entire view up by keyboard height
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.black.opacity(0.5))
-                    .ignoresSafeArea()
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(accentColor.opacity(0.9), lineWidth: 2)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.5), radius: 25, x: 0, y: 15)
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        keyboardHeight = keyboardFrame.height
-                    }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    keyboardHeight = 0
-                }
-            }
-            // Dismiss keyboard when tapping outside the text field area (e.g., on the main content)
-            .onTapGesture {
-                if isCommentFieldFocused {
-                    isCommentFieldFocused = false
-                }
+                .padding(.bottom, 160)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             
-            // Delete confirmation alert
-            .alert("Delete Post", isPresented: $showingDeleteConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive) {
-                    deletePost()
-                }
-            } message: {
-                Text("Are you sure you want to delete this post? This action cannot be undone.")
-            }
-            
-            // Report reason dropdown overlay
             if showingReportMenu {
                 ZStack {
                     Color.black.opacity(0.4)
@@ -274,9 +195,26 @@ struct MoodPostDetailView: View {
                     .cornerRadius(12)
                     .padding(.horizontal, 40)
                 }
+                .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
             }
         }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Apply toast modifier only for profanity
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(0.1)).ignoresSafeArea())
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(accentColor.opacity(0.9), lineWidth: 2))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.5), radius: 25, x: 0, y: 15)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                keyboardHeight = keyboardFrame.height
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
+        .alert("Delete Post", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { deletePost() }
+        } message: { Text("Are you sure you want to delete this post? This action cannot be undone.") }
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
     }
     
     private func reportButton(_ title: String, reason: String) -> some View {
@@ -293,53 +231,41 @@ struct MoodPostDetailView: View {
     private func showStatus(_ message: String, duration: TimeInterval = 3.0) {
         statusMessage = message
         showStatusMessage = true
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            withAnimation(.easeOut(duration: 0.3)) {
-                showStatusMessage = false
-            }
+            withAnimation(.easeOut(duration: 0.3)) { showStatusMessage = false }
         }
     }
     
     func attemptSendComment() {
         let trimmedComment = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedComment.isEmpty else { return }
-
         if profanityFilter.isContentAcceptable(text: trimmedComment) {
-            sendComment(content: trimmedComment) // Pass the already trimmed comment
+            sendComment(content: trimmedComment)
         } else {
             toastMessage = "Your comment contains offensive language."
             showProfanityToast = true
         }
     }
     
-    func sendComment(content: String) { // Accepts content parameter
-        guard let currentUserId = userDataProvider.currentUser?.id else {
-            print("User not logged in.")
-            return
-        }
-        
+    func sendComment(content: String) {
+        guard let currentUserId = userDataProvider.currentUser?.id else { return }
         isSendingComment = true
         CommentService.addComment(postId: post.id, userId: currentUserId, content: content) { result in
             DispatchQueue.main.async {
                 isSendingComment = false
                 switch result {
-                case .success(let response):
-                    // Assuming response.comment is of type CommentPosts
-                    self.comments.append(response.comment)
-                    self.comments.sort { comment1, comment2 in
-                        guard let date1 = DateFormatterUtility.parseCommentTimestamp(comment1.timestamp),
-                              let date2 = DateFormatterUtility.parseCommentTimestamp(comment2.timestamp)
-                        else {
-                            return false
+                    case .success(let response):
+                        self.comments.append(response.comment)
+                        self.comments.sort {
+                            guard let date1 = DateFormatterUtility.parseCommentTimestamp($0.timestamp),
+                                  let date2 = DateFormatterUtility.parseCommentTimestamp($1.timestamp)
+                            else { return false }
+                            return date1 > date2
                         }
-                        return date1 > date2 // Assuming newest first
-                    }
-                    self.router.commentCountUpdated.send((postId: self.post.id, newCount: response.commentsCount))
-                    self.newComment = ""
-                    self.isCommentFieldFocused = false // Dismiss keyboard
-                case .failure(let error):
-                    print("Error sending comment: \(error.localizedDescription)")
+                        self.router.commentCountUpdated.send((postId: self.post.id, newCount: response.commentsCount))
+                        self.newComment = ""
+                    case .failure(let error):
+                        print("Error sending comment: \(error.localizedDescription)")
                 }
             }
         }
@@ -350,37 +276,27 @@ struct MoodPostDetailView: View {
             showStatus("Please log in to delete posts")
             return
         }
-        
         guard !isDeleting else { return }
-        
         isDeleting = true
         showStatus("Deleting post...")
-        
         DeleteService.deletePost(postId: post.id, userId: currentUserId) { result in
             DispatchQueue.main.async {
                 self.isDeleting = false
                 switch result {
-                    case .success(_):
-                    self.showStatus("Post deleted successfully")
-                    HapticFeedbackManager.shared.successNotification()
-                    
-                    // Dismiss the detail view after successful deletion
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        self.onDismiss()
-                    }
-                    
-                case .failure(let error):
-                    var errorMessage: String
-                    switch error {
-                    case .unauthorized:
-                        errorMessage = "You can only delete your own posts"
-                    case .notFound:
-                        errorMessage = "This post no longer exists"
-                    default:
-                        errorMessage = error.localizedDescription
-                    }
-                    self.showStatus("Failed to delete post: \(errorMessage)")
-                    HapticFeedbackManager.shared.errorNotification()
+                    case .success:
+                        self.showStatus("Post deleted successfully")
+                        HapticFeedbackManager.shared.successNotification()
+                        self.router.homeFeedNeedsRefresh.send()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.onDismiss() }
+                    case .failure(let error):
+                        let errorMessage: String
+                        switch error {
+                            case .unauthorized: errorMessage = "You can only delete your own posts"
+                            case .notFound: errorMessage = "This post no longer exists"
+                            default: errorMessage = error.localizedDescription
+                        }
+                        self.showStatus("Failed to delete post: \(errorMessage)")
+                        HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }
@@ -391,29 +307,21 @@ struct MoodPostDetailView: View {
             showStatus("Please log in to block users")
             return
         }
-        
         guard !isBlocking else { return }
-        
         isBlocking = true
         showStatus("Blocking user...")
-        
         BlockService.blockUser(userId: post.userId, currentUserId: currentUserId) { result in
             DispatchQueue.main.async {
                 self.isBlocking = false
                 switch result {
-                case .success:
-                    self.showStatus("User blocked successfully")
-                    HapticFeedbackManager.shared.successNotification()
-                    
-                    self.router.userDidBlock.send(self.post.userId)
-                        
-                    // Optionally dismiss the detail view after blocking
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        self.onDismiss()
-                    }
-                case .failure(let error):
-                    self.showStatus("Failed to block user: \(error.localizedDescription)")
-                    HapticFeedbackManager.shared.errorNotification()
+                    case .success:
+                        self.showStatus("User blocked successfully")
+                        HapticFeedbackManager.shared.successNotification()
+                        self.router.userDidBlock.send(self.post.userId)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.onDismiss() }
+                    case .failure(let error):
+                        self.showStatus("Failed to block user: \(error.localizedDescription)")
+                        HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }
@@ -424,22 +332,19 @@ struct MoodPostDetailView: View {
             showStatus("Please log in to report posts")
             return
         }
-        
         guard !isReporting else { return }
-        
         isReporting = true
         showStatus("Reporting post...")
-        
         ReportService.reportPost(postId: post.id, reason: reason) { result in
             DispatchQueue.main.async {
                 self.isReporting = false
                 switch result {
-                case .success:
-                    self.showStatus("Post reported successfully")
-                    HapticFeedbackManager.shared.successNotification()
-                case .failure(let error):
-                    self.showStatus("Failed to report post: \(error.localizedDescription)")
-                    HapticFeedbackManager.shared.errorNotification()
+                    case .success:
+                        self.showStatus("Post reported successfully")
+                        HapticFeedbackManager.shared.successNotification()
+                    case .failure(let error):
+                        self.showStatus("Failed to report post: \(error.localizedDescription)")
+                        HapticFeedbackManager.shared.errorNotification()
                 }
             }
         }
@@ -472,12 +377,11 @@ struct CommentView: View {
         .onAppear {
             fetchUsername(for: comment.userId) { result in
                 switch result {
-                case .success(let name):
-                    self.username = name
-                case .failure:
-                    self.username = "User"
+                    case .success(let name): self.username = name
+                    case .failure: self.username = "User"
                 }
             }
         }
+        Divider().background(Color.white.opacity(0.2))
     }
 }

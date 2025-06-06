@@ -153,7 +153,7 @@ struct FloatingBlobButton: View {
                         startGlowAnimation()
                     }
                 }
-                .onChange(of: isSelected) { newValue in
+                .onChange(of: isSelected) { newValue, oldValue in
                     if newValue {
                         startGlowAnimation()
                     } else {
