@@ -42,7 +42,7 @@ struct MapMoodPost: Identifiable, Codable {
     let privacy: String
     let isAnonymous: Bool?
     let distance: Double?
-    let likesCount: Int       // Expects JSON key "likesCount"
+    let likesCount: Int      // Expects JSON key "likesCount"
     let commentsCount: Int    // Expects JSON key "commentsCount"
     let people: [String]?
     let activities: [String]?
@@ -447,123 +447,48 @@ enum MapViewMode {
     case heatmap
 }
 
-// MARK: - Optimized MapView
-
+// MARK: - Updated MapView for iOS 17
 struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
     @EnvironmentObject var locationManager: LocationManager
     @State private var selectedMoodPost: MapMoodPost?
     @State private var showingMoodDetail = false
-    @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 34.0689, longitude: -118.4452),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    @State private var cameraPosition: MapCameraPosition = .region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 34.0689, longitude: -118.4452),
+            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        )
     )
-    @State private var tracking: MapUserTrackingMode = .follow
     @State private var viewMode: MapViewMode = .markers
     @State private var lastRegionChangeTime = Date()
     @State private var regionChangeTimer: Timer?
+    @State private var mapSelection: String?
+    @State private var isFollowingUser = false
+    
+    // Track the current visible region for API calls
+    @State private var visibleRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 34.0689, longitude: -118.4452),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
     
     var body: some View {
         ZStack {
-            // Main Map
-            MapContent()
+            // Main Map Content
+            if viewMode == .markers {
+                markersMapView
+            } else {
+                // For heatmap, we still need UIViewRepresentable due to overlay requirements
+                HeatmapMapView(
+                    region: $visibleRegion,
+                    tracking: $isFollowingUser,
+                    heatmapData: viewModel.heatmapPoints,
+                    onRegionChange: handleRegionChange
+                )
+                .ignoresSafeArea()
+            }
             
             // Overlay Controls
-            VStack {
-                HStack {
-                    // View Mode Toggle
-                    Picker("View Mode", selection: $viewMode) {
-                        Label("Markers", systemImage: "mappin.circle.fill")
-                            .tag(MapViewMode.markers)
-                        Label("Heatmap", systemImage: "heat.waves")
-                            .tag(MapViewMode.heatmap)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: 200)
-                    .padding(8)
-                    .background(Color.black.opacity(0.7))
-                    .cornerRadius(8)
-                    
-                    Spacer()
-                    
-                    // Refresh Button
-                    Button(action: {
-                        if viewMode == .markers {
-                            viewModel.fetchMoodPosts(for: mapRegion, forceRefresh: true)
-                        } else {
-                            viewModel.fetchHeatmapData(for: mapRegion)
-                        }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .clipShape(Circle())
-                    }
-                    
-                    //                    // Clear Cache Button (for debugging/testing)
-                    //                    Button(action: {
-                    //                        viewModel.clearCache()
-                    //                    }) {
-                    //                        Image(systemName: "trash")
-                    //                            .foregroundColor(.white)
-                    //                            .padding()
-                    //                            .background(Color.red.opacity(0.7))
-                    //                            .clipShape(Circle())
-                    //                    }
-                    
-                    // User Location Button
-                    Button(action: {
-                        if let userCoord = locationManager.userCoordinates {
-                            withAnimation {
-                                mapRegion.center = userCoord
-                                tracking = .follow
-                            }
-                        }
-                    }) {
-                        Image(systemName: tracking == .follow ? "location.fill" : "location")
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue.opacity(0.7))
-                            .clipShape(Circle())
-                    }
-                }
-                .padding()
-                
-                Spacer()
-                
-                // Status text with loading indicator
-                HStack {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    }
-                    
-                    if viewMode == .markers && !viewModel.annotations.isEmpty {
-                        Text("\(viewModel.annotations.count) mood\(viewModel.annotations.count == 1 ? "" : "s") nearby")
-                            .font(.custom("Georgia", size: 13))
-                            .foregroundColor(.white.opacity(0.7))
-                    } else if viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty {
-                        Text("Showing mood intensity heatmap")
-                            .font(.custom("Georgia", size: 13))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.25))
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
-                .padding()
-                .opacity((viewMode == .markers && !viewModel.annotations.isEmpty) ||
-                         (viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty) ||
-                         viewModel.isLoading ? 1 : 0)
-                .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
-            }
+            mapControlsOverlay
         }
         .sheet(isPresented: $showingMoodDetail) {
             if let moodPost = selectedMoodPost {
@@ -575,17 +500,11 @@ struct MapView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        .onChange(of: viewMode) { newMode in
-            // Clear previous mode data and fetch new data
+        .onChange(of: viewMode) { oldMode, newMode in
             handleViewModeChange(newMode)
         }
         .onAppear {
-            locationManager.startUpdatingMapLocation()
-            if let userCoord = locationManager.userCoordinates {
-                mapRegion.center = userCoord
-            }
-            // Initial fetch
-            viewModel.handleRegionChange(mapRegion, viewMode: viewMode)
+            setupInitialLocation()
         }
         .onDisappear {
             locationManager.stopUpdatingMapLocation()
@@ -593,78 +512,247 @@ struct MapView: View {
         }
     }
     
-    private func handleViewModeChange(_ newMode: MapViewMode) {
-        // Immediately fetch data for the new mode
-        viewModel.handleRegionChange(mapRegion, viewMode: newMode)
-    }
-    
-    private func handleRegionChange(_ newRegion: MKCoordinateRegion) {
-        // Cancel any existing timer
-        regionChangeTimer?.invalidate()
-        
-        // Update the region immediately for UI responsiveness
-        mapRegion = newRegion
-        lastRegionChangeTime = Date()
-        
-        // Set up debounced API call
-        regionChangeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
-            viewModel.handleRegionChange(newRegion, viewMode: viewMode)
-        }
-    }
-    
+    // MARK: - Markers Map View (iOS 17 Style)
     @ViewBuilder
-    private func MapContent() -> some View {
-        if viewMode == .markers {
-            // Markers Map
-            Map(
-                coordinateRegion: $mapRegion,
-                interactionModes: .all,
-                showsUserLocation: true,
-                userTrackingMode: $tracking,
-                annotationItems: viewModel.annotations
-            ) { annotation in
-                MapAnnotation(coordinate: annotation.coordinate) {
-                    MoodPostMarker(annotation: annotation) {
+    private var markersMapView: some View {
+        Map(position: $cameraPosition, selection: $mapSelection) {
+            // User Location Annotation
+            if let userCoord = locationManager.userCoordinates {
+                Annotation("Me", coordinate: userCoord) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 32, height: 32)
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .annotationTitles(.hidden)
+            }
+            
+            // Mood Post Annotations
+            ForEach(viewModel.annotations) { annotation in
+                Annotation(
+                    annotation.moodPost.emotion.name,
+                    coordinate: annotation.coordinate,
+                    anchor: .bottom
+                ) {
+                    MoodPostMarkerView(annotation: annotation) {
                         selectedMoodPost = annotation.moodPost
                         showingMoodDetail = true
                     }
-                    .preferredColorScheme(.dark)
+                }
+                .tag(annotation.id)
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+            MapScaleView()
+        }
+        .onMapCameraChange(frequency: .onEnd) { context in
+            handleCameraChange(context)
+        }
+        .onChange(of: mapSelection) { _, newSelection in
+            if let selection = newSelection,
+               let annotation = viewModel.annotations.first(where: { $0.id == selection }) {
+                selectedMoodPost = annotation.moodPost
+                showingMoodDetail = true
+            }
+        }
+    }
+    
+    // MARK: - Map Controls Overlay
+    @ViewBuilder
+    private var mapControlsOverlay: some View {
+        VStack {
+            HStack {
+                // View Mode Toggle
+                Picker("View Mode", selection: $viewMode) {
+                    Label("Markers", systemImage: "mappin.circle.fill")
+                        .tag(MapViewMode.markers)
+                    Label("Heatmap", systemImage: "heat.waves")
+                        .tag(MapViewMode.heatmap)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .frame(width: 200)
+                .padding(8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(8)
+                
+                Spacer()
+                
+                // Control Buttons
+//                HStack(spacing: 12) {
+//                    // Refresh Button
+//                    Button(action: refreshData) {
+//                        Image(systemName: "arrow.clockwise")
+//                            .foregroundColor(.white)
+//                            .frame(width: 44, height: 44)
+//                            .background(Color.black.opacity(0.7))
+//                            .clipShape(Circle())
+//                    }
+//                }
+            }
+            .padding()
+            
+            Spacer()
+            
+            // Status Bar
+            statusBar
+        }
+    }
+    
+    // MARK: - Status Bar
+    @ViewBuilder
+    private var statusBar: some View {
+        if viewModel.isLoading || shouldShowStatus {
+            HStack {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                }
+                
+                if let statusText = statusText {
+                    Text(statusText)
+                        .font(.custom("Georgia", size: 13))
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
-            .onChange(of: mapRegion) { newRegion in
-                handleRegionChange(newRegion)
-            }
-            .onChange(of: locationManager.userCoordinates) { newCoordinates in
-                if let coordinates = newCoordinates, tracking == .follow {
-                    withAnimation {
-                        mapRegion.center = coordinates
-                    }
-                }
-            }
-        } else {
-            // Heatmap Map
-            HeatmapMapView(
-                region: $mapRegion,
-                tracking: $tracking,
-                heatmapData: viewModel.heatmapPoints,
-                onRegionChange: handleRegionChange
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
+            .padding()
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
+        }
+    }
+    
+    private var shouldShowStatus: Bool {
+        (viewMode == .markers && !viewModel.annotations.isEmpty) ||
+        (viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty) ||
+        viewModel.isLoading
+    }
+    
+    private var statusText: String? {
+        if viewMode == .markers && !viewModel.annotations.isEmpty {
+            return "\(viewModel.annotations.count) mood\(viewModel.annotations.count == 1 ? "" : "s") nearby"
+        } else if viewMode == .heatmap && !viewModel.heatmapPoints.isEmpty {
+            return "Showing mood intensity heatmap"
+        }
+        return nil
+    }
+    
+    // MARK: - Helper Methods
+    private func setupInitialLocation() {
+        locationManager.startUpdatingMapLocation()
+        
+        if let userCoord = locationManager.userCoordinates {
+            let region = MKCoordinateRegion(
+                center: userCoord,
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             )
-            .onChange(of: locationManager.userCoordinates) { newCoordinates in
-                if let coordinates = newCoordinates, tracking == .follow {
-                    withAnimation {
-                        mapRegion.center = coordinates
-                    }
-                }
-            }
+            visibleRegion = region
+            cameraPosition = .region(region)
+            isFollowingUser = true
+        }
+        
+        // Initial fetch
+        viewModel.handleRegionChange(visibleRegion, viewMode: viewMode)
+    }
+    
+    private func handleCameraChange(_ context: MapCameraUpdateContext) {
+        // Update visible region
+        visibleRegion = context.region
+        
+        // Cancel any existing timer
+        regionChangeTimer?.invalidate()
+        
+        // Debounce region changes
+        regionChangeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+            handleRegionChange(context.region)
+        }
+        
+        // Update following status
+        if let userCoord = locationManager.userCoordinates {
+            let distance = CLLocation(
+                latitude: context.region.center.latitude,
+                longitude: context.region.center.longitude
+            ).distance(from: CLLocation(
+                latitude: userCoord.latitude,
+                longitude: userCoord.longitude
+            ))
+            
+            isFollowingUser = distance < 100 // Within 100 meters
+        }
+    }
+    
+    private func handleRegionChange(_ newRegion: MKCoordinateRegion) {
+        lastRegionChangeTime = Date()
+        viewModel.handleRegionChange(newRegion, viewMode: viewMode)
+    }
+    
+    private func handleViewModeChange(_ newMode: MapViewMode) {
+        viewModel.handleRegionChange(visibleRegion, viewMode: newMode)
+    }
+    
+    private func refreshData() {
+        if viewMode == .markers {
+            viewModel.fetchMoodPosts(for: visibleRegion, forceRefresh: true)
+        } else {
+            viewModel.fetchHeatmapData(for: visibleRegion)
         }
     }
 }
 
-// MARK: - Optimized Heatmap Map View
+// MARK: - Updated Mood Post Marker View
+struct MoodPostMarkerView: View {
+    let annotation: MoodPostAnnotation
+    let action: () -> Void
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 0) {
+                // Mood color marker
+                Circle()
+                    .fill(annotation.color)
+                    .frame(width: 30, height: 30)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: 2)
+                    )
+                    .shadow(color: annotation.color.opacity(0.3), radius: 4)
+                
+                // Pin tail
+                Image(systemName: "triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(annotation.color)
+                    .rotationEffect(.degrees(180))
+                    .offset(y: -2)
+            }
+            .scaleEffect(isPressed ? 0.9 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onLongPressGesture(
+            minimumDuration: 0,
+            maximumDistance: .infinity,
+            pressing: { pressing in
+                isPressed = pressing
+            },
+            perform: {}
+        )
+    }
+}
 
+// MARK: - Updated Heatmap View (Still needs UIViewRepresentable)
 struct HeatmapMapView: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
-    @Binding var tracking: MapUserTrackingMode
+    @Binding var tracking: Bool
     let heatmapData: [HeatmapPoint]
     let onRegionChange: (MKCoordinateRegion) -> Void
     
@@ -672,12 +760,18 @@ struct HeatmapMapView: UIViewRepresentable {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
         mapView.showsUserLocation = true
-        mapView.userTrackingMode = tracking == .follow ? .follow : .none
+        mapView.userTrackingMode = tracking ? .follow : .none
+        mapView.setRegion(region, animated: false)
         return mapView
     }
     
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Only update region if not currently being interacted with
+        // Update tracking mode
+        if mapView.userTrackingMode != (tracking ? .follow : .none) {
+            mapView.setUserTrackingMode(tracking ? .follow : .none, animated: true)
+        }
+        
+        // Update region if needed
         if !context.coordinator.isUserInteracting {
             let currentRegion = mapView.region
             if !region.isEqual(to: currentRegion, threshold: 0.0001) {
@@ -685,9 +779,9 @@ struct HeatmapMapView: UIViewRepresentable {
             }
         }
         
-        // Update overlays only if heatmap data changed significantly
+        // Update overlays
         let coordinator = context.coordinator
-        if !coordinator.heatmapDataEquals(heatmapData) {
+        if coordinator.shouldUpdateOverlays(with: heatmapData) {
             mapView.removeOverlays(mapView.overlays)
             if !heatmapData.isEmpty {
                 let overlay = HeatmapOverlay(heatmapData: heatmapData, region: region)
@@ -704,7 +798,6 @@ struct HeatmapMapView: UIViewRepresentable {
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: HeatmapMapView
         var isUserInteracting = false
-        private var lastRegionChangeTime = Date()
         private var regionChangeTimer: Timer?
         private var cachedHeatmapData: [HeatmapPoint] = []
         
@@ -718,14 +811,12 @@ struct HeatmapMapView: UIViewRepresentable {
         }
         
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            lastRegionChangeTime = Date()
+            parent.region = mapView.region
             
-            // Debounce region changes
             regionChangeTimer?.invalidate()
             regionChangeTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-                guard let self = self else { return }
-                self.isUserInteracting = false
-                self.parent.onRegionChange(mapView.region)
+                self?.isUserInteracting = false
+                self?.parent.onRegionChange(mapView.region)
             }
         }
         
@@ -736,19 +827,18 @@ struct HeatmapMapView: UIViewRepresentable {
             return MKOverlayRenderer()
         }
         
-        func heatmapDataEquals(_ newData: [HeatmapPoint]) -> Bool {
-            guard cachedHeatmapData.count == newData.count else { return false }
+        func shouldUpdateOverlays(with newData: [HeatmapPoint]) -> Bool {
+            guard cachedHeatmapData.count == newData.count else { return true }
             
-            // Simple comparison - you might want to make this more sophisticated
             for (index, point) in newData.enumerated() {
                 if index >= cachedHeatmapData.count ||
                     cachedHeatmapData[index].lat != point.lat ||
                     cachedHeatmapData[index].lng != point.lng ||
                     cachedHeatmapData[index].intensity != point.intensity {
-                    return false
+                    return true
                 }
             }
-            return true
+            return false
         }
         
         func updateHeatmapData(_ newData: [HeatmapPoint]) {
