@@ -3,35 +3,6 @@ import FluidGradient
 import CoreLocation
 import Combine
 
-// Keyboard height observer
-class KeyboardResponder: ObservableObject {
-    @Published var currentHeight: CGFloat = 0
-    var cancellables = Set<AnyCancellable>()
-    
-    init() {
-        NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
-            .compactMap { notification in
-                notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
-            }
-            .map { $0.height }
-            .sink { [weak self] height in
-                DispatchQueue.main.async {
-                    self?.currentHeight = height
-                }
-            }
-            .store(in: &cancellables)
-        
-        NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
-            .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.currentHeight = 0
-                }
-            }
-            .store(in: &cancellables)
-    }
-}
-
-
 extension CLLocationCoordinate2D: @retroactive Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
         return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
@@ -89,8 +60,7 @@ struct SocialTagSectionView: View {
     @State private var newTagText: String = ""
     @FocusState private var isTextFieldFocused: Bool
     
-    // Profanity Filter and Toast State
-    @StateObject private var profanityFilter = ProfanityFilterService() // Assuming ProfanityFilterService is defined
+    @StateObject private var profanityFilter = ProfanityFilterService()
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
     
@@ -107,7 +77,6 @@ struct SocialTagSectionView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    // Predefined Tags
                     ForEach(predefinedTags, id: \.self) { tag in
                         PillTagView(text: tag, isSelected: selectedTags.contains(tag)) {
                             if selectedTags.contains(tag) {
@@ -119,7 +88,6 @@ struct SocialTagSectionView: View {
                         }
                     }
                     
-                    // Custom selected tags
                     ForEach(customSelectedTags, id: \.self) { tag in
                         PillTagView(text: tag, isSelected: true) {
                             selectedTags.remove(tag)
@@ -127,7 +95,6 @@ struct SocialTagSectionView: View {
                         }
                     }
                     
-                    // "Input Pill" TextField
                     TextField("+ Add tag", text: $newTagText)
                         .font(.custom("Chivo", size: 14))
                         .foregroundColor(newTagText.isEmpty ? Color.white.opacity(0.6) : .white)
@@ -152,7 +119,7 @@ struct SocialTagSectionView: View {
         .onTapGesture {
             if isTextFieldFocused { isTextFieldFocused = false }
         }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error) // Assuming .toast modifier is defined
+        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
     }
     
     private func addCustomTagFromInput() {
@@ -161,11 +128,9 @@ struct SocialTagSectionView: View {
             if profanityFilter.isContentAcceptable(text: trimmedTag) {
                 selectedTags.insert(trimmedTag)
                 newTagText = ""
-                // isTextFieldFocused = true // Optionally keep focus
             } else {
                 toastMessage = "This tag contains offensive language."
                 showProfanityToast = true
-                // Do not add the tag, newTagText can remain for user to edit
             }
         }
     }
@@ -254,7 +219,7 @@ struct ReasonInputSectionView: View {
                     .shadow(color: .white.opacity(0.1), radius: 5, x: 0, y: 0)
                 
                 TextField("Share your thoughts...", text: $reasonText, axis: .vertical)
-                    .font(.custom("Roberto", size: 16)) // Ensure font "Roberto" is available
+                    .font(.custom("Roberto", size: 16))
                     .foregroundColor(.white)
                     .accentColor(accentColor)
                     .padding(20)
@@ -274,17 +239,11 @@ struct ReasonInputSectionView: View {
                     }
                     .submitLabel(.done)
                     .onSubmit {
-                        print("   ReasonInputSectionView: .onSubmit triggered.")
-                        print("   Before change: isTextFieldFocused.wrappedValue = \(isTextFieldFocused.wrappedValue)")
-                        print("   Current reasonText before potential change: '\(reasonText)'")
-                        
                         isTextFieldFocused.wrappedValue = false
-                        
-                        print("   After change: isTextFieldFocused.wrappedValue = \(isTextFieldFocused.wrappedValue)")
                     }
                 
                 Text("\(reasonText.count)/\(maxCharacterLimit)")
-                    .font(.custom("Roberto", size: 14)) // Ensure font "Roberto" is available
+                    .font(.custom("Roberto", size: 14))
                     .foregroundColor(.white.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.horizontal, 30)
@@ -295,9 +254,6 @@ struct ReasonInputSectionView: View {
             .padding(.top, 5)
             .padding(.bottom, 30)
         }
-    }
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -389,7 +345,7 @@ struct CheckInFormView: View {
                 action: saveAction,
                 isSaving: isSaving,
                 saveError: saveError,
-                isDisabled: shouldDisableSaveButton() // Using original helper
+                isDisabled: shouldDisableSaveButton()
             )
         }
     }
@@ -402,8 +358,8 @@ struct CheckInFormView: View {
 }
 
 struct CompleteCheckInView: View {
-    @EnvironmentObject private var router: MoodAppRouter // Assuming MoodAppRouter is defined
-    @EnvironmentObject private var userDataProvider: UserDataProvider // Assuming UserDataProvider is defined
+    @EnvironmentObject private var router: MoodAppRouter
+    @EnvironmentObject private var userDataProvider: UserDataProvider
     @EnvironmentObject var locationManager: LocationManager
     
     @State private var reasonText: String = ""
@@ -414,20 +370,11 @@ struct CompleteCheckInView: View {
         "Friends", "Family", "By Myself"
     ]
     
-    @StateObject private var profanityFilter = ProfanityFilterService() // Assuming ProfanityFilterService is defined
+    @StateObject private var profanityFilter = ProfanityFilterService()
     @State private var showProfanityToast: Bool = false
     @State private var toastMessage: String = ""
     
     @State private var selectedActivities: Set<ActivityTag> = []
-    @State private var predefinedActivities: [ActivityTag] = [ // Original predefined activities
-        ActivityTag(name: "Driving"), ActivityTag(name: "Resting"), ActivityTag(name: "Hobbies"),
-        ActivityTag(name: "Fitness"), ActivityTag(name: "Hanging Out"), ActivityTag(name: "Eating"),
-        ActivityTag(name: "Work"), ActivityTag(name: "Studying")
-    ]
-    @State private var customActivityText: String = ""
-    @State private var showingAddCustomActivityField = false
-    
-    @StateObject private var keyboardResponder = KeyboardResponder()
     
     enum PrivacySetting: String, CaseIterable, Identifiable {
         case isPublic = "Public"
@@ -436,23 +383,13 @@ struct CompleteCheckInView: View {
     }
     @State private var selectedPrivacy: PrivacySetting = .isPublic
     
-    // MARK: - Location State
     @State private var showLocation: Bool = true
-    @State private var displayableLocationName: String = "Fetching location..."
     
-    let emotion: Emotion // Assuming Emotion struct is defined
+    let emotion: Emotion
     
-    // MARK: - Saving State
     @State private var isSaving: Bool = false
     @State private var saveError: String? = nil
     @State private var showSaveSuccessAlert: Bool = false
-    
-    struct LocationState: Equatable {
-        let isLoading: Bool
-        let landmarkName: String?
-        let coordinates: CLLocationCoordinate2D?
-        let authStatus: CLAuthorizationStatus
-    }
     
     private var currentDisplayLocation: String {
         if !showLocation {
@@ -479,14 +416,12 @@ struct CompleteCheckInView: View {
         }
     }
     
-    // MARK: - Formatters
     private var timeFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
         return formatter
     }
     
-    // MARK: - Body
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -494,6 +429,7 @@ struct CompleteCheckInView: View {
                     VStack(spacing: 20) {
                         Spacer(minLength: geometry.safeAreaInsets.top + 60)
                         
+                        // Header Text
                         VStack {
                             Text(emotion.name)
                                 .font(.custom("Georgia", size: 40, relativeTo: .largeTitle))
@@ -516,6 +452,7 @@ struct CompleteCheckInView: View {
                         }
                         .padding(.bottom, 30)
                         
+                        // Form Content
                         CheckInFormView(
                             reasonText: $reasonText,
                             isTextFieldFocused: $isTextFieldFocused,
@@ -535,9 +472,9 @@ struct CompleteCheckInView: View {
                     .padding(.horizontal)
                 }
                 .scrollContentBackground(.hidden)
-                .padding(.bottom, keyboardResponder.currentHeight > 0 ? keyboardResponder.currentHeight - geometry.safeAreaInsets.bottom : 0)
-                .animation(.easeOut(duration: 0.25), value: keyboardResponder.currentHeight)
+                .ignoresSafeArea(edges: .top)
                 
+                // Back Button Overlay
                 VStack {
                     HStack {
                         Button(action: {
@@ -560,7 +497,7 @@ struct CompleteCheckInView: View {
             .background(
                 FloatingBlobButton(
                     text: "",
-                    size: geometry.size.width * 2,
+                    size: geometry.size.width * 2.2,
                     fontSize: 0,
                     morphSpeed: 0.2,
                     floatSpeed: 0.05,
@@ -572,7 +509,7 @@ struct CompleteCheckInView: View {
                 )
                 .blur(radius: 60)
                 .position(x: geometry.size.width / 2, y: 0)
-                    .ignoresSafeArea()
+                .ignoresSafeArea()
             )
             .background(.black)
             .ignoresSafeArea()
@@ -580,22 +517,14 @@ struct CompleteCheckInView: View {
             .onTapGesture {
                 isTextFieldFocused = false
             }
-            .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
-            .alert("Success!", isPresented: $showSaveSuccessAlert) {
-                Button("OK", role: .cancel) {
-                    router.navigateToMainApp()
-                }
-            } message: {
-                Text("Your check-in has been saved successfully.")
-            }
             .onAppear {
                 if showLocation {
                     locationManager.requestLocationAccessIfNeeded()
                     locationManager.fetchCurrentLocationAndLandmark()
                 }
             }
-            .onChange(of: showLocation) {
-                if showLocation {
+            .onChange(of: showLocation) { show in
+                if show {
                     locationManager.fetchCurrentLocationAndLandmark()
                 } else {
                     locationManager.stopUpdatingMapLocation()
@@ -623,9 +552,7 @@ struct CompleteCheckInView: View {
         
         let trimmedReasonText = self.reasonText.trimmingCharacters(in: .whitespacesAndNewlines)
         let customSocialTags = selectedSocialTags.filter { !predefinedSocialTags.contains($0) }
-        let customActivityNames = selectedActivities.filter { $0.isCustom }.map { $0.name }
         
-        // --- PROFANITY CHECKS ---
         if !profanityFilter.isContentAcceptable(text: trimmedReasonText) {
             isSaving = false
             toastMessage = "Your reason contains offensive language."
@@ -638,65 +565,45 @@ struct CompleteCheckInView: View {
             showProfanityToast = true
             return
         }
-        if !customActivityNames.allSatisfy({ profanityFilter.isContentAcceptable(text: $0) }) {
-            isSaving = false
-            toastMessage = "A custom activity contains offensive language."
-            showProfanityToast = true
-            return
-        }
         
-        // MODIFIED SECTION FOR LOCATION HANDLING
         let finalLandmarkName: String?
         let finalCoordinates: CLLocationCoordinate2D?
-        let finalShowLocationFlag: Bool
         
         if self.showLocation && self.locationManager.userCoordinates != nil {
-            // User wants to show location AND coordinates are available
             finalCoordinates = self.locationManager.userCoordinates
-            finalLandmarkName = self.locationManager.landmarkName // This could be nil if landmark isn't found, which is acceptable for the backend if coordinates are present.
-            finalShowLocationFlag = true
+            finalLandmarkName = self.locationManager.landmarkName
         } else {
-            // User either chose to hide location (self.showLocation is false), OR
-            // self.showLocation is true BUT self.locationManager.userCoordinates is nil (e.g. permissions denied, error fetching)
-            // In these cases, the entire location object should be treated as null/hidden for the backend.
             finalCoordinates = nil
             finalLandmarkName = nil
-            finalShowLocationFlag = false
         }
-        
-        // Original print statement, updated to use resolved values
-        print("Saving CheckIn - Landmark: \(finalLandmarkName ?? "nil"), Coords: \(String(describing: finalCoordinates)), ShowLocation (to service): \(finalShowLocationFlag)")
         
         Task {
             do {
-                // Assuming CheckInService and its error types are defined elsewhere
-                let response = try await CheckInService.createCheckIn(
+                _ = try await CheckInService.createCheckIn(
                     emotion: self.emotion,
                     reasonText: trimmedReasonText,
                     socialTags: self.selectedSocialTags,
                     selectedActivities: self.selectedActivities,
-                    landmarkName: finalLandmarkName,         // Use the resolved landmark name
-                    userCoordinates: finalCoordinates,       // Use the resolved coordinates
-                    showLocation: finalShowLocationFlag,     // Use the resolved show location flag
+                    landmarkName: finalLandmarkName,
+                    userCoordinates: finalCoordinates,
+                    showLocation: self.showLocation,
                     privacySetting: self.selectedPrivacy,
                     userDataProvider: self.userDataProvider
                 )
                 
                 await MainActor.run {
                     isSaving = false
-                    print("Save successful: \(response.message)") // Assuming response has a message
                     router.homeFeedNeedsRefresh.send()
                     showSaveSuccessAlert = true
                 }
             } catch {
                 await MainActor.run {
                     isSaving = false
-                    if let serviceError = error as? CheckInServiceError { // Assuming CheckInServiceError is defined
+                    if let serviceError = error as? CheckInServiceError {
                         saveError = serviceError.errorDescription ?? "An unknown error occurred."
                     } else {
                         saveError = error.localizedDescription
                     }
-                    print("Failed to save check-in: \(String(describing: saveError))")
                 }
             }
         }

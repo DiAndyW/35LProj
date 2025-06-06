@@ -180,20 +180,20 @@ struct MoodPostCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 2){
-            MoodPostCardHeaderView(
-                displayUsername: displayUsername,
-                isLoadingUsername: isLoadingUsername,
-                usernameFetchFailed: usernameFetchFailed,
-                timestamp: post.timestamp,
-                lastRefreshed: lastRefreshed,
-                location: post.location,
-                people: post.people
-            )
-            .cornerRadius(6)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(post.emotion.color?.opacity(0.4) ?? Color.white.opacity(0.1), lineWidth: 1)
-            )
+            
+            VStack(spacing: 0){
+                MoodPostCardHeaderView(
+                    displayUsername: displayUsername,
+                    isLoadingUsername: isLoadingUsername,
+                    usernameFetchFailed: usernameFetchFailed,
+                    timestamp: post.timestamp,
+                    lastRefreshed: lastRefreshed,
+                    location: post.location,
+                    people: post.people
+                )
+                
+                Divider().frame(height: 1).background(post.emotion.color.opacity(0.8))
+            }
             
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 0) {
