@@ -14,9 +14,7 @@ struct HomeFeedView: View {
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
-    @State private var selectedSortMethod: FeedSortMethod = .relevance
     @State private var showSortOptions: Bool = false
-    
     @State private var lastRefreshedDate = Date()
     
     private let pageSize = 20
@@ -83,15 +81,15 @@ struct HomeFeedView: View {
                 Menu {
                     ForEach(FeedSortMethod.allCases, id: \.self) { sortMethod in
                         Button(action: {
-                            if selectedSortMethod != sortMethod {
-                                selectedSortMethod = sortMethod
+                            if router.selectedSortMethod != sortMethod {
+                                router.selectedSortMethod = sortMethod
                                 loadInitialPosts() // Reload with new sort
                             }
                         }) {
                             HStack {
                                 Image(systemName: sortMethod.icon)
                                 Text(sortMethod.displayName)
-                                if selectedSortMethod == sortMethod {
+                                if router.selectedSortMethod == sortMethod {
                                     Spacer()
                                     Image(systemName: "checkmark")
                                 }
@@ -100,9 +98,9 @@ struct HomeFeedView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: selectedSortMethod.icon)
+                        Image(systemName: router.selectedSortMethod.icon)
                             .font(.system(size: 14))
-                        Text(selectedSortMethod.displayName)
+                        Text(router.selectedSortMethod.displayName)
                             .font(.custom("Georgia", size: 14))
                             .fontWeight(.medium)
                         Image(systemName: "chevron.down")
@@ -126,7 +124,7 @@ struct HomeFeedView: View {
     private var initialLoadingView: some View {
         VStack {
             Spacer()
-            ProgressView("Loading \(selectedSortMethod.displayName.lowercased()) feed...")
+            ProgressView("Loading \(router.selectedSortMethod.displayName.lowercased()) feed...")
                 .foregroundColor(.white)
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
             Spacer()
@@ -215,11 +213,11 @@ struct HomeFeedView: View {
     private func emptyStateContent(geometry: GeometryProxy) -> some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: selectedSortMethod.icon)
+            Image(systemName: router.selectedSortMethod.icon)
                 .font(.system(size: 60))
                 .foregroundColor(.pink.opacity(0.6))
             VStack(spacing: 8) {
-                Text("No \(selectedSortMethod.displayName.lowercased()) posts yet!")
+                Text("No \(router.selectedSortMethod.displayName.lowercased()) posts yet!")
                     .font(.custom("Georgia", size: 20))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
@@ -278,7 +276,7 @@ struct HomeFeedView: View {
             MoodPostService.fetchMoodPosts(
                 skip: skip,
                 limit: limit,
-                sort: selectedSortMethod // Use selected sort method
+                sort: router.selectedSortMethod // Use selected sort method
             ) { result in
                 continuation.resume(returning: result)
             }

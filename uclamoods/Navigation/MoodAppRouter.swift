@@ -71,6 +71,8 @@ class MoodAppRouter: ObservableObject {
         }
     }
     
+    @Published var selectedSortMethod: FeedSortMethod = .relevance
+    
     private var screenSize: CGSize = .zero
     let fadeOutDuration: Double = 0.4
     let fadeInDuration: Double = 0.5
