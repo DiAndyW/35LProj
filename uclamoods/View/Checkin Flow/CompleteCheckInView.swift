@@ -1,4 +1,5 @@
 import SwiftUI
+import FluidGradient
 import CoreLocation
 import Combine
 
@@ -170,48 +171,6 @@ struct SocialTagSectionView: View {
     }
 }
 
-struct EmotionHeaderView: View {
-    let emotion: Emotion // Assuming Emotion struct is defined
-    let timeFormatter: DateFormatter
-    let currentDisplayLocation: String
-    let geometry: GeometryProxy
-    
-    var body: some View {
-        ZStack {
-            FloatingBlobButton( // Assuming FloatingBlobButton is defined
-                text: "",
-                size: 600,
-                fontSize: 50,
-                morphSpeed: 0.2,
-                floatSpeed: 0.05,
-                colorShiftSpeed: 2.0,
-                movementRange: 0.05,
-                colorPool: [emotion.color],
-                isSelected: false,
-                action: {}
-            )
-            VStack {
-                Text(emotion.name)
-                    .font(.custom("Georgia", size: 50))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text(timeFormatter.string(from: Date()))
-                    .font(.custom("Chivo", size: 20))
-                    .foregroundColor(.white)
-                    .offset(y: geometry.size.width * 0.01)
-                
-                Text(currentDisplayLocation)
-                    .font(.custom("Chivo", size: 20))
-                    .foregroundColor(.white)
-                    .offset(y: geometry.size.width * 0.01)
-                    .padding(.horizontal, 100)
-            }
-            .offset(y: geometry.size.width * 0.35)
-        }
-    }
-}
-
 struct PrivacyOptionsView: View {
     @Binding var selectedPrivacy: CompleteCheckInView.PrivacySetting
     var body: some View {
@@ -237,7 +196,7 @@ struct PrivacyOptionsView: View {
 
 struct LocationOptionsView: View {
     @Binding var showLocation: Bool
-    @Binding var currentLocation: String
+    let currentLocation: String
     let accentColor: Color
     
     var body: some View {
@@ -393,7 +352,7 @@ struct CheckInFormView: View {
     
     @Binding var selectedPrivacy: CompleteCheckInView.PrivacySetting
     @Binding var showLocation: Bool
-    @Binding var currentLocation: String
+    let currentLocation: String
     
     let emotion: Emotion
     let geometry: GeometryProxy
@@ -421,7 +380,7 @@ struct CheckInFormView: View {
             
             LocationOptionsView(
                 showLocation: $showLocation,
-                currentLocation: $currentLocation,
+                currentLocation: currentLocation,
                 accentColor: emotion.color
             )
             
@@ -495,13 +454,29 @@ struct CompleteCheckInView: View {
         let authStatus: CLAuthorizationStatus
     }
     
-    var currentLocationState: LocationState {
-        LocationState(
-            isLoading: locationManager.isLoading,
-            landmarkName: locationManager.landmarkName,
-            coordinates: locationManager.userCoordinates,
-            authStatus: locationManager.authorizationStatus
-        )
+    private var currentDisplayLocation: String {
+        if !showLocation {
+            return "Location Hidden"
+        }
+        
+        if locationManager.isLoading {
+            return "Fetching location..."
+        }
+        
+        if let name = locationManager.landmarkName, !name.isEmpty {
+            return name
+        }
+        
+        if locationManager.userCoordinates != nil {
+            return "Near your current location"
+        }
+        
+        switch locationManager.authorizationStatus {
+            case .denied, .restricted:
+                return "Location access needed"
+            default:
+                return "Location unavailable"
+        }
     }
     
     // MARK: - Formatters
@@ -513,130 +488,128 @@ struct CompleteCheckInView: View {
     
     // MARK: - Body
     var body: some View {
-        ZStack {
-            GeometryReader { geometry in
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                EmotionHeaderView(
-                                    emotion: emotion,
-                                    timeFormatter: timeFormatter,
-                                    currentDisplayLocation: getFormattedLocationForHeader(),
-                                    geometry: geometry
-                                )
-                                .padding(.bottom, 30)
-                                .offset(x: -geometry.size.width * 0, y: -geometry.size.height * 0.48)
-                                
-                                CheckInFormView(
-                                    reasonText: $reasonText,
-                                    isTextFieldFocused: $isTextFieldFocused,
-                                    selectedSocialTags: $selectedSocialTags,
-                                    predefinedSocialTags: predefinedSocialTags,
-                                    selectedPrivacy: $selectedPrivacy,
-                                    showLocation: $showLocation,
-                                    currentLocation: $displayableLocationName,
-                                    emotion: emotion,
-                                    geometry: geometry,
-                                    isSaving: $isSaving,
-                                    saveError: $saveError,
-                                    isLocationLoading: .constant(locationManager.isLoading),
-                                    saveAction: saveCheckIn
-                                )
-                                .padding(.top, -geometry.size.height * 0.56)
-                                .padding(.horizontal, geometry.size.width * 0.24)
-                                .id("formView") // Add ID for ScrollViewReader
-                                
-                                // Add invisible spacer that expands when keyboard appears
-                                Color.clear
-                                    .frame(height: keyboardResponder.currentHeight > 0 ? keyboardResponder.currentHeight * 0.4 : 0)
-                                    .animation(.easeOut(duration: 0.25), value: keyboardResponder.currentHeight)
-                            }
-                            .ignoresSafeArea(edges: .top)
-                            .onTapGesture {
-                                isTextFieldFocused = false
-                            }
-                            .offset(y: -geometry.size.width * 0.0)
-                            .offset(x: -geometry.size.width * 0.25)
-                        }
-                        .scrollDisabled(keyboardResponder.currentHeight == 0) // Disable scrolling when keyboard is hidden
-                        .onChange(of: isTextFieldFocused) { focused, oldFocused in
-                            if focused {
-                                withAnimation(.easeOut(duration: 0.25)) {
-                                    proxy.scrollTo("formView", anchor: .center)
-                                }
-                            }
-                        }
-                    }
-                    
-                    VStack {
-                        HStack {
-                            Button(action: {
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                impactFeedback.prepare()
-                                impactFeedback.impactOccurred()
-                                router.navigateBackInMoodFlow(from: CGPoint(x: UIScreen.main.bounds.size.width * 0.1, y: UIScreen.main.bounds.size.height * 0.0))
-                            }) {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .padding(.leading, 25)
-                            .padding(.top, -geometry.size.height * 0.02)
+        GeometryReader { geometry in
+            ZStack {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Spacer(minLength: geometry.safeAreaInsets.top + 60)
+                        
+                        VStack {
+                            Text(emotion.name)
+                                .font(.custom("Georgia", size: 40, relativeTo: .largeTitle))
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 5)
                             
-                            Spacer()
+                            Text(timeFormatter.string(from: Date()))
+                                .font(.custom("Chivo", size: 18, relativeTo: .headline))
+                                .foregroundColor(.white.opacity(0.9))
+                                .shadow(color: .black.opacity(0.2), radius: 3)
+                            
+                            Text(getFormattedLocationForHeader())
+                                .font(.custom("Chivo", size: 18, relativeTo: .headline))
+                                .foregroundColor(.white.opacity(0.9))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal)
+                                .shadow(color: .black.opacity(0.2), radius: 3)
+                        }
+                        .padding(.bottom, 30)
+                        
+                        CheckInFormView(
+                            reasonText: $reasonText,
+                            isTextFieldFocused: $isTextFieldFocused,
+                            selectedSocialTags: $selectedSocialTags,
+                            predefinedSocialTags: predefinedSocialTags,
+                            selectedPrivacy: $selectedPrivacy,
+                            showLocation: $showLocation,
+                            currentLocation: currentDisplayLocation,
+                            emotion: emotion,
+                            geometry: geometry,
+                            isSaving: $isSaving,
+                            saveError: $saveError,
+                            isLocationLoading: .constant(locationManager.isLoading),
+                            saveAction: saveCheckIn
+                        )
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollContentBackground(.hidden)
+                .padding(.bottom, keyboardResponder.currentHeight > 0 ? keyboardResponder.currentHeight - geometry.safeAreaInsets.bottom : 0)
+                .animation(.easeOut(duration: 0.25), value: keyboardResponder.currentHeight)
+                
+                VStack {
+                    HStack {
+                        Button(action: {
+                            router.navigateBackInMoodFlow(from: .zero)
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.3))
+                                .clipShape(Circle())
                         }
                         Spacer()
                     }
+                    .padding(.leading)
+                    .padding(.top, geometry.safeAreaInsets.top)
+                    Spacer()
                 }
             }
-        }
-        .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
-        .alert("Success!", isPresented: $showSaveSuccessAlert) {
-            Button("OK", role: .cancel) {
-                router.navigateToMainApp()
+            .background(
+                FloatingBlobButton(
+                    text: "",
+                    size: geometry.size.width * 2,
+                    fontSize: 0,
+                    morphSpeed: 0.2,
+                    floatSpeed: 0.05,
+                    colorShiftSpeed: 0.1,
+                    movementRange: 0.05,
+                    colorPool: [emotion.color],
+                    isSelected: false,
+                    action: {}
+                )
+                .blur(radius: 60)
+                .position(x: geometry.size.width / 2, y: 0)
+                    .ignoresSafeArea()
+            )
+            .background(.black)
+            .ignoresSafeArea()
+            .navigationBarHidden(true)
+            .onTapGesture {
+                isTextFieldFocused = false
             }
-        } message: {
-            Text("Your check-in has been saved successfully.")
-        }
-        .onAppear {
-            if showLocation {
-                displayableLocationName = "Fetching location..."
-                locationManager.requestLocationAccessIfNeeded()
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            .toast(isShowing: $showProfanityToast, message: toastMessage, type: .error)
+            .alert("Success!", isPresented: $showSaveSuccessAlert) {
+                Button("OK", role: .cancel) {
+                    router.navigateToMainApp()
+                }
+            } message: {
+                Text("Your check-in has been saved successfully.")
+            }
+            .onAppear {
+                if showLocation {
+                    locationManager.requestLocationAccessIfNeeded()
                     locationManager.fetchCurrentLocationAndLandmark()
                 }
-            } else {
-                displayableLocationName = "Location Hidden"
             }
-        }
-        .onChange(of: showLocation) { oldShowValue, newShowValue in
-            if newShowValue {
-                displayableLocationName = "Fetching location..."
-                locationManager.fetchCurrentLocationAndLandmark()
-            } else {
-                displayableLocationName = "Location Hidden"
-                locationManager.stopUpdatingMapLocation()
+            .onChange(of: showLocation) {
+                if showLocation {
+                    locationManager.fetchCurrentLocationAndLandmark()
+                } else {
+                    locationManager.stopUpdatingMapLocation()
+                }
             }
-        }
-        .onChange(of: currentLocationState) { oldState, newState in
-            updateDisplayableLocationName(with: newState)
         }
     }
     
-    // MARK: - Helper Methods (Original versions)
     private func getFormattedLocationForHeader() -> String {
-        if !showLocation {
-            return "Location Hidden"
+        let location = currentDisplayLocation
+        if location.isEmpty || location == "Fetching location..." || location == "Location unavailable" || location == "Location Hidden" || location == "Location access needed" {
+            return location
         }
-        if displayableLocationName.isEmpty || displayableLocationName == "Fetching location..." || displayableLocationName == "Location unavailable" {
-            return displayableLocationName
-        }
-        return "@ \(displayableLocationName)"
+        return "@ \(location)"
     }
     
     private func updateDisplayableLocationName(with state: LocationState) {
@@ -656,7 +629,6 @@ struct CompleteCheckInView: View {
         }
     }
     
-    // MARK: - saveCheckIn (MODIFIED LOGIC)
     private func saveCheckIn() {
         isSaving = true
         saveError = nil
@@ -745,16 +717,5 @@ struct CompleteCheckInView: View {
                 }
             }
         }
-    }
-}
-
-struct UpdatedCompleteCheckInView_Previews: PreviewProvider {
-    static var previews: some View {
-        // Assuming Emotion, EmotionDataProvider, MoodAppRouter, UserDataProvider are defined elsewhere
-        // and work as intended for the preview.
-        CompleteCheckInView(emotion: EmotionDataProvider.highEnergyEmotions[3])
-            .environmentObject(MoodAppRouter())
-            .environmentObject(UserDataProvider.shared)
-            .preferredColorScheme(.dark)
     }
 }
