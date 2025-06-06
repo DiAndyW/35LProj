@@ -12,12 +12,10 @@ struct EmotionSearchView: View {
     
     @State private var searchText = ""
     
-    // Combine all emotions from the data provider and sort them alphabetically
-    private let allEmotions: [Emotion] = (
-        EmotionDataProvider.highEnergyEmotions +
-        EmotionDataProvider.mediumEnergyEmotions +
-        EmotionDataProvider.lowEnergyEmotions
-    ).sorted { $0.name < $1.name }
+    private let allEmotions: [Emotion] =
+    EmotionDataProvider.lowEnergyEmotions +
+    EmotionDataProvider.mediumEnergyEmotions +
+    EmotionDataProvider.highEnergyEmotions
     
     // Computed property to filter emotions based on search text
     private var filteredEmotions: [Emotion] {
