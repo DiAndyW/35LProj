@@ -5,6 +5,7 @@ struct MoodPostCardHeaderView: View {
     let isLoadingUsername: Bool
     let usernameFetchFailed: Bool
     let timestamp: String
+    let lastRefreshed: Date
     let location: SimpleLocation?
     let people: [String]?
     
@@ -22,7 +23,7 @@ struct MoodPostCardHeaderView: View {
                             .lineLimit(1).truncationMode(.tail)
                     }
                 }
-
+                
                 let hasLocation = location?.name != nil && !(location?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
                 let hasPeople = people != nil && !(people?.isEmpty ?? true)
                 
@@ -56,10 +57,10 @@ struct MoodPostCardHeaderView: View {
             }
             
             Spacer()
-
+            
             HStack {
                 VStack(){
-                    if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp) {
+                    if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp, relativeTo: lastRefreshed) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(timestampParts.relativeDate)
                                 .font(.custom("Georgia", size: 12))
@@ -158,6 +159,7 @@ struct MoodPostCardActionsView: View {
 
 struct MoodPostCard: View {
     let post: FeedItem
+    let lastRefreshed: Date
     let openDetailAction: () -> Void
     
     @EnvironmentObject private var userDataProvider: UserDataProvider
@@ -169,6 +171,12 @@ struct MoodPostCard: View {
     @State private var usernameFetchFailed: Bool = false
     @State private var isPressed: Bool = false
     
+    init(post: FeedItem, lastRefreshed: Date = Date(), openDetailAction: @escaping () -> Void) {
+        self.post = post
+        self.lastRefreshed = lastRefreshed
+        self.openDetailAction = openDetailAction
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 2){
             MoodPostCardHeaderView(
@@ -176,6 +184,7 @@ struct MoodPostCard: View {
                 isLoadingUsername: isLoadingUsername,
                 usernameFetchFailed: usernameFetchFailed,
                 timestamp: post.timestamp,
+                lastRefreshed: lastRefreshed,
                 location: post.location,
                 people: post.people
             )

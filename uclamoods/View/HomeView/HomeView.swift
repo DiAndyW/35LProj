@@ -14,35 +14,42 @@ struct HomeFeedView: View {
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
-    // New: Sort method state
     @State private var selectedSortMethod: FeedSortMethod = .relevance
     @State private var showSortOptions: Bool = false
+    
+    @State private var lastRefreshedDate = Date()
     
     private let pageSize = 20
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                VStack(spacing: 0) {
-                    headerSection
+            ScrollViewReader { scrollProxy in
+                ZStack {
+                    VStack(spacing: 0) {
+                        headerSection
+                        
+                        if isInitialLoading && posts.isEmpty {
+                            initialLoadingView
+                        } else {
+                            feedContentView(geometry: geometry, scrollProxy: scrollProxy)
+                        }
+                    }
+                    .blur(radius: showDetailViewAnimated ? 15 : 0)
+                    .disabled(showDetailViewAnimated)
                     
-                    if isInitialLoading && posts.isEmpty {
-                        initialLoadingView
-                    } else {
-                        feedContentView(geometry: geometry)
+                    if showDetailViewAnimated {
+                        detailViewOverlay(geometry: geometry)
                     }
                 }
-                .blur(radius: showDetailViewAnimated ? 15 : 0)
-                .disabled(showDetailViewAnimated)
-                
-                if showDetailViewAnimated {
-                    detailViewOverlay(geometry: geometry)
+                .background(Color.black.edgesIgnoringSafeArea(.all))
+                .onAppear {
+                    if posts.isEmpty {
+                        loadInitialPosts()
+                    }
+                    lastRefreshedDate = Date()
                 }
-            }
-            .background(Color.black.edgesIgnoringSafeArea(.all))
-            .onAppear {
-                if posts.isEmpty {
-                    loadInitialPosts()
+                .onReceive(router.homeTabTappedAgain) { _ in
+                    handleRefresh(scrollProxy: scrollProxy)
                 }
             }
         }
@@ -149,16 +156,18 @@ struct HomeFeedView: View {
     
     // MARK: - Feed Content
     @ViewBuilder
-    private func feedContentView(geometry: GeometryProxy) -> some View {
+    private func feedContentView(geometry: GeometryProxy, scrollProxy: ScrollViewProxy) -> some View {
         if posts.isEmpty && !isInitialLoading {
             emptyStateContent(geometry: geometry)
         } else {
             ScrollView {
+                Color.clear.frame(height: 0).id("top_of_feed")
                 LazyVStack(spacing: 16) {
                     ForEach(posts) { moodPostData in
                         let feedItem = moodPostData.toFeedItem()
                         MoodPostCard(
                             post: feedItem,
+                            lastRefreshed: lastRefreshedDate,
                             openDetailAction: {
                                 presentDetailView(for: feedItem)
                             }
@@ -180,6 +189,7 @@ struct HomeFeedView: View {
             }
             .refreshable {
                 await refreshPosts()
+                lastRefreshedDate = Date()
             }
         }
         
@@ -300,6 +310,7 @@ struct HomeFeedView: View {
                     case .failure(let error):
                         self.errorMessage = error.localizedDescription
                 }
+                self.lastRefreshedDate = Date()
             }
         }
     }
@@ -338,6 +349,18 @@ struct HomeFeedView: View {
         }
     }
     
+    private func handleRefresh(scrollProxy: ScrollViewProxy) {
+        Task {
+            withAnimation {
+                scrollProxy.scrollTo("top_of_feed", anchor: .top)
+            }
+            
+            // Allow scroll to complete before fetching
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await refreshPosts()
+            lastRefreshedDate = Date()
+        }
+    }
     private func refreshPosts() async {
         await MainActor.run {
             isInitialLoading = true
@@ -369,7 +392,7 @@ struct HomeFeedView: View {
         }
     }
     
-
+    
     // MARK: - Detail View Management
     private func dismissDetailView() {
         let detailViewWasActive = showDetailViewAnimated
@@ -382,6 +405,7 @@ struct HomeFeedView: View {
         if detailViewWasActive {
             router.tabWithActiveDetailView = nil
         }
+        lastRefreshedDate = Date()
     }
     
     private func presentDetailView(for feedItem: FeedItem) {

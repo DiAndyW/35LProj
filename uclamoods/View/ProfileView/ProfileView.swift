@@ -17,6 +17,8 @@ struct ProfileView: View {
     @State private var selectedPostForDetail: FeedItem?
     @State private var showDetailViewAnimated: Bool = false
     
+    @State private var lastRefreshedDate = Date()
+    
     enum ProfileTab: String, CaseIterable, Identifiable {
         case overview = "Overview"
         case analytics = "Analytics"
@@ -27,30 +29,44 @@ struct ProfileView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
-                
-                VStack(spacing: 0) {
-                    if userDataProvider.currentUser == nil && !AuthenticationService.shared.isAuthenticated {
-                        ProgressView("Not authenticated or loading user...")
-                            .foregroundColor(.white)
-                    } else if userDataProvider.currentUser == nil && AuthenticationService.shared.isAuthenticated {
-                        ProgressView("Loading Profile...")
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .onAppear {
-                                Task {
-                                    await userDataProvider.refreshUserData()
+            ScrollViewReader { scrollProxy in
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    
+                    VStack(spacing: 0) {
+                        if userDataProvider.currentUser == nil && !AuthenticationService.shared.isAuthenticated {
+                            ProgressView("Not authenticated or loading user...")
+                                .foregroundColor(.white)
+                        } else if userDataProvider.currentUser == nil && AuthenticationService.shared.isAuthenticated {
+                            ProgressView("Loading Profile...")
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .onAppear {
+                                    Task {
+                                        await userDataProvider.refreshUserData()
+                                    }
                                 }
-                            }
-                    } else {
-                        profileContentView
+                        } else {
+                            profileContentView(scrollProxy: scrollProxy)
+                        }
+                    }
+                    .blur(radius: showDetailViewAnimated ? 15 : 0)
+                    .disabled(showDetailViewAnimated)
+                    
+                    if showDetailViewAnimated {
+                        detailViewOverlay(geometry: geometry)
                     }
                 }
-                .blur(radius: showDetailViewAnimated ? 15 : 0)
-                .disabled(showDetailViewAnimated)
-                
-                if showDetailViewAnimated {
-                    detailViewOverlay(geometry: geometry)
+                .onReceive(router.profileTabTappedAgain) { _ in
+                    print("[ProfileView] Profile tab re-tapped. Resetting to overview.")
+                    if selectedProfileTab == .overview {
+                        overviewRefreshID = UUID()
+                        lastRefreshedDate = Date()
+                        withAnimation {
+                            scrollProxy.scrollTo("profile_top", anchor: .top)
+                        }
+                    } else {
+                        selectedProfileTab = .overview
+                    }
                 }
             }
         }
@@ -66,20 +82,21 @@ struct ProfileView: View {
     }
     
     @ViewBuilder
-    private var profileContentView: some View {
+    private func profileContentView(scrollProxy: ScrollViewProxy) -> some View {
         VStack(spacing: 0) {
             
             VStack(spacing: 0){
                 ProfileHeaderView()
                     .padding(.bottom, 8)
                 
-                ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab)
+                ProfileTabViewSelector(selectedProfileTab: $selectedProfileTab, scrollProxy: scrollProxy)
                     .scaleEffect(0.9)
                     .padding(.bottom, 8)
             }
             .cornerRadius(20)
-
+            
             ScrollView {
+                Color.clear.frame(height: 0).id("profile_top")
                 tabContentView
                     .id(selectedProfileTab)
                     .transition(currentContentTransition)
@@ -89,6 +106,10 @@ struct ProfileView: View {
                 
                 if selectedProfileTab == .overview {
                     overviewRefreshID = UUID()
+                }
+                lastRefreshedDate = Date()
+                withAnimation {
+                    scrollProxy.scrollTo("profile_top", anchor: .top)
                 }
             }
         }
@@ -101,6 +122,7 @@ struct ProfileView: View {
                 case .overview:
                     ProfileOverviewView(
                         refreshID: overviewRefreshID,
+                        lastRefreshed: lastRefreshedDate,
                         onSelectPost: { feedItem in
                             presentDetailView(for: feedItem)
                         }
@@ -112,7 +134,6 @@ struct ProfileView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, (UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0) + 80)
     }
     
     @ViewBuilder
@@ -158,6 +179,7 @@ struct ProfileView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             selectedPostForDetail = nil
         }
+        lastRefreshedDate = Date()
     }
     
     private var currentContentTransition: AnyTransition {
@@ -215,6 +237,7 @@ struct ProfileHeaderView: View {
 
 struct ProfileTabViewSelector: View {
     @Binding var selectedProfileTab: ProfileView.ProfileTab
+    let scrollProxy: ScrollViewProxy
     let tabs: [ProfileView.ProfileTab] = ProfileView.ProfileTab.allCases
     
     @Namespace private var selectedTabNamespace
@@ -223,8 +246,14 @@ struct ProfileTabViewSelector: View {
         HStack(spacing: 6) {
             ForEach(tabs, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        selectedProfileTab = tab
+                    if selectedProfileTab == tab {
+                        withAnimation {
+                            scrollProxy.scrollTo("profile_top", anchor: .top)
+                        }
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            selectedProfileTab = tab
+                        }
                     }
                 }) {
                     Text(tab.rawValue)
