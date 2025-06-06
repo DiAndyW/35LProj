@@ -73,7 +73,7 @@ struct ProfileSummarySectionView: View {
                     
                     VStack(spacing: 8) {
                         Text(currentSummaryData.topMood?.name ?? "N/A")
-                            .font(.custom("Georgia", size: 20))
+                            .font(.custom("Georgia", size: 18))
                             .scaledToFit()
                             .fontWeight(.bold)
                             .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
@@ -94,7 +94,7 @@ struct ProfileSummarySectionView: View {
                     
                     VStack(spacing: 8) {
                         Text("\(currentSummaryData.totalCheckins)")
-                            .font(.custom("Georgia", size: 20))
+                            .font(.custom("Georgia", size: 18))
                             .fontWeight(.bold)
                             .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
                         
@@ -114,7 +114,7 @@ struct ProfileSummarySectionView: View {
                     
                     VStack(spacing: 8) {
                         Text("\(currentSummaryData.checkinStreak)")
-                            .font(.custom("Georgia", size: 20))
+                            .font(.custom("Georgia", size: 18))
                             .fontWeight(.bold)
                             .foregroundColor(EmotionDataProvider.getEmotion(byName: currentSummaryData.topMood?.name ?? "Neutral")?.color ?? Color.pink)
                         

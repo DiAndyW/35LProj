@@ -80,6 +80,7 @@ struct MoodPostDetailView: View {
                 MoodPostCard(post: post, openDetailAction: {})
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
+                    .scaledToFit()
                 
                 
                 if showStatusMessage {
