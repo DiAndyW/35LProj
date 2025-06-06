@@ -7,6 +7,8 @@
 import SwiftUI
 
 struct BlockedAccountsView: View {
+    @EnvironmentObject private var router: MoodAppRouter
+    
     @State private var blockedUsers: [BlockedUser] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -145,6 +147,7 @@ struct BlockedAccountsView: View {
                     blockedUsers.remove(at: index)
                 }
                 showStatus("\(user.username) has been unblocked")
+                self.router.homeFeedNeedsRefresh.send()
             case .failure(let error):
                 showStatus("Failed to unblock \(user.username): \(error.localizedDescription)")
             }

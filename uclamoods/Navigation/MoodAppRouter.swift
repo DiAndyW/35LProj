@@ -60,6 +60,9 @@ class MoodAppRouter: ObservableObject {
     
     @Published var initialEmotionIDForSelection: Emotion.ID?
     
+    let homeFeedNeedsRefresh = PassthroughSubject<Void, Never>()
+    let commentCountUpdated = PassthroughSubject<(postId: String, newCount: Int), Never>()
+    let userDidBlock = PassthroughSubject<String, Never>()
     let homeTabTappedAgain = PassthroughSubject<Void, Never>()
     let profileTabTappedAgain = PassthroughSubject<Void, Never>()
     let mapTabTappedAgain = PassthroughSubject<Void, Never>()

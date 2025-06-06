@@ -49,6 +49,40 @@ struct HomeFeedView: View {
                 .onReceive(router.homeTabTappedAgain) { _ in
                     handleRefresh(scrollProxy: scrollProxy)
                 }
+                .onReceive(router.homeFeedNeedsRefresh) {
+                    print("HomeFeedView: Refresh signal received.")
+                    handleRefresh(scrollProxy: scrollProxy)
+                }
+                .onReceive(router.commentCountUpdated) { update in
+                    print("HomeFeedView: Comment count update received for post \(update.postId). New count: \(update.newCount)")
+                    if let index = posts.firstIndex(where: { $0.id == update.postId }) {
+                        let oldCommentsData = posts[index].comments?.data ?? []
+                        let newCommentsInfo = CommentsInfo(count: update.newCount, data: oldCommentsData)
+                        
+                        let originalPost = posts[index]
+                        let updatedPost = MoodPost(
+                            id: originalPost.id,
+                            userId: originalPost.userId,
+                            emotion: originalPost.emotion,
+                            reason: originalPost.reason,
+                            people: originalPost.people,
+                            activities: originalPost.activities,
+                            privacy: originalPost.privacy,
+                            location: originalPost.location,
+                            timestamp: originalPost.timestamp,
+                            likes: originalPost.likes,
+                            comments: newCommentsInfo,
+                            isAnonymous: originalPost.isAnonymous,
+                            createdAt: originalPost.createdAt,
+                            updatedAt: originalPost.updatedAt
+                        )
+                        posts[index] = updatedPost
+                    }
+                }
+                .onReceive(router.userDidBlock) { blockedUserId in
+                    print("HomeFeedView: Block event received for user \(blockedUserId). Removing their posts from the feed.")
+                    posts.removeAll { $0.userId == blockedUserId }
+                }
             }
         }
     }

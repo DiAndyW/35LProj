@@ -23,6 +23,7 @@ struct MoodPostDetailView: View {
     @State private var isDeleting = false
     
     @EnvironmentObject private var userDataProvider: UserDataProvider
+    @EnvironmentObject private var router: MoodAppRouter
 
     // MARK: - Profanity Filter and Toast State
 
@@ -334,6 +335,7 @@ struct MoodPostDetailView: View {
                         }
                         return date1 > date2 // Assuming newest first
                     }
+                    self.router.commentCountUpdated.send((postId: self.post.id, newCount: response.commentsCount))
                     self.newComment = ""
                     self.isCommentFieldFocused = false // Dismiss keyboard
                 case .failure(let error):
@@ -402,6 +404,9 @@ struct MoodPostDetailView: View {
                 case .success:
                     self.showStatus("User blocked successfully")
                     HapticFeedbackManager.shared.successNotification()
+                    
+                    self.router.userDidBlock.send(self.post.userId)
+                        
                     // Optionally dismiss the detail view after blocking
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.onDismiss()

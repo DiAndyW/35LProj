@@ -729,6 +729,7 @@ struct CompleteCheckInView: View {
                 await MainActor.run {
                     isSaving = false
                     print("Save successful: \(response.message)") // Assuming response has a message
+                    router.homeFeedNeedsRefresh.send()
                     showSaveSuccessAlert = true
                 }
             } catch {
