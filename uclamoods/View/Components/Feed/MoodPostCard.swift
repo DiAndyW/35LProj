@@ -192,7 +192,7 @@ struct MoodPostCard: View {
                     people: post.people
                 )
                 
-                Divider().frame(height: 1).background(post.emotion.color.opacity(0.8))
+                Divider().frame(height: 1).background(Color.gray.opacity(0.3))
             }
             
             VStack(alignment: .leading, spacing: 0) {
@@ -220,13 +220,14 @@ struct MoodPostCard: View {
             .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
-        )
+
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2)
+                .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2))
+        .background(
+            RoundedRectangle(cornerRadius: 16).fill(post.emotion.color?.opacity(0.3) ?? Color.black.opacity(0.2))
+                .blur(radius: 60, opaque: false)
+                .clipped()
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
