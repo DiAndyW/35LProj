@@ -112,8 +112,18 @@ struct MoodAppContainer: View {
     
     private func clearAppBadge() {
         DispatchQueue.main.async {
-            UIApplication.shared.applicationIconBadgeNumber = 0
-            print("[Notification Service] App badge cleared")
+            if #available(iOS 17.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                    if let error = error {
+                        print("[Notification Service] Failed to clear app badge: \(error)")
+                    } else {
+                        print("[Notification Service] App badge cleared")
+                    }
+                }
+            } else {
+                UIApplication.shared.applicationIconBadgeNumber = 0
+                print("[Notification Service] App badge cleared")
+            }
         }
     }
 }
