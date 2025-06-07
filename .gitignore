@@ -11,3 +11,4 @@ xcuserdata/
 /*.gcno
 **/xcshareddata/WorkspaceSettings.xcsettings
 .vscode/
+buildServer.json
