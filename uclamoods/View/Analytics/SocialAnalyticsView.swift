@@ -33,9 +33,9 @@ struct SocialAnalyticsView: View {
                 }
             }
             .refreshable {
-                print("Refresh action was started.")
+                print("[SocialAnalyticsView]: Refresh action was started.")
                 await handleRefresh()
-                print("Refresh action was completed.")
+                print("[SocialAnalyticsView]: Refresh action was completed.")
             }
         }
         .onAppear {
@@ -324,9 +324,9 @@ struct SocialAnalyticsView: View {
         
         do {
             _ = try await [loadData, minDelay]
-            print("Refresh action was completed.")
+            print("[SocialAnalyticsView]: Refresh action was completed.")
         } catch {
-            print("Refresh action was cancelled.")
+            print("[SocialAnalyticsView]: Refresh action was cancelled.")
         }
     }
     

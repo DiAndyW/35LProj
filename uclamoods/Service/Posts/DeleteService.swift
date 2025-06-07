@@ -72,7 +72,7 @@ class DeleteService {
             return
         }
         
-        print("DeleteService: Deleting post \(postId) by user \(userId) at \(url.absoluteString)")
+        print("[DeleteService]: Deleting post \(postId) by user \(userId) at \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
@@ -84,7 +84,7 @@ class DeleteService {
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
-            print("DeleteService: Failed to encode request body - \(error.localizedDescription)")
+            print("[DeleteService]: Failed to encode request body - \(error.localizedDescription)")
             completion(.failure(.encodingFailed))
             return
         }
@@ -92,21 +92,21 @@ class DeleteService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("DeleteService: Network request error - \(error.localizedDescription)")
+                    print("[DeleteService]: Network request error - \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("DeleteService: Invalid response object.")
+                    print("[DeleteService]: Invalid response object.")
                     completion(.failure(.invalidResponse))
                     return
                 }
                 
-                print("DeleteService: Response status code \(httpResponse.statusCode)")
+                print("[DeleteService]: Response status code \(httpResponse.statusCode)")
                 
                 guard let data = data else {
-                    print("DeleteService: No data received.")
+                    print("[DeleteService]: No data received.")
                     completion(.failure(.noData))
                     return
                 }
@@ -115,15 +115,15 @@ class DeleteService {
                     switch httpResponse.statusCode {
                     case 200...299:
                         let decodedResponse = try JSONDecoder().decode(DeleteCheckInResponse.self, from: data)
-                        print("DeleteService: Post deleted successfully. ID: \(decodedResponse.deletedId)")
+                        print("[DeleteService]: Post deleted successfully. ID: \(decodedResponse.deletedId)")
                         completion(.success(decodedResponse))
                         
                     case 403:
-                        print("DeleteService: Unauthorized to delete this post")
+                        print("[DeleteService]: Unauthorized to delete this post")
                         completion(.failure(.unauthorized))
                         
                     case 404:
-                        print("DeleteService: Post not found")
+                        print("[DeleteService]: Post not found")
                         completion(.failure(.notFound))
                         
                     default:
@@ -133,13 +133,13 @@ class DeleteService {
                         } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
                             serverMessage = errorString
                         }
-                        print("DeleteService: Server error (\(httpResponse.statusCode)): \(serverMessage)")
+                        print("[DeleteService]: Server error (\(httpResponse.statusCode)): \(serverMessage)")
                         completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
                     }
                 } catch let decodingError {
-                    print("DeleteService: JSON decoding error - \(decodingError.localizedDescription)")
+                    print("[DeleteService]: JSON decoding error - \(decodingError.localizedDescription)")
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("DeleteService: Raw response data string: \(responseString)")
+                        print("[DeleteService]: Raw response data string: \(responseString)")
                     }
                     completion(.failure(.decodingError(decodingError)))
                 }

@@ -242,7 +242,7 @@ struct ProfilePostCard: View {
                 case .success(let fetchedName):
                     self.displayUsername = fetchedName
                 case .failure(let error):
-                    print("Failed to fetch username for \(post.userId): \(error.localizedDescription)")
+                    print("[ProfilePostCard]: Failed to fetch username for \(post.userId): \(error.localizedDescription)")
                     self.displayUsername = "User"
                     self.usernameFetchFailed = true
             }
@@ -273,9 +273,9 @@ struct ProfilePostCard: View {
             switch result {
                 case .success(let updateResponse):
                     self.currentLikesCount = updateResponse.likesCount
-                    print("Like status successfully updated via LikeService for post \(post.id). New count: \(updateResponse.likesCount)")
+                    print("[ProfilePostCard]: Like status successfully updated via LikeService for post \(post.id). New count: \(updateResponse.likesCount)")
                 case .failure(let error):
-                    print("Failed to update like status via LikeService for post \(post.id): \(error.localizedDescription)")
+                    print("[ProfilePostCard]: Failed to update like status via LikeService for post \(post.id): \(error.localizedDescription)")
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                         isLiked.toggle()
                         if isLiked {

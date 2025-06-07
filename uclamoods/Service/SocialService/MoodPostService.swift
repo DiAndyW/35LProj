@@ -69,7 +69,7 @@ class MoodPostService {
             return
         }
         
-        print("MoodPostService: Fetching \(sort.displayName) feed from \(url.absoluteString)")
+        print("[MoodPostService]: Fetching \(sort.displayName) feed from \(url.absoluteString)")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.addAuthenticationIfNeeded()
@@ -77,18 +77,18 @@ class MoodPostService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("MoodPostService: Network error - \(error.localizedDescription)")
+                    print("[MoodPostService]: Network error - \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("MoodPostService: Invalid response object.")
+                    print("[MoodPostService]: Invalid response object.")
                     completion(.failure(.invalidResponse))
                     return
                 }
                 
-                print("MoodPostService: Received HTTP status \(httpResponse.statusCode)")
+                print("[MoodPostService]: Received HTTP status \(httpResponse.statusCode)")
                 
                 guard (200...299).contains(httpResponse.statusCode) else {
                     let statusCode = httpResponse.statusCode
@@ -101,7 +101,7 @@ class MoodPostService {
                 }
                 
                 guard let data = data else {
-                    print("MoodPostService: No data received.")
+                    print("[MoodPostService]: No data received.")
                     completion(.failure(.noData))
                     return
                 }
@@ -110,9 +110,9 @@ class MoodPostService {
                     let moodPostsArray = try JSONDecoder().decode([MoodPost].self, from: data)
                     completion(.success((posts: moodPostsArray, pagination: nil)))
                 } catch let decodingError {
-                    print("MoodPostService: JSON decoding error - \(decodingError.localizedDescription)")
+                    print("[MoodPostService]: JSON decoding error - \(decodingError.localizedDescription)")
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("MoodPostService: Raw response: \(responseString)")
+                        print("[MoodPostService]: Raw response: \(responseString)")
                     }
                     completion(.failure(.decodingError(decodingError)))
                 }
@@ -161,7 +161,7 @@ class MoodPostService {
             return
         }
         
-        print("MoodPostService (endpoint: \(endpoint)): Fetching posts from \(url.absoluteString)")
+        print("[MoodPostService]: (endpoint: \(endpoint)): Fetching posts from \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -170,18 +170,18 @@ class MoodPostService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("MoodPostService (endpoint: \(endpoint)): Network error - \(error.localizedDescription)")
+                    print("[MoodPostService]: (endpoint: \(endpoint)): Network error - \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("MoodPostService (endpoint: \(endpoint)): Invalid response.")
+                    print("[MoodPostService]: (endpoint: \(endpoint)): Invalid response.")
                     completion(.failure(.invalidResponse))
                     return
                 }
                 
-                print("MoodPostService (endpoint: \(endpoint)): Status \(httpResponse.statusCode)")
+                print("[MoodPostService]: (endpoint: \(endpoint)): Status \(httpResponse.statusCode)")
                 
                 guard (200...299).contains(httpResponse.statusCode) else {
                     let statusCode = httpResponse.statusCode
@@ -194,7 +194,7 @@ class MoodPostService {
                 }
                 
                 guard let data = data else {
-                    print("MoodPostService (endpoint: \(endpoint)): No data received.")
+                    print("[MoodPostService]: (endpoint: \(endpoint)): No data received.")
                     completion(.failure(.noData))
                     return
                 }
@@ -208,7 +208,7 @@ class MoodPostService {
                     )
                     completion(.success((posts: paginatedResponse.data, pagination: metadata)))
                 } catch let decodingError {
-                    print("MoodPostService (endpoint: \(endpoint)): Decoding error - \(decodingError.localizedDescription)")
+                    print("[MoodPostService]: (endpoint: \(endpoint)): Decoding error - \(decodingError.localizedDescription)")
                     completion(.failure(.decodingError(decodingError)))
                 }
             }

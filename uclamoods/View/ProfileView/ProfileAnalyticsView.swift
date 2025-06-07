@@ -16,7 +16,9 @@ struct ProfileAnalyticsView: View {
                         Button(action: {
                             if(selectedPeriod != period){
                                 selectedPeriod = period
-                                analyticsService.fetchAnalytics(period: period)
+                                Task {
+                                    await analyticsService.fetchAnalytics(period: period)
+                                }
                             }
                         }) {
                             Text(formattedPeriodTitle(period.rawValue).capitalized)
@@ -63,7 +65,9 @@ struct ProfileAnalyticsView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             Button("Retry") {
-                                analyticsService.fetchAnalytics(period: selectedPeriod)
+                                Task {
+                                    await analyticsService.fetchAnalytics(period: selectedPeriod)
+                                }
                             }
                             .padding(.top)
                             .buttonStyle(.borderedProminent)
@@ -85,7 +89,9 @@ struct ProfileAnalyticsView: View {
             }
         }
         .onAppear {
-            analyticsService.fetchAnalytics(period: selectedPeriod)
+            Task {
+                await analyticsService.fetchAnalytics(period: selectedPeriod)
+            }
         }
     }
     

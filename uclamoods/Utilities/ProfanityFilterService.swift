@@ -10,20 +10,20 @@ class ProfanityFilterService: ObservableObject {
             self.extremelyOffensiveWords = ProfanityFilterService.loadOffensiveWordsFromFile(filename: fileInfo.name, filetype: fileInfo.type)
         } else {
             // Fallback to an empty set or a very small, hardcoded default if the file isn't specified
-            print("Warning: No custom offensive words file specified. Using an empty filter list.")
+            print("[ProfanityFilterService]: No custom offensive words file specified. Using an empty filter list.")
             self.extremelyOffensiveWords = Set()
         }
 
         if self.extremelyOffensiveWords.isEmpty {
-            print("Warning: The profanity filter list is empty. No words will be filtered.")
+            print("[ProfanityFilterService]: The profanity filter list is empty. No words will be filtered.")
         } else {
-            print("ProfanityFilterService initialized with \(self.extremelyOffensiveWords.count) words.")
+            print("[ProfanityFilterService]: initialized with \(self.extremelyOffensiveWords.count) words.")
         }
     }
 
     private static func loadOffensiveWordsFromFile(filename: String, filetype: String) -> Set<String> {
         guard let filePath = Bundle.main.path(forResource: filename, ofType: filetype) else {
-            print("ProfanityFilterService Error: List file '\(filename).\(filetype)' not found in bundle.")
+            print("[ProfanityFilterService]: Error: List file '\(filename).\(filetype)' not found in bundle.")
             return Set()
         }
         do {
@@ -33,7 +33,7 @@ class ProfanityFilterService: ObservableObject {
                                 .filter { !$0.isEmpty } // Remove empty lines
             return Set(words)
         } catch {
-            print("ProfanityFilterService Error: Could not read list file '\(filename).\(filetype)': \(error)")
+            print("[ProfanityFilterService]: Error: Could not read list file '\(filename).\(filetype)': \(error)")
             return Set()
         }
     }
@@ -52,7 +52,7 @@ class ProfanityFilterService: ObservableObject {
         for word in wordsInText {
             let cleanedWord = word.trimmingCharacters(in: .punctuationCharacters)
             if !cleanedWord.isEmpty && extremelyOffensiveWords.contains(cleanedWord) {
-                print("ProfanityFilterService: Offensive word found - '\(cleanedWord)'")
+                print("[ProfanityFilterService]: Offensive word found - '\(cleanedWord)'")
                 return false
             }
         }

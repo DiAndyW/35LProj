@@ -267,7 +267,7 @@ struct MoodPostDetailView: View {
                         self.router.commentCountUpdated.send((postId: self.post.id, newCount: response.commentsCount))
                         self.newComment = ""
                     case .failure(let error):
-                        print("Error sending comment: \(error.localizedDescription)")
+                        print("[MoodPostDetailView]: Error sending comment: \(error.localizedDescription)")
                 }
             }
         }

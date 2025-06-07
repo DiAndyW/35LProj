@@ -63,7 +63,7 @@ struct DateFormatterUtility {
         if let date = simplerISOFormatter.date(from: timestampString) {
             return date
         }
-        print("DateFormatterUtility: Failed to parse date string: \(timestampString)")
+        print("[DateFormatterUtility]: Failed to parse date string: \(timestampString)")
         return nil
     }
 }

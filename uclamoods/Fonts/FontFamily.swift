@@ -146,7 +146,7 @@ extension Typography {
     /// Utility to log available fonts for debugging.
     static func logAvailableFonts() {
         for family in UIFont.familyNames.sorted() {
-            print("\(family): \(UIFont.fontNames(forFamilyName: family).sorted())")
+            print("[FontFamily]: \(family): \(UIFont.fontNames(forFamilyName: family).sorted())")
         }
     }
 }

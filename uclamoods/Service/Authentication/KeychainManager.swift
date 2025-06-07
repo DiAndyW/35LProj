@@ -116,7 +116,7 @@ class KeychainManager {
             try save(access, for: Keys.accessToken)
             try save(refresh, for: Keys.refreshToken)
         } catch {
-            print("Error saving tokens to keychain: \(error)")
+            print("[KeychainManager]: Error saving tokens to keychain: \(error)")
         }
     }
     
@@ -132,7 +132,7 @@ class KeychainManager {
             try delete(for: Keys.refreshToken)
             try delete(for: Keys.userId)
         } catch {
-            print("Error clearing tokens from keychain: \(error)")
+            print("[KeychainManager]: Error clearing tokens from keychain: \(error)")
         }
     }
     
@@ -140,7 +140,7 @@ class KeychainManager {
         do {
             try save(userId, for: Keys.userId)
         } catch {
-            print("Error saving user ID to keychain: \(error)")
+            print("[KeychainManager]: Error saving user ID to keychain: \(error)")
         }
     }
     

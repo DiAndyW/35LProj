@@ -254,7 +254,7 @@ class MapViewModel: ObservableObject {
         
         // Check cache first (unless force refresh)
         if !forceRefresh, let cachedPosts = cache.getCachedMoodPosts(for: region) {
-            print("📱 Using cached mood posts for region")
+            print("[MapViewModel]: Using cached mood posts for region")
             updateAnnotations(with: cachedPosts)
             return
         }
@@ -313,7 +313,7 @@ class MapViewModel: ObservableObject {
             request.addAuthenticationIfNeeded()
             request.timeoutInterval = 10.0 // Add timeout
             
-            print("Fetching mood posts from API for region: \(region.center)")
+            print("[MapViewModel]: Fetching mood posts from API for region: \(region.center)")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
@@ -384,7 +384,7 @@ class MapViewModel: ObservableObject {
         
         // Check cache first
         if let cachedHeatmap = cache.getCachedHeatmap(for: region, gridSize: gridSize) {
-            print("📱 Using cached heatmap for region")
+            print("[MapViewModel]: Using cached heatmap for region")
             heatmapPoints = cachedHeatmap
             return
         }
@@ -424,7 +424,7 @@ class MapViewModel: ObservableObject {
             request.addAuthenticationIfNeeded()
             request.timeoutInterval = 10.0
             
-            print("Fetching heatmap from API for region: \(region.center)")
+            print("[MapViewModel]: Fetching heatmap from API for region: \(region.center)")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             

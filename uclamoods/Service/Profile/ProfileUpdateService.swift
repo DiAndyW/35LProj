@@ -89,28 +89,28 @@ class ProfileUpdateService {
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
-            print("ProfileUpdateService: Failed to encode username change request - \(error)")
+            print("[ProfileUpdateService]: Failed to encode username change request - \(error)")
             throw ProfileUpdateError.encodingFailed
         }
         
-        print("ProfileUpdateService: Changing username to '\(newUsername)'")
+        print("[ProfileUpdateService]: Changing username to '\(newUsername)'")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("ProfileUpdateService: Invalid response type for username change")
+                print("[ProfileUpdateService]: Invalid response type for username change")
                 throw ProfileUpdateError.invalidResponse
             }
             
-            print("ProfileUpdateService: Username change response status: \(httpResponse.statusCode)")
+            print("[ProfileUpdateService]: Username change response status: \(httpResponse.statusCode)")
             
             if (200...299).contains(httpResponse.statusCode) {
                 do {
                     let changeResponse = try JSONDecoder().decode(ChangeUsernameResponse.self, from: data)
-                    print("ProfileUpdateService: Username changed successfully to '\(changeResponse.username)'")
+                    print("[ProfileUpdateService]: Username changed successfully to '\(changeResponse.username)'")
                 } catch {
-                    print("ProfileUpdateService: Failed to decode username change response - \(error)")
+                    print("[ProfileUpdateService]: Failed to decode username change response - \(error)")
                     // Still consider it successful if we got 200-level status
                 }
             } else {
@@ -123,14 +123,14 @@ class ProfileUpdateService {
                     errorMessage = responseString
                 }
                 
-                print("ProfileUpdateService: Username change error (\(httpResponse.statusCode)): \(errorMessage)")
+                print("[ProfileUpdateService]: Username change error (\(httpResponse.statusCode)): \(errorMessage)")
                 throw ProfileUpdateError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
             
         } catch let error as ProfileUpdateError {
             throw error
         } catch {
-            print("ProfileUpdateService: Network error during username change - \(error)")
+            print("[ProfileUpdateService]: Network error during username change - \(error)")
             throw ProfileUpdateError.networkError(error)
         }
     }
@@ -148,26 +148,26 @@ class ProfileUpdateService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addAuthenticationIfNeeded()
         
-        print("ProfileUpdateService: Deleting account")
+        print("[ProfileUpdateService]: Deleting account")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("ProfileUpdateService: Invalid response type for account deletion")
+                print("[ProfileUpdateService]: Invalid response type for account deletion")
                 throw ProfileUpdateError.invalidResponse
             }
             
-            print("ProfileUpdateService: Account deletion response status: \(httpResponse.statusCode)")
+            print("[ProfileUpdateService]: Account deletion response status: \(httpResponse.statusCode)")
             
             if (200...299).contains(httpResponse.statusCode) {
                 do {
                     let deleteResponse = try JSONDecoder().decode(DeleteAccountResponse.self, from: data)
-                    print("ProfileUpdateService: Account deleted successfully - \(deleteResponse.message)")
+                    print("[ProfileUpdateService]: Account deleted successfully - \(deleteResponse.message)")
                 } catch {
-                    print("ProfileUpdateService: Failed to decode account deletion response - \(error)")
+                    print("[ProfileUpdateService]: Failed to decode account deletion response - \(error)")
                     // Still consider it successful if we got 200-level status
-                    print("ProfileUpdateService: Account deletion completed (couldn't decode response but got success status)")
+                    print("[ProfileUpdateService]: Account deletion completed (couldn't decode response but got success status)")
                 }
             } else {
                 var errorMessage = "Failed to delete account"
@@ -179,14 +179,14 @@ class ProfileUpdateService {
                     errorMessage = responseString
                 }
                 
-                print("ProfileUpdateService: Account deletion error (\(httpResponse.statusCode)): \(errorMessage)")
+                print("[ProfileUpdateService]: Account deletion error (\(httpResponse.statusCode)): \(errorMessage)")
                 throw ProfileUpdateError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
             
         } catch let error as ProfileUpdateError {
             throw error
         } catch {
-            print("ProfileUpdateService: Network error during account deletion - \(error)")
+            print("[ProfileUpdateService]: Network error during account deletion - \(error)")
             throw ProfileUpdateError.networkError(error)
         }
     }
@@ -212,28 +212,28 @@ class ProfileUpdateService {
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
-            print("ProfileUpdateService: Failed to encode password change request - \(error)")
+            print("[ProfileUpdateService]: Failed to encode password change request - \(error)")
             throw ProfileUpdateError.encodingFailed
         }
         
-        print("ProfileUpdateService: Changing password")
+        print("[ProfileUpdateService]: Changing password")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("ProfileUpdateService: Invalid response type for password change")
+                print("[ProfileUpdateService]: Invalid response type for password change")
                 throw ProfileUpdateError.invalidResponse
             }
             
-            print("ProfileUpdateService: Password change response status: \(httpResponse.statusCode)")
+            print("[ProfileUpdateService]: Password change response status: \(httpResponse.statusCode)")
             
             if (200...299).contains(httpResponse.statusCode) {
                 do {
                     let changeResponse = try JSONDecoder().decode(ChangePasswordResponse.self, from: data)
-                    print("ProfileUpdateService: Password changed successfully - \(changeResponse.msg)")
+                    print("[ProfileUpdateService]: Password changed successfully - \(changeResponse.msg)")
                 } catch {
-                    print("ProfileUpdateService: Failed to decode password change response - \(error)")
+                    print("[ProfileUpdateService]: Failed to decode password change response - \(error)")
                     // Still consider it successful if we got 200-level status
                 }
             } else {
@@ -246,14 +246,14 @@ class ProfileUpdateService {
                     errorMessage = responseString
                 }
                 
-                print("ProfileUpdateService: Password change error (\(httpResponse.statusCode)): \(errorMessage)")
+                print("[ProfileUpdateService]: Password change error (\(httpResponse.statusCode)): \(errorMessage)")
                 throw ProfileUpdateError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
             
         } catch let error as ProfileUpdateError {
             throw error
         } catch {
-            print("ProfileUpdateService: Network error during password change - \(error)")
+            print("[ProfileUpdateService]: Network error during password change - \(error)")
             throw ProfileUpdateError.networkError(error)
         }
     }

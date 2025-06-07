@@ -586,7 +586,7 @@ struct EditProfileView: View {
     private func showDeleteError() {
         // This could be implemented as a toast or another alert
         // For now, we'll just print the error (you might want to add a toast system)
-        print("Delete account error: \(deleteErrorMessage ?? "Unknown error")")
+        print("[EditProfileView]: Delete account error: \(deleteErrorMessage ?? "Unknown error")")
     }
 }
 

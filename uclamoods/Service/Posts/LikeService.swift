@@ -46,7 +46,7 @@ class LikeService {
             return
         }
         
-        print("LikeService: Updating like status for post \(postId) by user \(userId) at \(url.absoluteString)")
+        print("[LikeService]: Updating like status for post \(postId) by user \(userId) at \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
@@ -58,7 +58,7 @@ class LikeService {
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
-            print("LikeService: Failed to encode request body - \(error.localizedDescription)")
+            print("[LikeService]: Failed to encode request body - \(error.localizedDescription)")
             completion(.failure(.encodingFailed))
             return
         }
@@ -66,21 +66,21 @@ class LikeService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("LikeService: Network request error - \(error.localizedDescription)")
+                    print("[LikeService]: Network request error - \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("LikeService: Invalid response object.")
+                    print("[LikeService]: Invalid response object.")
                     completion(.failure(.invalidResponse))
                     return
                 }
                 
-                print("LikeService: Response status code \(httpResponse.statusCode)")
+                print("[LikeService]: Response status code \(httpResponse.statusCode)")
                 
                 guard let data = data else {
-                    print("LikeService: No data received.")
+                    print("[LikeService]: No data received.")
                     completion(.failure(.noData))
                     return
                 }
@@ -88,20 +88,20 @@ class LikeService {
                 do {
                     if (200...299).contains(httpResponse.statusCode) {
                         let decodedResponse = try JSONDecoder().decode(UpdateLikeResponse.self, from: data)
-                        print("LikeService: Like status updated. Post: \(decodedResponse.checkInId), Count: \(decodedResponse.likesCount)")
+                        print("[LikeService]: Like status updated. Post: \(decodedResponse.checkInId), Count: \(decodedResponse.likesCount)")
                         completion(.success(decodedResponse))
                     } else {
                         var serverMessage = "Failed to update like."
                         if let errorDetail = String(data: data, encoding: .utf8) {
                             serverMessage = errorDetail
                         }
-                        print("LikeService: Server error (\(httpResponse.statusCode)): \(serverMessage)")
+                        print("[LikeService]: Server error (\(httpResponse.statusCode)): \(serverMessage)")
                         completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
                     }
                 } catch let decodingError {
-                    print("LikeService: JSON decoding error - \(decodingError.localizedDescription)")
+                    print("[LikeService]: JSON decoding error - \(decodingError.localizedDescription)")
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("LikeService: Raw response data string: \(responseString)")
+                        print("[LikeService]: Raw response data string: \(responseString)")
                     }
                     completion(.failure(.decodingError(decodingError)))
                 }

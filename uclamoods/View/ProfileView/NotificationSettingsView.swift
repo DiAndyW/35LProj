@@ -141,7 +141,7 @@ struct NotificationSettingsView: View {
                     case .authorized, .provisional, .ephemeral:
                         // Permissions are already granted, but no FCM token found.
                         // This could mean the token registration failed or wasn't saved.
-                        print("Permissions granted, but FCM token missing. Attempting to re-register for remote notifications.")
+                        print("[NotificationSettingsView]: Permissions granted, but FCM token missing. Attempting to re-register for remote notifications.")
                         UIApplication.shared.registerForRemoteNotifications()
                         // You might want to inform the user if the token still doesn't arrive after a while.
                     @unknown default:
@@ -154,7 +154,7 @@ struct NotificationSettingsView: View {
             }
         } else {
             // User has an FCM token, implies permissions were already granted and handled.
-            print("FCM token exists. No permission request needed from this view.")
+            print("[NotificationSettingsView]: FCM token exists. No permission request needed from this view.")
         }
     }
     
@@ -171,7 +171,7 @@ struct NotificationSettingsView: View {
                 }
                 
                 if granted {
-                    print("Notification permission granted by user.")
+                    print("[NotificationSettingsView]: Notification permission granted by user.")
                     // Crucial step: After permission is granted, your app needs to register for remote notifications.
                     // This is typically done by calling:
                     UIApplication.shared.registerForRemoteNotifications()
@@ -180,7 +180,7 @@ struct NotificationSettingsView: View {
                     // That FCM token needs to be sent to your backend and saved with the user.
                     // This view initiates the process; the token handling is usually elsewhere.
                 } else {
-                    print("Notification permission denied by user.")
+                    print("[NotificationSettingsView]: Notification permission denied by user.")
                     self.errorMessage = "Push notifications are required for this feature. You can enable them in Settings."
                     self.pushNotificationsEnabled = false // Revert toggle
                     HapticFeedbackManager.shared.errorNotification()

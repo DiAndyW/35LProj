@@ -64,7 +64,7 @@ struct EmotionSearchView: View {
     private func emotionRow(for emotion: Emotion) -> some View {
         Button(action: {
             guard let energyLevel = EmotionDataProvider.getEnergyLevel(for: emotion) else {
-                print("Error: Could not determine energy level for \(emotion.name)")
+                print("[EmotionSearchView]: Could not determine energy level for \(emotion.name)")
                 return
             }
             

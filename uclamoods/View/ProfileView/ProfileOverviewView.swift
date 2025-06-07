@@ -63,7 +63,7 @@ struct ProfileOverviewView: View {
             await loadInitialContent(isRefresh: !isInitialLoading)
         }
         .onReceive(router.commentCountUpdated) { update in
-            print("ProfileOverviewView: Comment count update received for post \(update.postId). New count: \(update.newCount)")
+            print("[ProfileOverviewView]: Comment count update received for post \(update.postId). New count: \(update.newCount)")
             if let index = posts.firstIndex(where: { $0.id == update.postId }) {
                 let oldCommentsData = posts[index].comments?.data ?? []
                 let newCommentsInfo = CommentsInfo(count: update.newCount, data: oldCommentsData)
@@ -171,12 +171,12 @@ struct ProfileOverviewView: View {
             }
         }
         
-        print("ProfileOverviewView: Loading summary first...")
+        print("[ProfileOverviewView]: Loading summary first...")
         
         await fetchSummaryDataAsync()
         
         if summaryLoadingError == nil {
-            print("ProfileOverviewView: Summary loaded. Now loading posts.")
+            print("[ProfileOverviewView]: Summary loaded. Now loading posts.")
             await fetchAndSetPosts(skip: 0, isInitialLoadOrRefresh: true)
         }
         
@@ -206,7 +206,7 @@ struct ProfileOverviewView: View {
             } catch {
                 await MainActor.run {
                     self.summaryLoadingError = error.localizedDescription
-                    print("ProfileOverviewView: Error loading summary - \(error.localizedDescription)")
+                    print("[ProfileOverviewView]: Error loading summary - \(error.localizedDescription)")
                 }
             }
         }
@@ -222,7 +222,7 @@ struct ProfileOverviewView: View {
             return
         }
         
-        print("ProfileOverviewView: Fetching posts for userId: \(userId), skip: \(skip), limit: \(pageSize)")
+        print("[ProfileOverviewView]: Fetching posts for userId: \(userId), skip: \(skip), limit: \(pageSize)")
         
         MoodPostService.fetchMoodPosts(endpoint: "/api/checkin/\(userId)", skip: skip, limit: pageSize) { result in
             DispatchQueue.main.async {
@@ -247,17 +247,17 @@ struct ProfileOverviewView: View {
                         
                         if let pagination = paginationInfo {
                             self.hasMorePosts = pagination.currentPage < pagination.totalPages
-                            print("ProfileOverviewView: Posts loaded. CurrentPage: \(pagination.currentPage), TotalPages: \(pagination.totalPages), HasMore: \(self.hasMorePosts)")
+                            print("[ProfileOverviewView]: Posts loaded. CurrentPage: \(pagination.currentPage), TotalPages: \(pagination.totalPages), HasMore: \(self.hasMorePosts)")
                         } else {
                             self.hasMorePosts = newPosts.count == self.pageSize
                         }
                         
-                        print("ProfileOverviewView: Posts processed. New count: \(newPosts.count). Total: \(self.posts.count)")
+                        print("[ProfileOverviewView]: Posts processed. New count: \(newPosts.count). Total: \(self.posts.count)")
                         
                     case .failure(let error):
                         self.postsLoadingError = "Failed to load posts. \(error.localizedDescription)"
                         self.hasMorePosts = false
-                        print("ProfileOverviewView: Error fetching posts - \(error.localizedDescription)")
+                        print("[ProfileOverviewView]: Error fetching posts - \(error.localizedDescription)")
                 }
             }
         }
@@ -265,15 +265,6 @@ struct ProfileOverviewView: View {
     
     private func fetchSummaryData() async throws -> UserSummary {
         try await Task.sleep(for: .milliseconds(50))
-        return try await withCheckedThrowingContinuation { continuation in
-            ProfileService.fetchSummary { result in
-                switch result {
-                    case .success(let summary):
-                        continuation.resume(returning: summary)
-                    case .failure(let error):
-                        continuation.resume(throwing: error)
-                }
-            }
-        }
+        return try await ProfileService.fetchSummary()
     }
 }

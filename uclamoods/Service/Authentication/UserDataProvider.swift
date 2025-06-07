@@ -7,7 +7,7 @@ class UserDataProvider: ObservableObject {
     
     @Published var currentUser: User? {
         didSet { // Use didSet for simple debugging
-            print("[UserDataProvider DEBUG] currentUser didSet. New username: \(currentUser?.username ?? "nil"), Email: \(currentUser?.email ?? "nil")")
+            print("[UserDataProvider]: currentUser didSet. New username: \(currentUser?.username ?? "nil"), Email: \(currentUser?.email ?? "nil")")
         }
     }
     
@@ -15,7 +15,7 @@ class UserDataProvider: ObservableObject {
     private var cancellable: AnyCancellable?
     
     private init() {
-        print("[UserDataProvider DEBUG] Initializing and subscribing to AuthenticationService.shared.$currentUser")
+        print("[UserDataProvider]: Initializing and subscribing to AuthenticationService.shared.$currentUser")
         // Subscribe to auth service user changes
         // This assigns the value from AuthenticationService.shared.$currentUser to self.currentUser
         // The didSet observer above will then print when it changes.
@@ -32,12 +32,12 @@ class UserDataProvider: ObservableObject {
     
     // ... (rest of the class)
     func refreshUserData() async {
-        print("[UserDataProvider DEBUG] refreshUserData: Called.")
+        print("[UserDataProvider]: refreshUserData: Called.")
         do {
             _ = try await AuthenticationService.shared.fetchUserProfile()
-            print("[UserDataProvider DEBUG] refreshUserData: fetchUserProfile completed. CurrentUser in UserDataProvider: \(self.currentUser?.username ?? "nil")")
+            print("[UserDataProvider]: refreshUserData: fetchUserProfile completed. CurrentUser in UserDataProvider: \(self.currentUser?.username ?? "nil")")
         } catch {
-            print("[UserDataProvider DEBUG] refreshUserData: Failed to refresh user data: \(error.localizedDescription)")
+            print("[UserDataProvider]: refreshUserData: Failed to refresh user data: \(error.localizedDescription)")
         }
     }
 }

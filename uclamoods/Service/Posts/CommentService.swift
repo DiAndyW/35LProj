@@ -56,7 +56,7 @@ class CommentService {
             return
         }
         
-        print("CommentService: Adding comment to post \(postId) by user \(userId) at \(url.absoluteString)")
+        print("[CommentService]: Adding comment to post \(postId) by user \(userId) at \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
@@ -68,7 +68,7 @@ class CommentService {
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
-            print("CommentService: Failed to encode request body - \(error.localizedDescription)")
+            print("[CommentService]: Failed to encode request body - \(error.localizedDescription)")
             completion(.failure(.encodingFailed))
             return
         }
@@ -76,21 +76,21 @@ class CommentService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("CommentService: Network request error - \(error.localizedDescription)")
+                    print("[CommentService]: Network request error - \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("CommentService: Invalid response object.")
+                    print("[CommentService]: Invalid response object.")
                     completion(.failure(.invalidResponse))
                     return
                 }
                 
-                print("CommentService: Response status code \(httpResponse.statusCode)")
+                print("[CommentService]: Response status code \(httpResponse.statusCode)")
                 
                 guard let data = data else {
-                    print("CommentService: No data received.")
+                    print("[CommentService]: No data received.")
                     completion(.failure(.noData))
                     return
                 }
@@ -98,7 +98,7 @@ class CommentService {
                 do {
                     if (200...299).contains(httpResponse.statusCode) {
                         let decodedResponse = try JSONDecoder().decode(AddCommentResponse.self, from: data)
-                        print("CommentService: Comment added successfully. Post: \(decodedResponse.checkInId), New Count: \(decodedResponse.commentsCount)")
+                        print("[CommentService]: Comment added successfully. Post: \(decodedResponse.checkInId), New Count: \(decodedResponse.commentsCount)")
                         completion(.success(decodedResponse))
                     } else {
                         var serverMessage = "Failed to add comment."
@@ -107,13 +107,13 @@ class CommentService {
                         } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
                             serverMessage = errorString
                         }
-                        print("CommentService: Server error (\(httpResponse.statusCode)): \(serverMessage)")
+                        print("[CommentService]: Server error (\(httpResponse.statusCode)): \(serverMessage)")
                         completion(.failure(.serverError(statusCode: httpResponse.statusCode, message: serverMessage)))
                     }
                 } catch let decodingError {
-                    print("CommentService: JSON decoding error - \(decodingError.localizedDescription)")
+                    print("[CommentService]: JSON decoding error - \(decodingError.localizedDescription)")
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("CommentService: Raw response data string: \(responseString)")
+                        print("[CommentService]: Raw response data string: \(responseString)")
                     }
                     completion(.failure(.decodingError(decodingError)))
                 }

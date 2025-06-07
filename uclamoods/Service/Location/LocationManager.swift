@@ -37,7 +37,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     
     func requestLocationAccessIfNeeded() {
         if authorizationStatus == .notDetermined {
-            print("LocationManager: Requesting 'When In Use' authorization.")
+            print("[LocationManager]: Requesting 'When In Use' authorization.")
             manager.requestWhenInUseAuthorization()
         }
     }
@@ -45,18 +45,18 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     func startUpdatingMapLocation() {
         isProcessingOneTimeFetchWithLandmark = false
         isLoading = true
-        print("LocationManager: startUpdatingMapLocation called. Auth status: \(authorizationStatus.rawValue)")
+        print("[LocationManager]: startUpdatingMapLocation called. Auth status: \(authorizationStatus.rawValue)")
         
         switch authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
-                print("LocationManager: Starting continuous location updates for map.")
+                print("[LocationManager]: Starting continuous location updates for map.")
                 manager.startUpdatingLocation()
                 startLocationTimeout()
             case .notDetermined:
-                print("LocationManager: Authorization not determined. Requesting access.")
+                print("[LocationManager]: Authorization not determined. Requesting access.")
                 manager.requestWhenInUseAuthorization()
             case .restricted, .denied:
-                print("LocationManager: Location access denied or restricted.")
+                print("[LocationManager]: Location access denied or restricted.")
                 handleLocationFailure(message: "Location access denied")
             @unknown default:
                 handleLocationFailure(message: "Unknown location error")
@@ -64,7 +64,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     }
     
     func stopUpdatingMapLocation() {
-        print("LocationManager: Stopping continuous location updates for map.")
+        print("[LocationManager]: Stopping continuous location updates for map.")
         manager.stopUpdatingLocation()
         stopLocationTimeout()
         isLoading = false
@@ -74,7 +74,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     func fetchCurrentLocationAndLandmark() {
         // Check if we have a recent cached location
         if let cachedLocation = getCachedLocationIfValid() {
-            print("LocationManager: Using cached location")
+            print("[LocationManager]: Using cached location")
             userCoordinates = cachedLocation.coordinate
             updateMapRegion(for: cachedLocation.coordinate)
             
@@ -87,7 +87,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
         
         isLoading = true
         isProcessingOneTimeFetchWithLandmark = true
-        print("LocationManager: Starting fresh location fetch. Auth status: \(authorizationStatus.rawValue)")
+        print("[LocationManager]: Starting fresh location fetch. Auth status: \(authorizationStatus.rawValue)")
         
         switch authorizationStatus {
             case .notDetermined:
@@ -97,7 +97,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
                 manager.requestLocation()
                 startLocationTimeout()
             case .restricted, .denied:
-                print("LocationManager: Location access denied or restricted.")
+                print("[LocationManager]: Location access denied or restricted.")
                 handleLocationFailure(message: "Location access denied")
             @unknown default:
                 handleLocationFailure(message: "Unknown location error")
@@ -131,12 +131,12 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     }
     
     private func handleLocationTimeout() {
-        print("LocationManager: Location fetch timed out")
+        print("[LocationManager]: Location fetch timed out")
         manager.stopUpdatingLocation()
         
         // Use last known location if available
         if let cachedLocation = lastKnownLocation {
-            print("LocationManager: Using last known location due to timeout")
+            print("[LocationManager]: Using last known location due to timeout")
             userCoordinates = cachedLocation.coordinate
             updateMapRegion(for: cachedLocation.coordinate)
             landmarkName = "Near your last known location"
@@ -183,7 +183,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
         userCoordinates = location.coordinate
         updateMapRegion(for: location.coordinate)
         
-        print("LocationManager: Coordinates updated - Lat: \(location.coordinate.latitude), Lon: \(location.coordinate.longitude)")
+        print("[LocationManager]: Coordinates updated - Lat: \(location.coordinate.latitude), Lon: \(location.coordinate.longitude)")
         
         if isProcessingOneTimeFetchWithLandmark {
             fetchLandmark(for: location)
@@ -196,11 +196,11 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("LocationManager: Failed with error: \(error.localizedDescription)")
+        print("[LocationManager]: Failed with error: \(error.localizedDescription)")
         
         // Try to use cached location if available
         if let cachedLocation = lastKnownLocation {
-            print("LocationManager: Using cached location due to error")
+            print("[LocationManager]: Using cached location due to error")
             userCoordinates = cachedLocation.coordinate
             updateMapRegion(for: cachedLocation.coordinate)
             landmarkName = "Near your last known location"
@@ -214,12 +214,12 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let oldStatus = authorizationStatus
         authorizationStatus = manager.authorizationStatus
-        print("LocationManager: Authorization status changed from \(oldStatus.rawValue) to \(authorizationStatus.rawValue)")
+        print("[LocationManager]: Authorization status changed from \(oldStatus.rawValue) to \(authorizationStatus.rawValue)")
         
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
-            print("LocationManager: Authorization granted, can now start/continue location updates.")
+            print("[LocationManager]: Authorization granted, can now start/continue location updates.")
         } else {
-            print("LocationManager: Location authorization not granted (\(authorizationStatus.rawValue)).")
+            print("[LocationManager]: Location authorization not granted (\(authorizationStatus.rawValue)).")
             handleLocationFailure(message: "Location access needed")
         }
     }
@@ -229,7 +229,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
         
         let geocodingTimeout = DispatchWorkItem {
             geocoder.cancelGeocode()
-            print("LocationManager: Geocoding timed out, using fallback")
+            print("[LocationManager]: Geocoding timed out, using fallback")
             self.landmarkName = "Near your current location"
             if self.isProcessingOneTimeFetchWithLandmark {
                 self.finishLocationFetch()
@@ -250,7 +250,7 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
             }
             
             if let error = error {
-                print("LocationManager: Reverse geocoding failed: \(error.localizedDescription)")
+                print("[LocationManager]: Reverse geocoding failed: \(error.localizedDescription)")
                 self.landmarkName = "Near your current location"
                 return
             }
@@ -277,11 +277,11 @@ class LocationManager: NSObject, ObservableObject, @preconcurrency CLLocationMan
                 }
                 
                 self.landmarkName = determinedName ?? "Near your current location"
-                print("LocationManager: Fetched less precise landmark - \(self.landmarkName ?? "N/A")")
+                print("[LocationManager]: Fetched less precise landmark - \(self.landmarkName ?? "N/A")")
                 
             } else {
                 self.landmarkName = "Near your current location"
-                print("LocationManager: No placemark found.")
+                print("[LocationManager]: No placemark found.")
             }
         }
     }

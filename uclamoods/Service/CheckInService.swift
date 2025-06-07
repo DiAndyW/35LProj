@@ -56,7 +56,7 @@ class CheckInService {
     ) async throws -> CreateCheckInResponsePayload {
         
         guard let userId = userDataProvider.currentUser?.id else {
-            print("CheckInService: Error - User ID not available.")
+            print("[CheckInService]: User ID not available.")
             throw CheckInServiceError.noUserIdAvailable
         }
         
@@ -119,38 +119,38 @@ class CheckInService {
             let jsonData = try encoder.encode(requestBody)
             request.httpBody = jsonData
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("CheckInService: Request body JSON: \(jsonString)")
+                print("[CheckInService]: Request body JSON: \(jsonString)")
             }
         } catch {
-            print("CheckInService: Error encoding request body - \(error.localizedDescription)")
+            print("[CheckInService]: Error encoding request body - \(error.localizedDescription)")
             throw CheckInServiceError.encodingFailed
         }
         
-        print("CheckInService: Sending createCheckIn request to \(url.absoluteString)")
+        print("[CheckInService]: Sending createCheckIn request to \(url.absoluteString)")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("CheckInService: Invalid response from server (not HTTPResponse).")
+                print("[CheckInService]: Invalid response from server (not HTTPResponse).")
                 throw CheckInServiceError.unknownError
             }
             
-            print("CheckInService: Received status code \(httpResponse.statusCode)")
+            print("[CheckInService]: Received status code \(httpResponse.statusCode)")
             if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
-                print("CheckInService: Response body: \(responseString)")
+                print("[CheckInService]: Response body: \(responseString)")
             } else {
-                print("CheckInService: Response body is empty.")
+                print("[CheckInService]: Response body is empty.")
             }
             
             if (200...299).contains(httpResponse.statusCode) {
                 do {
                     let decoder = JSONDecoder()
                     let decodedResponse = try decoder.decode(CreateCheckInResponsePayload.self, from: data)
-                    print("CheckInService: Check-in created successfully - Message: \"\(decodedResponse.message)\"")
+                    print("[CheckInService]: Check-in created successfully - Message: \"\(decodedResponse.message)\"")
                     return decodedResponse
                 } catch {
-                    print("CheckInService: Error decoding successful response - \(error.localizedDescription). Data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                    print("[CheckInService]: Error decoding successful response - \(error.localizedDescription). Data: \(String(data: data, encoding: .utf8) ?? "nil")")
                     throw CheckInServiceError.decodingFailed
                 }
             } else {
@@ -165,15 +165,15 @@ class CheckInService {
                     if let responseString = String(data: data, encoding: .utf8), !responseString.isEmpty {
                         errorMessage = responseString
                     }
-                    print("CheckInService: Could not decode backend error structure. Raw error: \(errorMessage)")
+                    print("[CheckInService]: Could not decode backend error structure. Raw error: \(errorMessage)")
                 }
-                print("CheckInService: Server error - Status \(httpResponse.statusCode), Message: \(errorMessage)")
+                print("[CheckInService]: Server error - Status \(httpResponse.statusCode), Message: \(errorMessage)")
                 throw CheckInServiceError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
         } catch let error as CheckInServiceError {
             throw error // Re-throw known errors
         } catch {
-            print("CheckInService: Network or unknown error - \(error.localizedDescription)")
+            print("[CheckInService]: Network or unknown error - \(error.localizedDescription)")
             throw CheckInServiceError.networkError(error)
         }
     }

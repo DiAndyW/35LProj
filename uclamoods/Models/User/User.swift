@@ -26,7 +26,7 @@ struct User: Codable {
         case lastLogin
         case createdAt
         case updatedAt
-        case fcmToken = ""
+        case fcmToken
     }
 
     struct Preferences: Codable {
@@ -37,11 +37,6 @@ struct User: Codable {
         var shareLocationForHeatmap: Bool?
         var privacySettings: PrivacySettings?
         
-        struct NotificationTimeWindow: Codable { // This struct is no longer directly used for the main notification time
-            let start: Int?
-            let end: Int?
-        }
-
         struct PrivacySettings: Codable {
             var showMoodToStrangers: Bool?
             var anonymousMoodSharing: Bool?

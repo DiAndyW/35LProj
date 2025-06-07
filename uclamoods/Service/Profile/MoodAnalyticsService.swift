@@ -13,9 +13,6 @@ class MoodAnalyticsService: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private var cancellables = Set<AnyCancellable>() // For Combine
-    
-    // Define your base URL
     private let baseURL = Config.apiURL(for: "/profile/analytics")
     
     // Custom DateFormatter for ISO8601 dates with fractional seconds
@@ -41,7 +38,8 @@ class MoodAnalyticsService: ObservableObject {
     
     
     // MARK: - Fetch Analytics Data
-    func fetchAnalytics(period: AnalyticsPeriod) {
+    @MainActor
+    func fetchAnalytics(period: AnalyticsPeriod) async {
         guard var urlComponents = URLComponents(url: baseURL, resolvingAgainstBaseURL: true) else {
             self.errorMessage = "Invalid base URL."
             return
@@ -66,46 +64,32 @@ class MoodAnalyticsService: ObservableObject {
         errorMessage = nil
         analyticsData = nil
         
-        URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { output in
-                guard let httpResponse = output.response as? HTTPURLResponse else {
-                    throw URLError(.badServerResponse) // Or a custom error
-                }
-                print("HTTP Status Code: \(httpResponse.statusCode)")
-                if !(200...299).contains(httpResponse.statusCode) {
-                    // Try to decode error message from backend if available
-                    if let errorData = try? MoodAnalyticsService.jsonDecoder.decode(MoodAnalyticsResponse.self, from: output.data) {
-                        throw NSError(domain: "APIError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorData.message ?? "API Error"])
-                    }
-                    throw URLError(URLError.Code(rawValue: httpResponse.statusCode))
-                }
-                return output.data
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
             }
-            .decode(type: MoodAnalyticsResponse.self, decoder: MoodAnalyticsService.jsonDecoder)
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { [weak self] completion in
-                self?.isLoading = false
-                switch completion {
-                    case .failure(let error):
-                        self?.errorMessage = "Failed to fetch analytics: \(error.localizedDescription)"
-                        print("Error fetching analytics: \(error)")
-                    case .finished:
-                        print("Successfully fetched analytics.")
-                        break
-                }
-            }, receiveValue: { [weak self] response in
-                if response.success {
-                    self?.analyticsData = response.data
+            
+            print("[MoodAnalyticsService]: HTTP Status Code: \(httpResponse.statusCode)")
+            
+            let decodedResponse = try MoodAnalyticsService.jsonDecoder.decode(MoodAnalyticsResponse.self, from: data)
+
+            if (200...299).contains(httpResponse.statusCode) {
+                if decodedResponse.success {
+                    self.analyticsData = decodedResponse.data
+                    print("[MoodAnalyticsService]: Successfully fetched analytics.")
                 } else {
-                    self?.errorMessage = response.message ?? "An unknown error occurred."
+                    throw NSError(domain: "APIError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: decodedResponse.message ?? "API Error"])
                 }
-            })
-            .store(in: &cancellables)
-    }
-    
-    // MARK: - Example Usage (Illustrative)
-    // You would call this from your SwiftUI View or ViewModel
-    func loadAnalyticsExample() {
-        fetchAnalytics(period: .month)
+            } else {
+                 throw NSError(domain: "APIError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: decodedResponse.message ?? "API Error"])
+            }
+        } catch {
+            self.errorMessage = "Failed to fetch analytics: \(error.localizedDescription)"
+            print("[MoodAnalyticsService]: Error fetching analytics: \(error)")
+        }
+        
+        isLoading = false
     }
 }

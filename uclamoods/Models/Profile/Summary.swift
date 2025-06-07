@@ -39,12 +39,6 @@ struct RecentCheckinData: Codable, Identifiable {
     }
 }
 
-// MARK: - Weekly Top Mood within WeeklySummaryData
-struct WeeklyTopMoodData: Codable {
-    let name: String
-    let count: Int
-}
-
 // MARK: - Average Mood within WeeklySummaryData
 struct AverageMoodData: Codable {
     let averageAttributes: EmotionAttributesData
@@ -56,7 +50,6 @@ struct AverageMoodData: Codable {
 // MARK: - Weekly Summary
 struct WeeklySummaryData: Codable {
     let weeklyCheckinsCount: Int
-    let weeklyTopMood: WeeklyTopMoodData?
     let averageMoodForWeek: AverageMoodData
 }
 

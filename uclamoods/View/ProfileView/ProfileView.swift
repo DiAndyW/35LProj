@@ -57,7 +57,7 @@ struct ProfileView: View {
                     }
                 }
                 .onReceive(router.profileTabTappedAgain) { _ in
-                    print("[ProfileView] Profile tab re-tapped. Resetting to overview.")
+                    print("[ProfileView]: Profile tab re-tapped. Resetting to overview.")
                     if selectedProfileTab == .overview {
                         overviewRefreshID = UUID()
                         lastRefreshedDate = Date()
