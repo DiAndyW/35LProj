@@ -226,7 +226,7 @@ struct MoodPostCard: View {
                 .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2))
         .background(
             RoundedRectangle(cornerRadius: 16).fill(post.emotion.color?.opacity(0.3) ?? Color.black.opacity(0.2))
-                .blur(radius: 60, opaque: false)
+                .blur(radius: 150, opaque: false)
                 .clipped()
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)

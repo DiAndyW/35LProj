@@ -34,7 +34,6 @@ struct HomeFeedView: View {
                             } else if posts.isEmpty && !isInitialLoading {
                                 emptyStateContent(geometry: geometry)
                             } else {
-                                // The LazyVStack for posts is placed directly here.
                                 LazyVStack(spacing: 16) {
                                     ForEach(posts) { moodPostData in
                                         let feedItem = moodPostData.toFeedItem()

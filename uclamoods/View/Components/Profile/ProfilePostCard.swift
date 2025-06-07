@@ -1,9 +1,6 @@
 import SwiftUI
 
 struct ProfilePostCardHeaderView: View {
-    let displayUsername: String
-    let isLoadingUsername: Bool
-    let usernameFetchFailed: Bool
     let timestamp: String
     let lastRefreshed: Date
     let location: SimpleLocation?
@@ -17,6 +14,7 @@ struct ProfilePostCardHeaderView: View {
                 
                 if hasLocation || hasPeople {
                     VStack(alignment: .leading, spacing: 5) {
+                        Spacer()
                         if let peopleArray = people, !peopleArray.isEmpty {
                             HStack(spacing: 5) {
                                 Image(systemName: peopleArray.count > 1 ? "person.2.fill" : "person.fill")
@@ -38,6 +36,7 @@ struct ProfilePostCardHeaderView: View {
                                     .foregroundColor(.white.opacity(0.7))
                                     .lineLimit(1).truncationMode(.tail)
                             }
+                            .frame(maxWidth: 200, alignment: .leading)
                         }
                     }
                 }else{
@@ -57,7 +56,7 @@ struct ProfilePostCardHeaderView: View {
             Spacer()
             
             HStack {
-                VStack(){
+                VStack(alignment: .trailing){
                     if let timestampParts = DateFormatterUtility.formatTimestampParts(timestampString: timestamp, relativeTo: lastRefreshed) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(timestampParts.relativeDate)
@@ -178,9 +177,6 @@ struct ProfilePostCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2){
             ProfilePostCardHeaderView(
-                displayUsername: displayUsername,
-                isLoadingUsername: isLoadingUsername,
-                usernameFetchFailed: usernameFetchFailed,
                 timestamp: post.timestamp,
                 lastRefreshed: lastRefreshed,
                 location: post.location,
@@ -215,13 +211,15 @@ struct ProfilePostCard: View {
             .padding(.horizontal, 8)
             .padding(.top, 16)
             .padding(.bottom, 8)
-            .background(Color.white.opacity(0.02))
         }
-        .cornerRadius(20)
-        .background(Color.white.opacity(0.05))
+        .frame(maxWidth: .infinity)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2)
+                .stroke(post.emotion.color?.opacity(0.6) ?? Color.white.opacity(0.1), lineWidth: 2))
+        .background(
+            RoundedRectangle(cornerRadius: 16).fill(post.emotion.color?.opacity(0.2) ?? Color.black.opacity(0.2))
+                .blur(radius: 60, opaque: false)
+                .clipped()
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)

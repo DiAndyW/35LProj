@@ -469,7 +469,6 @@ struct CompleteCheckInView: View {
                             saveAction: saveCheckIn
                         )
                     }
-                    .padding(.horizontal)
                 }
                 .scrollContentBackground(.hidden)
                 .ignoresSafeArea(edges: .top)

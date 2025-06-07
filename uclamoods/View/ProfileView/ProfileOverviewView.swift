@@ -133,6 +133,7 @@ struct ProfileOverviewView: View {
                     }
                     loadMoreView
                 }
+                .padding(.bottom, 80)
             }
         }
     }
@@ -148,12 +149,10 @@ struct ProfileOverviewView: View {
                     .font(.custom("Georgia", size: 14))
                     .foregroundColor(.white.opacity(0.7))
             }
-            .padding()
         } else if !hasMorePosts && !posts.isEmpty {
             Text("You've reached the end!")
                 .font(.custom("Georgia", size: 14))
                 .foregroundColor(.white.opacity(0.5))
-                .padding()
         }
     }
     
