@@ -23,14 +23,48 @@ struct HomeFeedView: View {
         GeometryReader { geometry in
             ScrollViewReader { scrollProxy in
                 ZStack {
-                    ScrollView() {
-                        headerSection
+                    ScrollView {
+                        Color.clear.frame(height: 0).id("top_of_feed")
                         
-                        if isInitialLoading && posts.isEmpty {
-                            initialLoadingView
-                        } else {
-                            feedContentView(geometry: geometry, scrollProxy: scrollProxy)
+                        VStack(spacing: 0) {
+                            headerSection
+                            
+                            if isInitialLoading && posts.isEmpty {
+                                initialLoadingView
+                            } else if posts.isEmpty && !isInitialLoading {
+                                emptyStateContent(geometry: geometry)
+                            } else {
+                                // The LazyVStack for posts is placed directly here.
+                                LazyVStack(spacing: 16) {
+                                    ForEach(posts) { moodPostData in
+                                        let feedItem = moodPostData.toFeedItem()
+                                        MoodPostCard(
+                                            post: feedItem,
+                                            lastRefreshed: lastRefreshedDate,
+                                            openDetailAction: {
+                                                presentDetailView(for: feedItem)
+                                            }
+                                        )
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            presentDetailView(for: feedItem)
+                                        }
+                                        .onAppear {
+                                            if moodPostData.id == posts.last?.id {
+                                                loadMorePostsIfNeeded()
+                                            }
+                                        }
+                                    }
+                                    loadMoreView
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, max(100, geometry.safeAreaInsets.bottom) + 70)
+                            }
                         }
+                    }
+                    .refreshable {
+                        await refreshPosts()
+                        lastRefreshedDate = Date()
                     }
                     .blur(radius: showDetailViewAnimated ? 15 : 0)
                     .disabled(showDetailViewAnimated)
@@ -183,62 +217,6 @@ struct HomeFeedView: View {
                 .font(.custom("Georgia", size: 14))
                 .foregroundColor(.white.opacity(0.5))
                 .padding()
-        }
-    }
-    
-    // MARK: - Feed Content
-    @ViewBuilder
-    private func feedContentView(geometry: GeometryProxy, scrollProxy: ScrollViewProxy) -> some View {
-        if posts.isEmpty && !isInitialLoading {
-            emptyStateContent(geometry: geometry)
-        } else {
-            ScrollView {
-                Color.clear.frame(height: 0).id("top_of_feed")
-                LazyVStack(spacing: 16) {
-                    ForEach(posts) { moodPostData in
-                        let feedItem = moodPostData.toFeedItem()
-                        MoodPostCard(
-                            post: feedItem,
-                            lastRefreshed: lastRefreshedDate,
-                            openDetailAction: {
-                                presentDetailView(for: feedItem)
-                            }
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            presentDetailView(for: feedItem)
-                        }
-                        .onAppear {
-                            if moodPostData.id == posts.last?.id {
-                                loadMorePostsIfNeeded()
-                            }
-                        }
-                    }
-                    loadMoreView
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, max(100, geometry.safeAreaInsets.bottom) + 70)
-            }
-            .refreshable {
-                await refreshPosts()
-                lastRefreshedDate = Date()
-            }
-        }
-        
-        if let error = errorMessage {
-            VStack {
-                Text("Error: \(error)")
-                    .foregroundColor(.red)
-                    .padding()
-                Button("Retry") {
-                    if posts.isEmpty {
-                        loadInitialPosts()
-                    } else {
-                        loadMorePostsIfNeeded()
-                    }
-                }
-                .foregroundColor(.blue)
-            }
         }
     }
     

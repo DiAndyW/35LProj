@@ -61,6 +61,7 @@ struct CommentInputView: View {
                 Button("Post") {
                     hideKeyboard()
                     onPost(commentText)
+                    commentText = ""
                     withAnimation { isPresented = false }
                 }
                 .padding(.vertical, 12)
