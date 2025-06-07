@@ -182,12 +182,9 @@ struct ProfilePostCard: View {
                 location: post.location,
                 people: post.people
             )
-            .padding(.bottom, 4)
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(post.emotion.color?.opacity(0.3) ?? Color.white.opacity(0.1), lineWidth: 1)
-            )
+            
+            Divider().frame(height: 1).background(Color.gray.opacity(0.3))
+
             
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 0) {
